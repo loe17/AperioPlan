@@ -55,7 +55,7 @@ export async function buildApp(opts: BuildOptions = {}): Promise<{ app: FastifyI
   });
 
   app.setErrorHandler((err, req, reply) => {
-    if (err instanceof HttpError) return reply.status(err.statusCode).send({ error: err.message, code: err.code });
+    if (err instanceof HttpError) return reply.status(err.statusCode).send({ error: err.message, code: err.code, details: (err as HttpError & { details?: unknown }).details });
     if (err instanceof ZodError) return reply.status(400).send({ error: err.message, code: 'validation' });
     const e = err as { statusCode?: number; message: string; code?: string };
     if (e.statusCode && e.statusCode < 500) return reply.status(e.statusCode).send({ error: e.message, code: e.code });

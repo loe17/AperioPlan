@@ -6,6 +6,7 @@ const en: Record<string, string> = {
   'Posteingang': 'Inbox',
   'Mein Kalender': 'My calendar',
   'Teamkalender': 'Team calendar',
+  'Ressourcen': 'Resources',
   'Stempeluhr': 'Time clock',
   'Private Notizen': 'Private notes',
   'Urlaubskonto': 'Vacation',

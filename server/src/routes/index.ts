@@ -25,7 +25,8 @@ import backup from './backup';
 import update from './update';
 import office from './office';
 import plugins from './plugins';
+import resources from './resources';
 
 export async function routes(app: FastifyInstance, ctx: AppContext) {
-  for (const r of [system, auth, users, teams, settings, me, audit, ws, projects, tasks, whiteboards, search, files, links, cad, time, absences, chat, kvp, mail, ai, backup, update, office, plugins]) await r(app, ctx);
+  for (const r of [system, auth, users, teams, settings, me, audit, ws, projects, tasks, whiteboards, search, files, links, cad, time, absences, chat, kvp, mail, ai, backup, update, office, plugins, resources]) await r(app, ctx);
 }

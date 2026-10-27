@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useApi } from '../lib/hooks';
-import { post, put, invalidate } from '../lib/api';
+import { post, put, patch, invalidate } from '../lib/api';
+import { Icon } from '../components/Icon';
+import { ResourceLabel } from './Resources';
 import { fmtBytes, fmtDate, fmtDateTime } from '../lib/format';
 import { Confirm, Modal, Pill } from '../components/ui';
 import { del, upload } from '../lib/api';
@@ -465,6 +467,76 @@ export function ExtensionSettings() {
           <button className="btn primary" onClick={() => act(() => hooks.save(hooks.value), 'Gespeichert')}>Speichern</button>
         </div>
       </>}
+    </div>
+  );
+}
+
+const RES_KINDS: [string, string][] = [['room', 'Raum'], ['vehicle', 'Fahrzeug'], ['equipment', 'Gerät'], ['other', 'Sonstiges']];
+const RES_COLORS = ['#4f46e5', '#0e9f6e', '#d97706', '#db2777', '#0891b2', '#7c3aed', '#dc2626', '#65a30d'];
+
+/** Ressourcen (Räume, Fahrzeuge, Geräte) anlegen und verwalten */
+export function ResourcesSettings() {
+  const act = useAction();
+  const { users, teams } = useSession();
+  const { data, reload } = useApi<any[]>('/resources');
+  const [edit, setEdit] = useState<any | null>(null);
+  const [remove, setRemove] = useState<any | null>(null);
+  const blank = { name: '', kind: 'room', location: '', capacity: '', description: '', color: RES_COLORS[0], requiresApproval: false, approverId: '', allowedTeamIds: [] as string[], active: true };
+  return (
+    <div style={{ maxWidth: 900 }}>
+      <div className="page-head"><div><h1>Ressourcen</h1><div className="sub">Räume, Firmenwagen und Geräte, die Mitarbeiter im Kalender buchen können.</div></div>
+        <div className="actions"><button className="btn primary" onClick={() => setEdit({ ...blank })}><Icon name="plus" /> Ressource anlegen</button></div></div>
+      {!data?.length ? <div className="card muted">Noch keine Ressourcen angelegt.</div> : (
+        <div className="table-wrap"><table className="table">
+          <thead><tr><th>Ressource</th><th>Art</th><th>Genehmigung</th><th>Buchbar für</th><th>Status</th><th /></tr></thead>
+          <tbody>{data.map((r) => (
+            <tr key={r.id} className="click" onClick={() => setEdit({ ...r, capacity: r.capacity ?? '', approverId: r.approverId ?? '' })}>
+              <td><ResourceLabel r={r} /></td>
+              <td>{RES_KINDS.find(([k]) => k === r.kind)?.[1]}</td>
+              <td>{r.requiresApproval ? (r.approverName ?? 'Administratoren') : <span className="muted">nein</span>}</td>
+              <td className="small">{r.allowedTeamIds.length ? teams.filter((t) => r.allowedTeamIds.includes(t.id)).map((t) => t.name).join(', ') : 'alle'}</td>
+              <td>{r.active ? <Pill tone="green">buchbar</Pill> : <Pill tone="red">gesperrt</Pill>}</td>
+              <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
+                <button className="btn sm" onClick={async () => { await act(() => patch(`/resources/${r.id}`, { active: !r.active }), r.active ? 'Gesperrt' : 'Freigegeben'); reload(); }}>{r.active ? 'Sperren' : 'Freigeben'}</button>{' '}
+                <button className="btn sm danger" title="Löschen" onClick={() => setRemove(r)}><Icon name="trash" /></button>
+              </td>
+            </tr>
+          ))}</tbody>
+        </table></div>
+      )}
+      {edit && (
+        <Modal title={edit.id ? 'Ressource bearbeiten' : 'Ressource anlegen'} onClose={() => setEdit(null)} footer={<>
+          <button className="btn" onClick={() => setEdit(null)}>Abbrechen</button>
+          <button className="btn primary" disabled={!edit.name.trim()} onClick={async () => {
+            const body = { name: edit.name, kind: edit.kind, location: edit.location, capacity: edit.capacity === '' ? null : Number(edit.capacity), description: edit.description,
+              color: edit.color, requiresApproval: edit.requiresApproval, approverId: edit.approverId || null, allowedTeamIds: edit.allowedTeamIds, active: edit.active };
+            const ok = await act(() => (edit.id ? patch(`/resources/${edit.id}`, body) : post('/resources', body)), 'Gespeichert');
+            if (ok) { setEdit(null); reload(); }
+          }}>Speichern</button>
+        </>}>
+          <div className="grid2">
+            <Field label="Name" required><input autoFocus value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="z. B. Besprechungsraum 1, VW Caddy KN-AP 123" /></Field>
+            <Field label="Art"><select value={edit.kind} onChange={(e) => setEdit({ ...edit, kind: e.target.value })}>{RES_KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
+            <Field label="Ort"><input value={edit.location} onChange={(e) => setEdit({ ...edit, location: e.target.value })} placeholder="z. B. Erdgeschoss, Parkplatz 3" /></Field>
+            <Field label={edit.kind === 'vehicle' ? 'Sitze' : 'Plätze'}><input type="number" min={0} value={edit.capacity} onChange={(e) => setEdit({ ...edit, capacity: e.target.value })} /></Field>
+          </div>
+          <Field label="Beschreibung"><input value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} placeholder="z. B. Beamer und Videokonferenz vorhanden" /></Field>
+          <Field label="Farbe">
+            <div className="row">{RES_COLORS.map((c) => <button key={c} className="btn sm" onClick={() => setEdit({ ...edit, color: c })} style={{ width: 28, height: 28, padding: 0, background: c, outline: edit.color === c ? '2px solid var(--text)' : undefined, outlineOffset: 2 }} aria-label={c} />)}</div>
+          </Field>
+          <label className="row" style={{ marginBottom: 10 }}><input type="checkbox" checked={edit.requiresApproval} onChange={(e) => setEdit({ ...edit, requiresApproval: e.target.checked })} /> Buchungen müssen genehmigt werden</label>
+          {edit.requiresApproval && <Field label="Genehmigt durch" hint="leer = alle Administratoren">
+            <select value={edit.approverId} onChange={(e) => setEdit({ ...edit, approverId: e.target.value })}><option value="">Administratoren</option>{users.map((u) => <option key={u.id} value={u.id}>{u.displayName}</option>)}</select>
+          </Field>}
+          <Field label="Buchbar für" hint="nichts ausgewählt = alle Mitarbeiter">
+            <div className="row wrap">{teams.map((t) => (
+              <label key={t.id} className="row small" style={{ gap: 4 }}><input type="checkbox" checked={edit.allowedTeamIds.includes(t.id)} onChange={() => setEdit({ ...edit, allowedTeamIds: edit.allowedTeamIds.includes(t.id) ? edit.allowedTeamIds.filter((x: string) => x !== t.id) : [...edit.allowedTeamIds, t.id] })} />{t.name}</label>
+            ))}</div>
+          </Field>
+          <label className="row"><input type="checkbox" checked={edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked })} /> Buchbar (abwählen, um z. B. ein Fahrzeug in der Werkstatt zu sperren)</label>
+        </Modal>
+      )}
+      {remove && <Confirm danger text={`„${remove.name}“ löschen? Das geht nur, wenn keine künftigen Buchungen bestehen – sonst bitte sperren.`} onClose={() => setRemove(null)} onConfirm={async () => { await act(() => del(`/resources/${remove.id}`), 'Gelöscht'); reload(); }} />}
     </div>
   );
 }

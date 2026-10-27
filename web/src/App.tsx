@@ -22,6 +22,7 @@ const ChatPage = lazy(() => import('./pages/Chat'));
 const MailPage = lazy(() => import('./pages/Mail'));
 const KvpPage = lazy(() => import('./pages/Kvp'));
 const SharePage = lazy(() => import('./pages/Share'));
+const ResourcesPage = lazy(() => import('./pages/Resources'));
 const OfficePage = lazy(() => import('./pages/Office'));
 
 export function App() {
@@ -53,6 +54,7 @@ export function App() {
             <Route path="/absences" element={<AbsencesPage />} />
             <Route path="/calendar" element={<CalendarPage mode="me" />} />
             <Route path="/calendar/team" element={<CalendarPage mode="team" />} />
+            <Route path="/calendar/resources" element={<ResourcesPage />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/mail" element={<MailPage />} />
             <Route path="/kvp" element={<KvpPage />} />

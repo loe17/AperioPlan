@@ -190,6 +190,7 @@ export function Layout({ children }: { children: ReactNode }) {
               {!isGuest && settings?.mailEnabled && <NavItem to="/mail" ico="✉️" label={t('E-Mail')} />}
               {!isGuest && <NavItem to="/kvp" ico="💡" label={t('KVP-Ideenbox')} />}
               {!isGuest && <NavItem to="/calendar/team" ico="🗓️" label={t('Teamkalender')} />}
+              {!isGuest && <NavItem to="/calendar/resources" ico="🚗" label={t('Ressourcen')} />}
               {plugins?.filter((p) => p.enabled && p.page).map((p) => <NavItem key={p.id} to={`/plugin/${p.id}`} ico={p.page.icon ?? '🧩'} label={p.page.label} />)}
               <NavItem to="/settings" ico="⚙️" label={t('Einstellungen')} />
             </div>

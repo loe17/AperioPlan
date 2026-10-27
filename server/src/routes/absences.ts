@@ -200,6 +200,9 @@ export default async function absenceRoutes(app: FastifyInstance, ctx: AppContex
     const absences = await sql`select id, kind, start_date::text as "startDate", end_date::text as "endDate", status, half_day_start as "halfDayStart", half_day_end as "halfDayEnd"
       from absences where user_id = ${u.id} and status in ('pending', 'approved') and start_date <= ${q.to} and end_date >= ${q.from}`;
     const holidays = await sql`select day::text as day, name from holidays where day between ${q.from} and ${q.to}`;
-    return { tasks, absences, holidays };
+    const bookings = await sql`select b.id, b.starts_at as "startsAt", b.ends_at as "endsAt", b.title, b.status, r.name as "resourceName", r.kind as "resourceKind", r.color
+      from resource_bookings b join resources r on r.id = b.resource_id
+      where b.user_id = ${u.id} and b.status in ('pending', 'approved') and b.starts_at < (${q.to}::date + 1) and b.ends_at > ${q.from}::date order by b.starts_at`;
+    return { tasks, absences, holidays, bookings };
   });
 }

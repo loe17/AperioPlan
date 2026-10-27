@@ -54,6 +54,11 @@ export default function CalendarPage({ mode }: { mode: 'me' | 'team' }) {
               <span className="num">{d.getDate()}</span>
               {hol && <div className="cal-ev holiday" title={String(hol)}>🎌 {String(hol)}</div>}
               {ownAbs.map((a: any) => <div key={a.id} className={`cal-ev absent ${a.status === 'pending' ? 'pending' : ''}`}>{a.kind === 'vacation' ? '🏖️ Urlaub' : '🚪 Abwesend'}{a.status === 'pending' ? ' (beantragt)' : ''}</div>)}
+              {mode === 'me' && (mine?.bookings ?? []).filter((b: any) => isoDate(new Date(b.startsAt)) <= k && isoDate(new Date(b.endsAt)) >= k).map((b: any) => (
+                <div key={b.id} className={`cal-ev booking ${b.status === 'pending' ? 'pending' : ''}`} style={{ cursor: 'pointer', borderLeft: `3px solid ${b.color}` }} onClick={() => nav('/calendar/resources?tab=mine')} title={b.title ?? ''}>
+                  {new Date(b.startsAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} {b.resourceName}
+                </div>
+              ))}
               {tasks.map((x: any) => <div key={x.id} className="cal-ev task" style={{ cursor: 'pointer' }} onClick={() => nav(`/projects/${x.projectId}?task=${x.id}`)} title={x.title}>{x.milestone ? '◆' : '📌'} {x.projectNumber} {x.title}</div>)}
               {(mode === 'team' ? absences : absences.filter((a) => a.userId !== me?.id)).map((a, i) => (
                 <div key={i} className={`cal-ev absent ${a.status === 'pending' ? 'pending' : ''}`} title={`${a.userName}: Abwesend`}>{a.userName}{(a.startDate === k && a.halfDayStart) || (a.endDate === k && a.halfDayEnd) ? ' (½)' : ''}{a.status === 'pending' ? ' ?' : ''}</div>

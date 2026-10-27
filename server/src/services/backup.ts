@@ -58,6 +58,8 @@ export const BACKUP_TABLES: { name: string; pk: string[] }[] = [
   { name: 'chat_members', pk: ['channel_id', 'user_id'] },
   { name: 'chat_messages', pk: ['id'] },
   { name: 'calls', pk: ['id'] },
+  { name: 'resources', pk: ['id'] },
+  { name: 'resource_bookings', pk: ['id'] },
   { name: 'mail_messages', pk: ['id'] },
   { name: 'kvp_ideas', pk: ['id'] },
   { name: 'kvp_photos', pk: ['id'] },

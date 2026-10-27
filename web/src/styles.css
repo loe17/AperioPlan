@@ -335,3 +335,24 @@ table.table { width: 100%; border-collapse: collapse; }
   .breadcrumbs { flex: 1; }
   .slideover, .slideover.wide { width: 100vw; }
 }
+
+/* ---------------------------------------------------------- Symbole */
+.icon { flex: none; vertical-align: -0.18em; }
+.btn .icon, .nav-item .icon, .tab .icon, .pill .icon { vertical-align: middle; }
+.tab { display: inline-flex; align-items: center; gap: 6px; }
+.empty .big .icon { color: var(--text-3); }
+.entity-icon { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); flex: none; }
+.entity-icon.lg { width: 44px; height: 44px; border-radius: 12px; }
+.icon-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 6px; }
+.icon-pick button { height: 38px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text-2); cursor: pointer; display: grid; place-items: center; }
+.icon-pick button.sel { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+/* ---------------------------------------------------------- Ressourcen */
+.resource-icon { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; flex: none; }
+.resource-plan td.slot { height: 64px; padding: 4px; }
+.resource-plan td.slot:hover { background: var(--bg-hover) !important; }
+.booking-chip { font-size: 11.5px; background: var(--bg-soft); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 5px; padding: 1px 5px; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.booking-chip.pending, .booking-bar.pending { border-style: dashed; opacity: 0.75; }
+.booking-bar { position: absolute; top: 8px; height: 32px; border-radius: 6px; color: #fff; font-size: 12px; padding: 0 8px; line-height: 32px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; border: 1px solid rgba(0, 0, 0, 0.1); }
+.booking-bar.pending { border: 2px dashed rgba(255, 255, 255, 0.8); }
+.cal-ev.booking { background: var(--accent-soft); color: var(--accent); }

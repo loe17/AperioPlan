@@ -11,7 +11,7 @@ import { Avatar, Confirm, Empty, Field, Modal, Pill, useAction } from '../compon
 import { ChangePasswordPage } from './Auth';
 import { AuditView } from '../modules/AuditView';
 import { MODULE_LABELS } from '../modules/ProjectSettings';
-import { CadMaskSettings, BackupSettings, UpdateSettings, MailSettings, AiSettings, HolidaySettings, StorageSettings, ExtensionSettings } from './SettingsExtra';
+import { CadMaskSettings, BackupSettings, UpdateSettings, MailSettings, AiSettings, HolidaySettings, StorageSettings, ExtensionSettings, ResourcesSettings } from './SettingsExtra';
 
 const ROLE_LABEL: Record<string, string> = { admin: 'Administrator', teamlead: 'Teamleitung', member: 'Mitarbeiter', guest: 'Gast' };
 
@@ -37,6 +37,7 @@ export default function SettingsPage() {
           <SettingsNav to="/settings/general">🧭 Allgemein & Nummern</SettingsNav>
           <SettingsNav to="/settings/storage">💾 Speicherorte</SettingsNav>
           <SettingsNav to="/settings/cad">📐 {t('Speichermaske')} (CAD)</SettingsNav>
+          <SettingsNav to="/settings/resources">🚗 Ressourcen</SettingsNav>
           <SettingsNav to="/settings/holidays">🎌 Feiertage</SettingsNav>
           <SettingsNav to="/settings/ldap">🏛️ {t('Firmen-Login')} (LDAP)</SettingsNav>
           <SettingsNav to="/settings/mail">✉️ E-Mail-Konto</SettingsNav>
@@ -60,6 +61,7 @@ export default function SettingsPage() {
             <Route path="storage" element={<StorageSettings />} />
             <Route path="cad" element={<CadMaskSettings />} />
             <Route path="holidays" element={<HolidaySettings />} />
+            <Route path="resources" element={<ResourcesSettings />} />
             <Route path="ldap" element={<Ldap />} />
             <Route path="mail" element={<MailSettings />} />
             <Route path="ai" element={<AiSettings />} />
