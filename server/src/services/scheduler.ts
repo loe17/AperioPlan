@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import type { FastifyBaseLogger } from 'fastify';
 import type { AppContext } from '../context';
 import { runBackup } from './backup';
+import { syncMail } from './mail';
 
 /** Geplante Hintergrundaufgaben: Nacht-Tresor, Aufräumen abgelaufener Sitzungen und Links. */
 export function startScheduler(ctx: AppContext, log: FastifyBaseLogger) {
@@ -30,6 +31,11 @@ export function startScheduler(ctx: AppContext, log: FastifyBaseLogger) {
   void scheduleBackup();
   // Einstellungen könnten sich ändern – jede Minute abgleichen
   setInterval(() => { ctx.settings.clearCache(); void scheduleBackup(); }, 60_000).unref();
+
+  // Projektpostfach alle 5 Minuten abrufen
+  cron.schedule('*/5 * * * *', async () => {
+    try { await syncMail(ctx); } catch (e) { log.warn(e, 'E-Mail-Abruf fehlgeschlagen'); }
+  });
 
   cron.schedule('17 * * * *', async () => {
     await ctx.sql`delete from sessions where expires_at < now()`;

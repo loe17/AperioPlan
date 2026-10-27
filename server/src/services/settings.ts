@@ -62,6 +62,9 @@ export interface SettingsMap {
   ai: AiSettings;
   backup: BackupSettings;
   time: { roundMinutes: number; maxDailyHours: number; holidayState: string; dailyHours: number };
+  security: { internalSecret: string };
+  plugins: { enabled: string[] };
+  webhooks: { id: string; url: string; events: string[]; secret: string; active: boolean }[];
 }
 
 export const DEFAULT_SETTINGS: SettingsMap = {
@@ -94,11 +97,14 @@ export const DEFAULT_SETTINGS: SettingsMap = {
   ai: { enabled: false, provider: 'openai', baseUrl: 'http://localhost:11434/v1', apiKey: '', model: 'llama3.1' },
   backup: { enabled: true, cron: '0 2 * * *', keep: 14, passphrase: '', targetDir: '', includeFiles: true },
   time: { roundMinutes: 1, maxDailyHours: 10, holidayState: 'BW', dailyHours: 8 },
+  security: { internalSecret: '' },
+  plugins: { enabled: [] },
+  webhooks: [],
 };
 
 /** Felder, die nie an Nicht-Administratoren oder in Exporte im Klartext gehen */
 export const SECRET_PATHS: [keyof SettingsMap, string][] = [
-  ['ldap', 'bindPassword'], ['mail', 'password'], ['ai', 'apiKey'],
+  ['ldap', 'bindPassword'], ['mail', 'password'], ['ai', 'apiKey'], ['security', 'internalSecret'],
 ];
 
 export class SettingsService {
@@ -108,7 +114,8 @@ export class SettingsService {
   async get<K extends keyof SettingsMap>(key: K): Promise<SettingsMap[K]> {
     if (this.cache.has(key)) return this.cache.get(key) as SettingsMap[K];
     const [row] = await this.sql<{ value: SettingsMap[K] }[]>`select value from settings where key = ${key}`;
-    const value = row ? ({ ...(DEFAULT_SETTINGS[key] as object), ...(row.value as object) } as SettingsMap[K]) : DEFAULT_SETTINGS[key];
+    const def = DEFAULT_SETTINGS[key];
+    const value = !row ? def : Array.isArray(def) ? row.value : ({ ...(def as object), ...(row.value as object) } as SettingsMap[K]);
     this.cache.set(key, value);
     return value;
   }
@@ -127,6 +134,7 @@ export class SettingsService {
 
   /** Geheimnisse durch Platzhalter ersetzen */
   static redact<K extends keyof SettingsMap>(key: K, value: SettingsMap[K]): SettingsMap[K] {
+    if (Array.isArray(value)) return value;
     const copy = { ...(value as Record<string, unknown>) };
     for (const [k, f] of SECRET_PATHS) if (k === key && copy[f]) copy[f] = '••••••••';
     return copy as SettingsMap[K];
@@ -134,6 +142,7 @@ export class SettingsService {
 
   /** Platzhalter beim Speichern durch den bisherigen Wert ersetzen */
   async mergeSecrets<K extends keyof SettingsMap>(key: K, incoming: SettingsMap[K]): Promise<SettingsMap[K]> {
+    if (Array.isArray(incoming)) return incoming;
     const current = (await this.get(key)) as Record<string, unknown>;
     const copy = { ...(incoming as Record<string, unknown>) };
     for (const [k, f] of SECRET_PATHS) if (k === key && copy[f] === '••••••••') copy[f] = current[f];

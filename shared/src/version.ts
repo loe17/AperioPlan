@@ -11,6 +11,22 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.5.0',
+    date: '2026-10-27',
+    title: 'Kommunikation, KVP, KI, Sicherung & Erweiterungen',
+    changes: [
+      { type: 'neu', text: 'Projekt-Chat, Team-Chat und Direktnachrichten in Echtzeit mit Anhängen und @Erwähnungen' },
+      { type: 'neu', text: 'Videoanrufe mit Bildschirmfreigabe direkt im Browser' },
+      { type: 'neu', text: 'Integrierte E-Mail-Verwaltung: Projektpostfach, automatische Zuordnung über die Projektnummer' },
+      { type: 'neu', text: 'Büro-Dokumente im Browser bearbeiten (Collabora Online)' },
+      { type: 'neu', text: 'KVP-Ideenbox mit Einsparpotenzial, Zuständigkeit, Fotos und Entscheidung' },
+      { type: 'neu', text: 'KI-Assistent für Projektzusammenfassung, Schreibhilfe und Dokumentenanalyse (lokal oder extern)' },
+      { type: 'neu', text: 'Sicherungen herunterladen und einspielen – mit Duplikaterkennung und Datumsvergleich' },
+      { type: 'neu', text: 'Ein-Klick-Aktualisierung über GitHub, Plugins und Webhooks für Entwickler' },
+      { type: 'behoben', text: 'Teiländerungen setzen nicht mehr ungewollt andere Felder zurück' },
+    ],
+  },
+  {
     version: '0.4.0',
     date: '2026-10-27',
     title: 'Zeiterfassung & Urlaub',

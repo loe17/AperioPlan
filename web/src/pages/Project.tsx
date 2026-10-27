@@ -22,6 +22,7 @@ import { ProjectFiles } from '../modules/ProjectFiles';
 import { ProjectCad } from '../modules/ProjectCad';
 import { ProjectChat } from '../modules/ProjectChat';
 import { ProjectTime } from '../modules/ProjectTime';
+import { AiPanel } from '../modules/AiPanel';
 
 const TASK_VIEWS = ['kanban', 'list', 'gantt'];
 
@@ -29,10 +30,13 @@ export default function ProjectPage() {
   const { id } = useParams();
   const t = useT();
   const act = useAction();
-  const { users, teams } = useSession();
+  const { users, teams, settings } = useSession();
   const [params, setParams] = useSearchParams();
+  const [ai, setAi] = useState(false);
   const { data: project, error } = useApi<any>(`/projects/${id}`);
   const { data: tasks } = useApi<Task[]>(`/projects/${id}/tasks`);
+  const { data: plugins } = useApi<any[]>('/plugins');
+  const pluginTabs = (plugins ?? []).filter((p) => p.enabled && p.projectTab);
   const [filter, setFilter] = useState({ q: '', assignee: '', team: '', priority: '', status: '' });
   const [newTask, setNewTask] = useState(false);
 
@@ -68,6 +72,7 @@ export default function ProjectPage() {
   const tabs = [
     { id: 'overview', label: `🏠 ${t('Übersicht')}` },
     ...project.modules.map((m: string) => ({ id: m, label: `${MODULE_LABELS[m]?.icon} ${t(MODULE_LABELS[m]?.label ?? m)}` })),
+    ...pluginTabs.map((p) => ({ id: `plugin:${p.id}`, label: `${p.projectTab.icon ?? '🧩'} ${p.projectTab.label}` })),
     { id: 'documents', label: '📄 Dokumente' },
     { id: 'audit', label: `📜 ${t('Änderungsprotokoll')}` },
     ...(project.canManage ? [{ id: 'settings', label: `⚙️ ${t('Einstellungen')}` }] : []),
@@ -96,6 +101,8 @@ export default function ProjectPage() {
           </div>
         </div>
         <div className="actions">
+          {settings?.mailEnabled && <Link className="btn" to={`/mail?projectId=${project.id}`}>✉️ E-Mails</Link>}
+          {settings?.aiEnabled && <button className="btn" onClick={() => setAi(true)}>🤖 KI</button>}
           {isTaskView && project.canEdit && <button className="btn primary" onClick={() => setNewTask(true)}>＋ {t('Neue Aufgabe')}</button>}
         </div>
       </div>
@@ -135,10 +142,15 @@ export default function ProjectPage() {
       {tab === 'cad' && <ProjectCad projectId={project.id} project={project} canEdit={project.canEdit} />}
       {tab === 'chat' && <ProjectChat projectId={project.id} project={project} />}
       {tab === 'time' && <ProjectTime projectId={project.id} project={project} />}
+      {tab.startsWith('plugin:') && (() => {
+        const p = pluginTabs.find((x) => `plugin:${x.id}` === tab);
+        return p ? <iframe title={p.name} src={`/plugins/${p.id}/${p.projectTab.entry}?projectId=${project.id}&projectNumber=${encodeURIComponent(project.number)}`} style={{ width: '100%', height: 'calc(100vh - 250px)', border: '1px solid var(--line)', borderRadius: 10 }} /> : null;
+      })()}
       {tab === 'documents' && <Documents projectId={project.id} canEdit={project.canEdit} />}
       {tab === 'audit' && <AuditView projectId={project.id} />}
       {tab === 'settings' && project.canManage && <ProjectSettings key={project.updatedAt} project={project} />}
 
+      {ai && <AiPanel projectId={project.id} onClose={() => setAi(false)} />}
       {taskId && <TaskPanel taskId={taskId} onClose={closeTask} allTasks={tasks} />}
       {newTask && <NewTaskDialog projectId={project.id} onClose={() => setNewTask(false)} onCreated={(tid) => { setNewTask(false); openTask(tid); }} />}
     </div>

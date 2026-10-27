@@ -1,0 +1,8 @@
+{
+  "id": "beispiel",
+  "name": "Beispiel: Aufgaben-Statistik",
+  "version": "1.0.0",
+  "description": "Zeigt, wie ein Plugin einen eigenen Projekt-Reiter ergänzt und die REST-API nutzt.",
+  "author": "AperioPlan",
+  "projectTab": { "label": "Statistik", "icon": "📈", "entry": "index.html" }
+}

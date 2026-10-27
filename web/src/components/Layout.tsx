@@ -10,6 +10,7 @@ import { fmtDateTime } from '../lib/format';
 import { Avatar, Dropdown } from './ui';
 import { CommandPalette } from './CommandPalette';
 import { ChangelogDialog } from './ChangelogDialog';
+import { IncomingCalls, useChannels } from '../modules/ChatView';
 
 // ---------------------------------------------------------------- Brotkrumen
 export interface Crumb { label: string; to?: string }
@@ -137,6 +138,8 @@ export function Layout({ children }: { children: ReactNode }) {
   const { data: notifications } = useApi<{ readAt: string | null }[]>('/notifications');
   const { data: favorites } = useApi<{ entityId: string; number: string; name: string; icon: string }[]>('/favorites');
   const unread = notifications?.filter((n) => !n.readAt).length ?? 0;
+  const { data: channels } = useChannels();
+  const chatUnread = channels?.reduce((s, c) => s + (c.unread ?? 0), 0) ?? 0;
   const location = useLocation();
 
   useEffect(() => realtime.onStatus(setConnected), []);
@@ -182,7 +185,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <div className="nav-section">
               <div className="nav-title">🧰 {t('Werkzeuge')}</div>
               <NavItem to="/cad" ico="📐" label={t('CAD-Zentrale')} />
-              {!isGuest && <NavItem to="/chat" ico="💬" label={t('Chat')} />}
+              {!isGuest && <NavItem to="/chat" ico="💬" label={t('Chat')} count={chatUnread} />}
               {!isGuest && settings?.mailEnabled && <NavItem to="/mail" ico="✉️" label={t('E-Mail')} />}
               {!isGuest && <NavItem to="/kvp" ico="💡" label={t('KVP-Ideenbox')} />}
               {!isGuest && <NavItem to="/calendar/team" ico="🗓️" label={t('Teamkalender')} />}
@@ -219,6 +222,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
         {palette && <CommandPalette onClose={() => setPalette(false)} />}
         {changelog && <ChangelogDialog onClose={() => setChangelog(false)} />}
+        <IncomingCalls />
       </div>
     </CrumbCtx.Provider>
   );

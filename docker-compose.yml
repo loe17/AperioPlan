@@ -34,6 +34,7 @@ services:
       TURN_URLS: ${TURN_URLS:-}
       UPDATE_TRIGGER_FILE: /update/request
       UPDATE_REPO: ${UPDATE_REPO:-loe17/AperioPlan}
+      PLUGINS_DIR: /data/plugins
       TZ: ${TZ:-Europe/Berlin}
     volumes:
       # Projektdateien: lokal oder Netzlaufwerk (NAS/SMB), siehe FILES_PATH in .env
@@ -41,6 +42,8 @@ services:
       # Nacht-Tresor: separate Festplatte oder NAS, siehe BACKUP_PATH in .env
       - ${BACKUP_PATH:-./data/backups}:/backups
       - update:/update
+      # Erweiterungen (Plugins) – Ordner mit manifest.json, siehe docs/ENTWICKLER.md
+      - ./data/plugins:/data/plugins
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
       interval: 30s

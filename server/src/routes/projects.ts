@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { PROJECT_MODULES, formatDocumentNumber } from '@aperio/shared';
 import type { AppContext } from '../context';
-import { z, parse, idParam } from '../lib/validate';
+import { z, parse, idParam, patchSchema } from '../lib/validate';
 import { requireUser, requireRole } from '../lib/auth';
 import { projectAccess, visibleProjects } from '../lib/access';
 import { badRequest } from '../lib/errors';
@@ -93,7 +93,7 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
     const u = requireUser(req);
     const { id } = parse(idParam, req.params);
     await projectAccess(sql, u, id, 'manage');
-    const b = parse(projectBody.partial().omit({ number: true, parentId: true }), req.body);
+    const b = parse(patchSchema(projectBody).omit({ number: true, parentId: true }), req.body);
     await sql`update projects set
       name = coalesce(${b.name ?? null}, name), description = coalesce(${b.description ?? null}, description),
       icon = coalesce(${b.icon ?? null}, icon), team_id = ${b.teamId === undefined ? sql`team_id` : b.teamId},

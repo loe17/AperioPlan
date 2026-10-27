@@ -1,5 +1,6 @@
 import type { Sql } from '../db';
 import type { AuthUser } from '../lib/auth';
+import { dispatchWebhook } from '../lib/webhooks';
 
 export interface AuditEntry {
   action: string;
@@ -15,4 +16,5 @@ export async function audit(sql: Sql, user: AuthUser | null, e: AuditEntry): Pro
   await sql`insert into audit_log (user_id, user_name, action, entity_type, entity_id, project_id, summary, details)
     values (${user?.id ?? null}, ${user?.displayName ?? 'System'}, ${e.action}, ${e.entityType}, ${e.entityId ?? null},
             ${e.projectId ?? null}, ${e.summary}, ${e.details === undefined ? null : sql.json(e.details as never)})`;
+  dispatchWebhook(e.action, { entityType: e.entityType, entityId: e.entityId ?? null, projectId: e.projectId ?? null, summary: e.summary, user: user ? { id: user.id, name: user.displayName } : null });
 }

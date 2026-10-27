@@ -21,6 +21,7 @@ const ChatPage = lazy(() => import('./pages/Chat'));
 const MailPage = lazy(() => import('./pages/Mail'));
 const KvpPage = lazy(() => import('./pages/Kvp'));
 const SharePage = lazy(() => import('./pages/Share'));
+const OfficePage = lazy(() => import('./pages/Office'));
 
 export function App() {
   const { me, loading } = useSession();
@@ -33,6 +34,7 @@ export function App() {
   if (loading) return <Loading />;
   if (!me) return <I18nProvider lang={lang}><LoginPage /></I18nProvider>;
   if (me.mustChangePassword) return <I18nProvider lang={lang}><ChangePasswordPage forced /></I18nProvider>;
+  if (location.pathname.startsWith('/office/')) return <Suspense fallback={<Loading />}><OfficePage /></Suspense>;
 
   return (
     <I18nProvider lang={lang}>

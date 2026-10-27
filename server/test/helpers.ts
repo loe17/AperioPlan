@@ -20,7 +20,7 @@ export async function setup(): Promise<TestEnv> {
   await admin.end();
   const dir = await mkdtemp(join(tmpdir(), 'aperio-test-'));
   const { app, ctx } = await buildApp({
-    logger: false,
+    logger: process.env.TEST_LOG === '1',
     config: { databaseUrl: TEST_DB, storageRoot: join(dir, 'files'), backupDir: join(dir, 'backups'), webDist: join(dir, 'noweb'), isTest: true },
   });
   await app.ready();

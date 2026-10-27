@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../context';
-import { z, parse, idParam } from '../lib/validate';
+import { z, parse, idParam, patchSchema } from '../lib/validate';
 import { requireRole, requireUser } from '../lib/auth';
 import { audit } from '../services/audit';
 
@@ -36,7 +36,7 @@ export default async function teamRoutes(app: FastifyInstance, ctx: AppContext) 
   app.patch('/teams/:id', async (req) => {
     const u = requireRole(req, 'admin');
     const { id } = parse(idParam, req.params);
-    const b = parse(teamBody.partial(), req.body);
+    const b = parse(patchSchema(teamBody), req.body);
     await sql`update teams set name = coalesce(${b.name ?? null}, name), icon = coalesce(${b.icon ?? null}, icon),
       description = coalesce(${b.description ?? null}, description), sort = coalesce(${b.sort ?? null}, sort),
       parent_id = ${b.parentId === undefined ? sql`parent_id` : b.parentId} where id = ${id}`;

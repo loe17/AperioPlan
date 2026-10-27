@@ -327,11 +327,11 @@ export async function applyImport(ctx: AppContext, id: string, strategy: ImportS
         const k = `${t.name}:${keyOf(row, t.pk)}`;
         if (takeBackup.has(k)) {
           if (t.name === 'audit_log' && !replica) { summary.skipped++; continue; }
-          await tx.unsafe(upsert, [JSON.stringify(row)]);
+          await tx.unsafe(upsert, [row as never]);
           summary.updated++;
           if (t.name === 'files' && row.path) overwritePaths.add(String(row.path));
         } else {
-          const r = await tx.unsafe(insert, [JSON.stringify(row)]);
+          const r = await tx.unsafe(insert, [row as never]);
           if (r.count) summary.inserted++; else summary.skipped++;
         }
       }

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>Aufgaben-Statistik</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 20px; color: #1a1d20; }
+    .bar { height: 22px; background: #4f46e5; border-radius: 4px; color: #fff; font-size: 12px; padding: 0 8px; line-height: 22px; margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <h2>Aufgaben nach Status</h2>
+  <div id="out">Lade …</div>
+  <script>
+    // Das Plugin läuft unter derselben Adresse wie AperioPlan und nutzt die Sitzung des angemeldeten Benutzers.
+    const projectId = new URLSearchParams(location.search).get('projectId');
+    const labels = { todo: 'Zu erledigen', in_progress: 'In Arbeit', review: 'Prüfung', done: 'Fertig' };
+    fetch(`/api/projects/${projectId}/tasks`).then((r) => r.json()).then((tasks) => {
+      const counts = {};
+      for (const t of tasks) counts[t.status] = (counts[t.status] || 0) + 1;
+      const max = Math.max(1, ...Object.values(counts));
+      document.getElementById('out').innerHTML = Object.keys(labels)
+        .map((s) => `<div>${labels[s]}</div><div class="bar" style="width:${((counts[s] || 0) / max) * 100}%">${counts[s] || 0}</div>`).join('');
+    });
+  </script>
+</body>
+</html>

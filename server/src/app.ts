@@ -16,6 +16,8 @@ import { Storage } from './services/storage';
 import { bootstrap } from './services/bootstrap';
 import type { AppContext } from './context';
 import { routes } from './routes';
+import { registerPluginStatic } from './routes/plugins';
+import { initWebhooks } from './lib/webhooks';
 
 export interface BuildOptions {
   sql?: Sql;
@@ -62,7 +64,9 @@ export async function buildApp(opts: BuildOptions = {}): Promise<{ app: FastifyI
     return reply.status(500).send({ error: 'Interner Fehler', code: 'internal' });
   });
 
+  initWebhooks(ctx.settings);
   await app.register(async (api) => routes(api, ctx), { prefix: '/api' });
+  await registerPluginStatic(app, ctx);
 
   // Web-Oberfläche ausliefern (Single-Page-App)
   if (existsSync(config.webDist)) {

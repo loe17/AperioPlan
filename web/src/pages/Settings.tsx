@@ -11,7 +11,7 @@ import { Avatar, Confirm, Empty, Field, Modal, Pill, useAction } from '../compon
 import { ChangePasswordPage } from './Auth';
 import { AuditView } from '../modules/AuditView';
 import { MODULE_LABELS } from '../modules/ProjectSettings';
-import { CadMaskSettings, BackupSettings, UpdateSettings, MailSettings, AiSettings, HolidaySettings, StorageSettings } from './SettingsExtra';
+import { CadMaskSettings, BackupSettings, UpdateSettings, MailSettings, AiSettings, HolidaySettings, StorageSettings, ExtensionSettings } from './SettingsExtra';
 
 const ROLE_LABEL: Record<string, string> = { admin: 'Administrator', teamlead: 'Teamleitung', member: 'Mitarbeiter', guest: 'Gast' };
 
@@ -41,6 +41,7 @@ export default function SettingsPage() {
           <SettingsNav to="/settings/ldap">🏛️ {t('Firmen-Login')} (LDAP)</SettingsNav>
           <SettingsNav to="/settings/mail">✉️ E-Mail-Konto</SettingsNav>
           <SettingsNav to="/settings/ai">🤖 KI-Anbindung</SettingsNav>
+          <SettingsNav to="/settings/extensions">🧩 Erweiterungen</SettingsNav>
           <SettingsNav to="/settings/backup">🗄️ {t('Sicherung')}</SettingsNav>
           <SettingsNav to="/settings/update">⬆️ {t('Aktualisierung')}</SettingsNav>
           <SettingsNav to="/settings/audit">📜 {t('Änderungsprotokoll')}</SettingsNav>
@@ -63,6 +64,7 @@ export default function SettingsPage() {
             <Route path="mail" element={<MailSettings />} />
             <Route path="ai" element={<AiSettings />} />
             <Route path="backup" element={<BackupSettings />} />
+            <Route path="extensions" element={<ExtensionSettings />} />
             <Route path="update" element={<UpdateSettings />} />
             <Route path="audit" element={<><h1 style={{ marginBottom: 16 }}>{t('Änderungsprotokoll')}</h1><AuditView /></>} />
           </>}

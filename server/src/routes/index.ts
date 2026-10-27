@@ -17,7 +17,15 @@ import links from './links';
 import cad from './cad';
 import time from './time';
 import absences from './absences';
+import chat from './chat';
+import kvp from './kvp';
+import mail from './mail';
+import ai from './ai';
+import backup from './backup';
+import update from './update';
+import office from './office';
+import plugins from './plugins';
 
 export async function routes(app: FastifyInstance, ctx: AppContext) {
-  for (const r of [system, auth, users, teams, settings, me, audit, ws, projects, tasks, whiteboards, search, files, links, cad, time, absences]) await r(app, ctx);
+  for (const r of [system, auth, users, teams, settings, me, audit, ws, projects, tasks, whiteboards, search, files, links, cad, time, absences, chat, kvp, mail, ai, backup, update, office, plugins]) await r(app, ctx);
 }

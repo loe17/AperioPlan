@@ -51,3 +51,15 @@ describe('Projekte und Nummerierung', () => {
     expect(search.tasks[0].title).toBe('Rahmen zeichnen');
   });
 });
+
+describe('Teilaktualisierung', () => {
+  it('PATCH setzt nicht mitgeschickte Felder nicht zurück', async () => {
+    const p = await admin.post('/api/projects', { name: 'Patch', description: 'Beschreibung', customer: 'Kunde A' });
+    const t = await admin.post(`/api/projects/${p.id}/tasks`, { title: 'T', description: 'Text', priority: 'high', estimateHours: 3 });
+    const r = await admin.patch(`/api/tasks/${t.id}`, { status: 'in_progress' });
+    expect([r.description, r.priority, r.estimateHours]).toEqual(['Text', 'high', 3]);
+    await admin.patch(`/api/projects/${p.id}`, { status: 'paused' });
+    const d = await admin.get(`/api/projects/${p.id}`);
+    expect([d.description, d.customer, d.visibility]).toEqual(['Beschreibung', 'Kunde A', 'company']);
+  });
+});

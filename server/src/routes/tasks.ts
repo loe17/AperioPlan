@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { TASK_PRIORITIES, TASK_STATUSES } from '@aperio/shared';
 import type { AppContext } from '../context';
-import { z, parse, idParam } from '../lib/validate';
+import { z, parse, idParam, patchSchema } from '../lib/validate';
 import { requireUser, type AuthUser } from '../lib/auth';
 import { projectAccess, visibleProjects } from '../lib/access';
 import { badRequest, notFound } from '../lib/errors';
@@ -97,7 +97,7 @@ export default async function taskRoutes(app: FastifyInstance, ctx: AppContext) 
     const u = requireUser(req);
     const { id } = parse(idParam, req.params);
     const { t, p } = await loadTask(u, id, 'edit');
-    const b = parse(taskBody.partial().extend({ sort: z.number().optional() }), req.body);
+    const b = parse(patchSchema(taskBody).extend({ sort: z.number().optional() }), req.body);
     await sql`update tasks set
       title = coalesce(${b.title ?? null}, title), description = coalesce(${b.description ?? null}, description),
       status = coalesce(${b.status ?? null}, status), priority = coalesce(${b.priority ?? null}, priority),
