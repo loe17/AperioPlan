@@ -31,7 +31,7 @@ export function LoginPage() {
         finally { setBusy(false); }
       }}>
         <div className="row" style={{ marginBottom: 20 }}>
-          <span className="logo" style={{ width: 36, height: 36, fontSize: 18 }}>A</span>
+          <img className="logo" src="/logo-mark.svg" alt="" style={{ width: 40, height: 40 }} />
           <div><h2>{info?.company ?? 'AperioPlan'}</h2><div className="small muted">Projektverwaltung & CAD-Zentrale</div></div>
         </div>
         <Field label={t('Benutzername')}><input autoFocus value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" /></Field>

@@ -1,1 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#4F46E5"/><path d="M9 23l7-14 7 14M12 18h8" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="AperioPlan"><title>AperioPlan</title><defs><linearGradient id="ap-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6d6af8"/><stop offset="1" stop-color="#3f37c9"/></linearGradient></defs>
+<rect width="64" height="64" rx="15" fill="url(#ap-g)"/>
+<path d="M16.5 50 V31 A15.5 15.5 0 0 1 47.5 31 V50" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+<rect x="16.5" y="33.5" width="20" height="7" rx="3.5" fill="#fbbf24"/>
+<rect x="27.5" y="43.5" width="20" height="7" rx="3.5" fill="#c7d2fe"/></svg>

@@ -158,7 +158,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <div className={`app ${collapsed ? 'collapsed' : ''}`}>
         <nav className="sidebar">
           <div className="sidebar-head">
-            <span className="logo">A</span>
+            <img className="logo" src="/logo-mark.svg" alt="" />
             <span className="grow">{settings?.company.logoText ?? 'AperioPlan'}</span>
             <button className="icon-btn" onClick={() => setCollapsed(true)} title="Seitenleiste einklappen (Strg + \)">«</button>
           </div>

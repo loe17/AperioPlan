@@ -25,7 +25,7 @@ export default function SharePage() {
     <div className="auth-wrap" style={{ alignItems: 'flex-start', paddingTop: '8vh' }}>
       <div className="auth-card" style={{ width: 'min(860px, 100%)' }}>
         <div className="row" style={{ marginBottom: 18 }}>
-          <span className="logo" style={{ width: 32, height: 32 }}>A</span>
+          <img className="logo" src="/logo-mark.svg" alt="" style={{ width: 32, height: 32 }} />
           <div><b>{info?.company ?? 'AperioPlan'}</b><div className="small muted">{info?.project}</div></div>
         </div>
         {error && <div className="error-text">{error}</div>}

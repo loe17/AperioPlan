@@ -62,4 +62,3 @@ docs/        Handbücher
 * KI-Anbindung, verschlüsselte Nacht-Sicherung mit Duplikaterkennung, Ein-Klick-Aktualisierung
 * Deutsch und Englisch, Hell- und Dunkelmodus, Strg + K-Blitzsuche, Plugins und Webhooks
 
-Der vollständige Plan steht in [IMPLEMENTIERUNGSPLAN.md](IMPLEMENTIERUNGSPLAN.md).
