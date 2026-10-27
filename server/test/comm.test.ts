@@ -121,3 +121,21 @@ describe('Office im Browser (WOPI)', () => {
     expect(dl.body).toBe('NEU');
   });
 });
+
+describe('E-Mail senden', () => {
+  it('versendet über SMTP und legt die Nachricht beim Projekt ab', async () => {
+    const { SMTPServer } = await import('smtp-server');
+    let received = '';
+    const srv = new SMTPServer({ authOptional: true, disabledCommands: ['STARTTLS'], onData(stream, _s, cb) { stream.on('data', (c) => (received += c)); stream.on('end', cb); } });
+    await new Promise<void>((r) => srv.listen(0, '127.0.0.1', r));
+    const port = (srv.server.address() as AddressInfo).port;
+    await admin.put('/api/settings/mail', { enabled: true, smtpHost: '127.0.0.1', smtpPort: port, smtpSecure: false, user: '', password: '', from: 'projekte@firma.test', imapHost: '' });
+    await admin.post('/api/mail/send', { to: 'kunde@example.com', subject: '[0100] Statusbericht', text: 'Alles im Plan.', projectId: project.id });
+    await new Promise((r) => setTimeout(r, 200));
+    expect(received).toContain('Statusbericht');
+    expect(received).toContain('Alles im Plan.');
+    const list = await admin.get(`/api/mail?projectId=${project.id}`);
+    expect(list[0].direction).toBe('out');
+    srv.close(() => {});
+  });
+});

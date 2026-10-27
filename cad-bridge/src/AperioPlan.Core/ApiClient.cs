@@ -34,7 +34,7 @@ namespace AperioPlan.Core
 #endif
             _http = new HttpClient { Timeout = timeout ?? TimeSpan.FromMinutes(30) };
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            _http.DefaultRequestHeaders.UserAgent.ParseAdd("AperioPlan-CadBridge/0.3");
+            _http.DefaultRequestHeaders.UserAgent.ParseAdd("AperioPlan-CadBridge/1.0");
         }
 
         public void Dispose() => _http.Dispose();

@@ -8,11 +8,17 @@ import nodemailer from 'nodemailer';
 import { Readable } from 'node:stream';
 import type { AppContext } from '../context';
 import type { MailSettings } from './settings';
-import { badRequest } from '../lib/errors';
+import { badRequest, HttpError } from '../lib/errors';
 import { safeName } from './files';
 
 const addr = (a: AddressObject | AddressObject[] | undefined) =>
   !a ? '' : (Array.isArray(a) ? a : [a]).flatMap((x) => x.value.map((v) => (v.name ? `${v.name} <${v.address}>` : v.address ?? ''))).join(', ');
+
+const smtpTransport = (s: MailSettings) => nodemailer.createTransport({
+  host: s.smtpHost, port: s.smtpPort, secure: s.smtpSecure,
+  // Interne Relays (z. B. Exchange) arbeiten oft ohne Anmeldung
+  ...(s.user ? { auth: { user: s.user, pass: s.password } } : {}),
+});
 
 function imapClient(s: MailSettings) {
   return new ImapFlow({ host: s.imapHost, port: s.imapPort, secure: s.imapSecure, auth: { user: s.user, pass: s.password }, logger: false });
@@ -23,8 +29,7 @@ export async function testMail(s: MailSettings): Promise<string> {
   await c.connect();
   const st = await c.status('INBOX', { messages: true, unseen: true });
   await c.logout();
-  const t = nodemailer.createTransport({ host: s.smtpHost, port: s.smtpPort, secure: s.smtpSecure, auth: { user: s.user, pass: s.password } });
-  await t.verify();
+  await smtpTransport(s).verify();
   return st ? `IMAP und SMTP erreichbar – ${st.messages} Nachrichten im Posteingang (${st.unseen} ungelesen)` : 'IMAP und SMTP erreichbar';
 }
 
@@ -86,11 +91,10 @@ export async function syncMail(ctx: AppContext, limit = 200): Promise<{ fetched:
 export async function sendMail(ctx: AppContext, opts: { to: string; cc?: string; subject: string; text: string; inReplyTo?: string; attachments?: { path: string; name: string }[] }) {
   const s = await ctx.settings.get('mail');
   if (!s.enabled || !s.smtpHost) throw badRequest('Kein E-Mail-Konto eingerichtet');
-  const t = nodemailer.createTransport({ host: s.smtpHost, port: s.smtpPort, secure: s.smtpSecure, auth: { user: s.user, pass: s.password } });
-  const info = await t.sendMail({
+  const info = await smtpTransport(s).sendMail({
     from: s.from || s.user, to: opts.to, cc: opts.cc, subject: opts.subject, text: opts.text,
     inReplyTo: opts.inReplyTo, references: opts.inReplyTo,
     attachments: opts.attachments?.map((a) => ({ filename: a.name, path: ctx.storage.abs(a.path) })),
-  });
+  }).catch((e: Error) => { throw new HttpError(502, `E-Mail-Versand fehlgeschlagen: ${e.message}`); });
   return { messageId: info.messageId, from: s.from || s.user };
 }

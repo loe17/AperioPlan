@@ -6,6 +6,7 @@ import { Layout } from './components/Layout';
 import { Loading } from './components/ui';
 import { LoginPage, ChangePasswordPage } from './pages/Auth';
 import { DeskPage } from './pages/Desk';
+import { PluginPage } from './pages/Plugin';
 
 const ProjectsPage = lazy(() => import('./pages/Projects'));
 const ProjectPage = lazy(() => import('./pages/Project'));
@@ -56,6 +57,7 @@ export function App() {
             <Route path="/mail" element={<MailPage />} />
             <Route path="/kvp" element={<KvpPage />} />
             <Route path="/settings/*" element={<SettingsPage />} />
+            <Route path="/plugin/:id" element={<PluginPage />} />
             <Route path="*" element={<div className="page"><h1>Seite nicht gefunden</h1></div>} />
           </Routes>
         </Suspense>

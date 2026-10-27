@@ -327,4 +327,11 @@ table.table { width: 100%; border-collapse: collapse; }
   .search-trigger .label, .search-trigger kbd { display: none; }
   .grid2, .grid3 { grid-template-columns: 1fr; }
   .chat-list { display: none; }
+  .app.collapsed .sidebar { box-shadow: none; }
+  .page-head { flex-wrap: wrap; }
+  .page-head h1 { font-size: 22px; }
+  .page-head .actions { margin-left: 0; width: 100%; }
+  .topbar .btn.ghost .small { display: none; }
+  .breadcrumbs { flex: 1; }
+  .slideover, .slideover.wide { width: 100vw; }
 }

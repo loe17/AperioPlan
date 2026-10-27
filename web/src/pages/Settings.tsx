@@ -177,6 +177,7 @@ function Users() {
             <label key={tm.id} className="row small" style={{ gap: 4 }}><input type="checkbox" checked={edit.teamIds.includes(tm.id)} onChange={() => setEdit({ ...edit, teamIds: edit.teamIds.includes(tm.id) ? edit.teamIds.filter((x: string) => x !== tm.id) : [...edit.teamIds, tm.id] })} />{tm.icon} {tm.name}</label>
           ))}</div></Field>}
           {edit.id && <label className="row"><input type="checkbox" checked={edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked })} /> Konto aktiv</label>}
+          {edit.id && <VacationAdjust userId={edit.id} />}
         </Modal>
       )}
     </div>
@@ -329,6 +330,25 @@ function Ldap() {
         <button className="btn" onClick={async () => { const r = await act(() => post('/settings/ldap/test', v)); if (r) setResult(r.message); }}>Verbindung testen</button>
       </div>
       {result && <div className="card" style={{ marginTop: 12 }}>{result}</div>}
+    </div>
+  );
+}
+
+/** Resturlaub aus dem Vorjahr, Sonderurlaub oder Korrekturen buchen */
+function VacationAdjust({ userId }: { userId: string }) {
+  const act = useAction();
+  const { data, reload } = useApi<any[]>(`/absences/adjustments?userId=${userId}`);
+  const [d, setD] = useState({ year: new Date().getFullYear(), days: '', note: 'Resturlaub Vorjahr' });
+  return (
+    <div className="card flat" style={{ marginTop: 14 }}>
+      <b>Urlaubskonto korrigieren</b>
+      {data?.map((a) => <div key={a.id} className="small muted">{a.year}: {a.days > 0 ? '+' : ''}{a.days} Tage – {a.note}</div>)}
+      <div className="row" style={{ marginTop: 8 }}>
+        <input type="number" style={{ width: 90 }} value={d.year} onChange={(e) => setD({ ...d, year: Number(e.target.value) })} />
+        <input type="number" step={0.5} style={{ width: 90 }} placeholder="Tage" value={d.days} onChange={(e) => setD({ ...d, days: e.target.value })} />
+        <input value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} />
+        <button className="btn" disabled={!d.days} onClick={async () => { await act(() => post('/absences/adjustments', { userId, year: d.year, days: Number(d.days), note: d.note }), 'Gebucht'); setD({ ...d, days: '' }); reload(); }}>Buchen</button>
+      </div>
     </div>
   );
 }

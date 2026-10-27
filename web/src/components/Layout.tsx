@@ -137,6 +137,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const { data: projects } = useApi<ProjectLite[]>('/projects');
   const { data: notifications } = useApi<{ readAt: string | null }[]>('/notifications');
   const { data: favorites } = useApi<{ entityId: string; number: string; name: string; icon: string }[]>('/favorites');
+  const { data: plugins } = useApi<any[]>('/plugins');
   const unread = notifications?.filter((n) => !n.readAt).length ?? 0;
   const { data: channels } = useChannels();
   const chatUnread = channels?.reduce((s, c) => s + (c.unread ?? 0), 0) ?? 0;
@@ -189,6 +190,7 @@ export function Layout({ children }: { children: ReactNode }) {
               {!isGuest && settings?.mailEnabled && <NavItem to="/mail" ico="✉️" label={t('E-Mail')} />}
               {!isGuest && <NavItem to="/kvp" ico="💡" label={t('KVP-Ideenbox')} />}
               {!isGuest && <NavItem to="/calendar/team" ico="🗓️" label={t('Teamkalender')} />}
+              {plugins?.filter((p) => p.enabled && p.page).map((p) => <NavItem key={p.id} to={`/plugin/${p.id}`} ico={p.page.icon ?? '🧩'} label={p.page.label} />)}
               <NavItem to="/settings" ico="⚙️" label={t('Einstellungen')} />
             </div>
           </div>

@@ -11,6 +11,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.0.0',
+    date: '2026-10-27',
+    title: 'Erste vollständige Version',
+    changes: [
+      { type: 'neu', text: 'Handbücher für Administratoren, Anwender und Entwickler' },
+      { type: 'neu', text: 'Automatischer Browser-Test des kompletten Testplans inkl. Videoanruf' },
+      { type: 'neu', text: 'Plugins können eigene Seiten in der Seitenleiste ergänzen' },
+      { type: 'neu', text: 'Resturlaub und Sonderurlaub in der Benutzerverwaltung buchen' },
+      { type: 'neu', text: 'Wartungsbefehl zum Zurücksetzen des Administrator-Zugangs' },
+      { type: 'verbessert', text: 'Darstellung auf Smartphones und Tablets' },
+      { type: 'behoben', text: 'E-Mail-Versand über interne Relays ohne Anmeldung' },
+    ],
+  },
+  {
     version: '0.5.0',
     date: '2026-10-27',
     title: 'Kommunikation, KVP, KI, Sicherung & Erweiterungen',
