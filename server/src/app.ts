@@ -66,7 +66,7 @@ export async function buildApp(opts: BuildOptions = {}): Promise<{ app: FastifyI
 
   // Web-Oberfläche ausliefern (Single-Page-App)
   if (existsSync(config.webDist)) {
-    await app.register(fastifyStatic, { root: config.webDist, wildcard: false });
+    await app.register(fastifyStatic, { root: config.webDist, maxAge: '1h', setHeaders: (res, path) => { if (path.includes('/assets/')) res.header('cache-control', 'public, max-age=31536000, immutable'); else if (path.endsWith('.html')) res.header('cache-control', 'no-cache'); } });
     app.setNotFoundHandler((req, reply) => {
       if (req.url.startsWith('/api/')) return reply.status(404).send({ error: 'Nicht gefunden' });
       return reply.type('text/html').sendFile('index.html');

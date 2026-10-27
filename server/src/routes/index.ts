@@ -15,7 +15,9 @@ import search from './search';
 import files from './files';
 import links from './links';
 import cad from './cad';
+import time from './time';
+import absences from './absences';
 
 export async function routes(app: FastifyInstance, ctx: AppContext) {
-  for (const r of [system, auth, users, teams, settings, me, audit, ws, projects, tasks, whiteboards, search, files, links, cad]) await r(app, ctx);
+  for (const r of [system, auth, users, teams, settings, me, audit, ws, projects, tasks, whiteboards, search, files, links, cad, time, absences]) await r(app, ctx);
 }

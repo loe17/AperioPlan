@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApi } from '../lib/hooks';
-import { post, invalidate } from '../lib/api';
+import { post, put, invalidate } from '../lib/api';
 import { fmtDate } from '../lib/format';
 import { Modal, Pill } from '../components/ui';
 import { Field, useAction } from '../components/ui';
@@ -12,7 +12,6 @@ export const BackupSettings = () => <Later title="Sicherung" />;
 export const UpdateSettings = () => <Later title="Aktualisierung" />;
 export const MailSettings = () => <Later title="E-Mail-Konto" />;
 export const AiSettings = () => <Later title="KI-Anbindung" />;
-export const HolidaySettings = () => <Later title="Feiertage" />;
 
 export function StorageSettings() {
   const act = useAction();
@@ -179,6 +178,45 @@ export function CadMaskSettings() {
       <label className="row"><input type="checkbox" checked={v.askCreateDrawing} onChange={(e) => s.setValue({ ...v, askCreateDrawing: e.target.checked })} /> Beim Speichern von Teilen/Baugruppen fragen, ob die passende Zeichnung angelegt werden soll</label>
       <Field label="Zeichnungsvorlage (Dateiname auf dem Konstruktions-PC)"><input className="mono" value={v.drawingTemplate} onChange={(e) => s.setValue({ ...v, drawingTemplate: e.target.value })} style={{ maxWidth: 420 }} /></Field>
       <button className="btn primary" onClick={async () => { await act(() => s.save(v), 'Speichermaske gespeichert'); refreshLists(); }}>Speichern</button>
+    </div>
+  );
+}
+
+const STATES: Record<string, string> = {
+  BW: 'Baden-Württemberg', BY: 'Bayern', BE: 'Berlin', BB: 'Brandenburg', HB: 'Bremen', HH: 'Hamburg', HE: 'Hessen', MV: 'Mecklenburg-Vorpommern',
+  NI: 'Niedersachsen', NW: 'Nordrhein-Westfalen', RP: 'Rheinland-Pfalz', SL: 'Saarland', SN: 'Sachsen', ST: 'Sachsen-Anhalt', SH: 'Schleswig-Holstein', TH: 'Thüringen',
+};
+
+/** Feiertage pflegen – Grundlage für die Urlaubstage-Berechnung */
+export function HolidaySettings() {
+  const act = useAction();
+  const time = useAdminSettings('time');
+  const [year, setYear] = useState(new Date().getFullYear());
+  const { data, reload } = useApi<{ day: string; name: string }[]>(`/holidays?year=${year}`);
+  const [day, setDay] = useState('');
+  const [name, setName] = useState('');
+  if (!time.value) return null;
+  const save = async (list: { day: string; name: string }[]) => { await act(() => put('/holidays', { year, holidays: list }), 'Gespeichert'); reload(); };
+  return (
+    <div style={{ maxWidth: 720 }}>
+      <h1 style={{ marginBottom: 8 }}>Feiertage</h1>
+      <p className="muted">Feiertage und Wochenenden zählen nicht als Urlaubstage. Betriebsurlaub oder Brückentage können zusätzlich eingetragen werden.</p>
+      <div className="row" style={{ margin: '12px 0' }}>
+        <select value={time.value.holidayState} onChange={(e) => time.setValue({ ...time.value, holidayState: e.target.value })} style={{ width: 'auto' }}>
+          {Object.entries(STATES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <select value={year} onChange={(e) => setYear(Number(e.target.value))} style={{ width: 'auto' }}>{[year - 1, year, year + 1, year + 2].map((y) => <option key={y}>{y}</option>)}</select>
+        <button className="btn" onClick={async () => { await time.save(time.value); await act(() => post('/holidays/generate', { year, state: time.value.holidayState }), 'Gesetzliche Feiertage übernommen'); reload(); }}>Gesetzliche Feiertage übernehmen</button>
+      </div>
+      <div className="table-wrap"><table className="table"><tbody>
+        {data?.map((h) => <tr key={h.day}><td className="mono">{fmtDate(h.day)}</td><td>{h.name}</td><td style={{ width: 50 }}><button className="btn ghost sm" onClick={() => save(data.filter((x) => x.day !== h.day))}>✕</button></td></tr>)}
+        {!data?.length && <tr><td className="muted">Keine Feiertage für {year}</td></tr>}
+      </tbody></table></div>
+      <div className="row" style={{ marginTop: 10 }}>
+        <input type="date" value={day} onChange={(e) => setDay(e.target.value)} style={{ width: 180 }} />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="z. B. Betriebsurlaub" />
+        <button className="btn" disabled={!day || !name} onClick={() => { void save([...(data ?? []), { day, name }]); setDay(''); setName(''); }}>Hinzufügen</button>
+      </div>
     </div>
   );
 }

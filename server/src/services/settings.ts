@@ -61,7 +61,7 @@ export interface SettingsMap {
   mail: MailSettings;
   ai: AiSettings;
   backup: BackupSettings;
-  time: { roundMinutes: number; maxDailyHours: number };
+  time: { roundMinutes: number; maxDailyHours: number; holidayState: string; dailyHours: number };
 }
 
 export const DEFAULT_SETTINGS: SettingsMap = {
@@ -93,7 +93,7 @@ export const DEFAULT_SETTINGS: SettingsMap = {
   },
   ai: { enabled: false, provider: 'openai', baseUrl: 'http://localhost:11434/v1', apiKey: '', model: 'llama3.1' },
   backup: { enabled: true, cron: '0 2 * * *', keep: 14, passphrase: '', targetDir: '', includeFiles: true },
-  time: { roundMinutes: 1, maxDailyHours: 10 },
+  time: { roundMinutes: 1, maxDailyHours: 10, holidayState: 'BW', dailyHours: 8 },
 };
 
 /** Felder, die nie an Nicht-Administratoren oder in Exporte im Klartext gehen */

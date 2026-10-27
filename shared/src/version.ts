@@ -11,6 +11,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.4.0',
+    date: '2026-10-27',
+    title: 'Zeiterfassung & Urlaub',
+    changes: [
+      { type: 'neu', text: 'Projekt-Stempeluhr mit Projektwechsel per Klick, Wochenübersicht und CSV-Export' },
+      { type: 'neu', text: 'Korrekturanfragen für Fehlbuchungen (Was? Welche Zeit? Warum?) mit Genehmigung durch die Teamleitung' },
+      { type: 'neu', text: 'Urlaubskonto mit Anspruch, genommenen und offenen Tagen sowie Genehmigungsworkflow' },
+      { type: 'neu', text: 'Automatische Feiertage je Bundesland, halbe Tage, Wochenenden werden nicht gezählt' },
+      { type: 'neu', text: 'DSGVO-sauberer Teamkalender: Kollegen sehen nur „Abwesend“, keine Gründe' },
+      { type: 'neu', text: 'Mein Kalender mit Fristen, eigenen Abwesenheiten und Feiertagen' },
+      { type: 'behoben', text: 'Web-Oberfläche wird nach Aktualisierungen ohne Neustart korrekt ausgeliefert' },
+    ],
+  },
+  {
     version: '0.3.0',
     date: '2026-10-27',
     title: 'CAD-Zentrale, PDM & Dateiverwaltung',

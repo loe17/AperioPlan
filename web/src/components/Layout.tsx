@@ -161,7 +161,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <div className="nav-title">📁 {t('Mein Schreibtisch')}</div>
             <NavItem to="/" end ico="🏠" label={t('Übersicht')} />
             {!isGuest && <NavItem to="/inbox" ico="📥" label={t('Posteingang')} count={unread} />}
-            {!isGuest && <NavItem to="/calendar" ico="📅" label={t('Mein Kalender')} />}
+            {!isGuest && <NavItem to="/calendar" end ico="📅" label={t('Mein Kalender')} />}
             {!isGuest && <NavItem to="/time" ico="⏱️" label={t('Stempeluhr')} />}
             {!isGuest && <NavItem to="/absences" ico="🏖️" label={t('Urlaubskonto')} />}
             {!isGuest && <NavItem to="/notes" ico="🔒" label={t('Private Notizen')} />}

@@ -51,3 +51,21 @@ describe('CAD-Nummern', () => {
     expect(cadFileTypeFromName('x.SLDASM')).toBe('assembly');
   });
 });
+
+import { countWorkingDays, easterSunday, germanHolidays } from '../src';
+describe('Feiertage und Urlaubstage', () => {
+  it('Ostern und Feiertage BW 2026', () => {
+    expect(easterSunday(2026).toISOString().slice(0, 10)).toBe('2026-04-05');
+    const bw = germanHolidays(2026, 'BW').map((h) => h.day);
+    expect(bw).toContain('2026-06-04'); // Fronleichnam
+    expect(bw).toContain('2026-01-06');
+    expect(bw).not.toContain('2026-10-31');
+    expect(germanHolidays(2026, 'SN').find((h) => h.name === 'Buß- und Bettag')?.day).toBe('2026-11-18');
+  });
+  it('zählt Arbeitstage ohne Wochenende/Feiertage', () => {
+    const h = new Set(germanHolidays(2026, 'BW').map((x) => x.day));
+    expect(countWorkingDays('2026-03-30', '2026-04-10', h)).toBe(8); // Karfreitag + Ostermontag frei
+    expect(countWorkingDays('2026-11-02', '2026-11-02', h, true)).toBe(0.5);
+    expect(countWorkingDays('2026-11-02', '2026-11-06', h, true, true)).toBe(4);
+  });
+});
