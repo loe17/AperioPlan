@@ -1,0 +1,9 @@
+# Ergänzung für Let's Encrypt über den DNS-Anbieter (install.sh, Option 2).
+# Wird über COMPOSE_FILE in .env automatisch mitgeladen.
+services:
+  caddy:
+    build:
+      context: ./deploy/caddy
+      args:
+        DNS_PROVIDER: ${DNS_PROVIDER:-duckdns}
+    image: aperioplan-caddy:${DNS_PROVIDER:-duckdns}

@@ -27,7 +27,7 @@ services:
       db: { condition: service_healthy }
     environment:
       DATABASE_URL: postgres://aperio:${DB_PASSWORD}@db:5432/aperio
-      PUBLIC_URL: https://${DOMAIN:-localhost}
+      PUBLIC_URL: ${PUBLIC_URL:-https://${DOMAIN:-localhost}}
       SECURE_COOKIES: "true"
       BACKUP_KEY: ${BACKUP_KEY:-}
       OFFICE_URL: ${OFFICE_URL:-}
@@ -52,18 +52,21 @@ services:
       start_period: 30s
     labels: [autoheal=true]
 
-  # Digitaler Pförtner: automatisches HTTPS (Let's Encrypt oder firmeninternes Zertifikat)
+  # Digitaler Pförtner: immer HTTPS (Let's Encrypt oder eigenes AperioPlan-Zertifikat).
+  # Die Datei deploy/Caddyfile erzeugt install.sh passend zur gewählten Erreichbarkeit.
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
     depends_on: [app]
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
     environment:
       DOMAIN: ${DOMAIN:-localhost}
       TLS_MODE: ${TLS_MODE:-}
+      # nur für Let's Encrypt über den DNS-Anbieter (install.sh, Option 2)
+      DNS_API_TOKEN: ${DNS_API_TOKEN:-}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -84,13 +87,15 @@ services:
   updater:
     image: docker:27-cli
     restart: unless-stopped
-    working_dir: /repo
-    entrypoint: ["/bin/sh", "/repo/deploy/updater.sh"]
+    # Der Programmordner wird unter demselben Pfad wie auf dem Server eingebunden,
+    # damit Docker die Ordner (data/files, data/backups ...) beim Neustart wiederfindet.
+    working_dir: ${APERIO_DIR:-/repo}
+    entrypoint: ["/bin/sh", "deploy/updater.sh"]
     environment:
       COMPOSE_PROJECT_NAME: aperioplan
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - .:/repo
+      - .:${APERIO_DIR:-/repo}
       - update:/update
 
   # Optional: Büro-Dokumente im Browser (Collabora Online) – starten mit: docker compose --profile office up -d

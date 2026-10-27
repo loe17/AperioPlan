@@ -8,3 +8,10 @@ coverage/
 cad-bridge/**/bin/
 cad-bridge/**/obj/
 cad-bridge/**/.vs/
+
+# vom Installationsskript erzeugt
+deploy/Caddyfile
+deploy/compose.local.yml
+# Pläne und Spezifikationen bleiben lokal
+IMPLEMENTIERUNGSPLAN*.md
+INSTALL_SPEZIFIKATION*.md
