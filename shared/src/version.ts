@@ -17,6 +17,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     changes: [
       { type: 'behoben', text: 'Installation über "curl … | bash" brach beim Warten auf AperioPlan ohne Meldung ab' },
       { type: 'verbessert', text: 'Installationsskript prüft am Ende, ob die https-Adresse wirklich antwortet, und zeigt sonst die Meldungen des Webservers' },
+      { type: 'verbessert', text: 'Installation fragt nicht mehr nach dem Programmordner (Standard /opt/aperioplan)' },
       { type: 'verbessert', text: 'Deinstallation läuft vollautomatisch: findet die Installation selbst und legt vorher eine Abschlusssicherung an' },
     ],
   },

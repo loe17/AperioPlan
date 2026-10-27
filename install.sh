@@ -9,6 +9,8 @@
 #  oder direkt aus dem Internet:
 #    curl -fsSL https://raw.githubusercontent.com/loe17/AperioPlan/main/install.sh | sudo bash
 #
+#  Programmordner: /opt/aperioplan (anderer Ordner: curl ... | APERIO_DIR=/pfad bash)
+#
 #  AperioPlan wird immer verschlüsselt (https) eingerichtet:
 #   - öffentliche Domain         -> Let's-Encrypt-Zertifikat (automatisch)
 #   - lokales Netz + eigene Domain -> Let's-Encrypt-Zertifikat über den DNS-Anbieter
@@ -142,8 +144,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo
 if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/docker-compose.yml" ] && grep -q "name: aperioplan" "$SCRIPT_DIR/docker-compose.yml"; then
   APERIO_DIR="$SCRIPT_DIR"
 else
-  ask "In welchen Ordner soll AperioPlan installiert werden? [$DEFAULT_DIR]: " "$DEFAULT_DIR"
-  APERIO_DIR="$REPLY"
+  # Ohne Rückfrage nach /opt/aperioplan; anderer Ordner: APERIO_DIR=/pfad vor den Befehl schreiben
+  APERIO_DIR="${APERIO_DIR:-$DEFAULT_DIR}"
   if [ -d "$APERIO_DIR/.git" ]; then
     info "Vorhandene Installation in $APERIO_DIR wird aktualisiert ..."
     git -C "$APERIO_DIR" pull -q --ff-only || warn "Aktualisierung von GitHub nicht möglich – vorhandener Stand wird verwendet."
