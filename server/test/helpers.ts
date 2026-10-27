@@ -73,3 +73,13 @@ export async function userClient(app: FastifyInstance, admin: Client, username: 
   await c.post('/api/auth/change-password', { currentPassword: 'Start-12345', newPassword: 'Neu-12345678' });
   return { client: c, id };
 }
+
+/** Multipart-Upload über app.inject */
+export async function uploadFiles(app: FastifyInstance, url: string, files: { name: string; content: string | Buffer }[], cookie = '', headers: Record<string, string> = {}) {
+  const fd = new FormData();
+  for (const f of files) fd.append('file', new Blob([typeof f.content === 'string' ? f.content : new Uint8Array(f.content)]), f.name);
+  const res = new Response(fd);
+  const body = Buffer.from(await res.arrayBuffer());
+  const r = await app.inject({ method: 'POST', url, payload: body, headers: { 'content-type': res.headers.get('content-type')!, ...(cookie ? { cookie } : {}), ...headers } });
+  return { status: r.statusCode, body: r.body ? JSON.parse(r.body) : null };
+}

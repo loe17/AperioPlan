@@ -7,7 +7,6 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': { target: 'http://localhost:3000', ws: true },
-      '/s/': { target: 'http://localhost:3000' },
     },
   },
   build: { outDir: 'dist', sourcemap: false, chunkSizeWarningLimit: 1500 },

@@ -1,3 +1,4 @@
-export function ProjectCad(_props: { projectId: string; project?: any; canEdit?: boolean }) {
-  return <div className="empty">Dieses Modul folgt in einer der nächsten Etappen.</div>;
+import { CadCenter } from './CadCenter';
+export function ProjectCad({ projectId, canEdit }: { projectId: string; project?: any; canEdit?: boolean }) {
+  return <CadCenter projectId={projectId} canEdit={canEdit} />;
 }

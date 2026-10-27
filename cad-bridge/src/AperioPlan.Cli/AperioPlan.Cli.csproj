@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Kommandozeile "aperio-cad": Ein-/Auschecken und Nummernvergabe ohne SolidWorks (Skripte, andere CAD-Systeme, Tests) -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks Condition="'$(OS)' == 'Windows_NT'">net48;net8.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(OS)' != 'Windows_NT'">net8.0</TargetFrameworks>
+    <AssemblyName>aperio-cad</AssemblyName>
+    <RootNamespace>AperioPlan.Cli</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AperioPlan.Core\AperioPlan.Core.csproj" />
+  </ItemGroup>
+</Project>
