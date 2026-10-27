@@ -8,6 +8,7 @@ import { useSession } from '../session';
 import { useT } from '../i18n';
 import { fmtDate, fmtDateTime, fmtDuration, fmtHours, fmtTime, isoDate } from '../lib/format';
 import { Avatar, Empty, Field, Modal, REQUEST_META, StatusPill, Tabs, useAction } from '../components/ui';
+import { Icon } from '../components/Icon';
 
 interface Entry { id: string; userId: string; userName: string; projectId: string | null; projectNumber: string | null; projectName: string | null; taskId: string | null; taskNumber: number | null; taskTitle: string | null; startedAt: string; endedAt: string | null; note: string; source: string; hours: number }
 
@@ -26,7 +27,7 @@ export function ClockWidget({ compact, defaultProjectId }: { compact?: boolean; 
   const elapsed = running ? Date.now() - new Date(running.startedAt).getTime() : 0;
   return (
     <div className="card" style={compact ? undefined : { maxWidth: 520 }}>
-      <div className="muted small">⏱️ {t('Stempeluhr')}</div>
+      <div className="muted small"><Icon name="timer" /> {t('Stempeluhr')}</div>
       <div className="clock" style={{ color: running ? 'var(--amber)' : undefined, fontSize: compact ? 30 : 40 }}>{fmtDuration(elapsed)}</div>
       {running ? (
         <div className="small" style={{ marginBottom: 8 }}>
@@ -37,9 +38,9 @@ export function ClockWidget({ compact, defaultProjectId }: { compact?: boolean; 
         {!compact && <select value={projectId} onChange={(e) => setProjectId(e.target.value)} style={{ maxWidth: 260 }}>
           <option value="">– ohne Projekt –</option>{projects?.map((p) => <option key={p.id} value={p.id}>{p.number} {p.name}</option>)}
         </select>}
-        {running && <button className="btn" onClick={async () => { await act(() => post('/time/clock-out')); reload(); invalidate('/time'); }}>⏹ {t('Ausstempeln')}</button>}
+        {running && <button className="btn" onClick={async () => { await act(() => post('/time/clock-out')); reload(); invalidate('/time'); }}><Icon name="square" /> {t('Ausstempeln')}</button>}
         <button className="btn primary" onClick={async () => { await act(() => post('/time/clock-in', { projectId: projectId || null })); reload(); invalidate('/time'); }}>
-          ▶ {running ? 'Wechseln' : t('Einstempeln')}
+          <Icon name="play" /> {running ? 'Wechseln' : t('Einstempeln')}
         </button>
       </div>
     </div>
@@ -50,7 +51,7 @@ const monday = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.s
 
 export default function TimePage() {
   const t = useT();
-  useCrumbs([{ label: `⏱️ ${t('Zeiterfassung')}` }]);
+  useCrumbs([{ label: `${t('Zeiterfassung')}` }]);
   const [params, setParams] = useSearchParams();
   const tab = (params.get('tab') ?? 'entries') as 'entries' | 'corrections' | 'review';
   const { data: review } = useApi<any[]>('/time/corrections?scope=review');
@@ -61,9 +62,9 @@ export default function TimePage() {
       <ClockWidget />
       <div className="spacer" />
       <Tabs value={tab} onChange={(v) => setParams({ tab: v })} tabs={[
-        { id: 'entries', label: '📋 Meine Buchungen' },
-        { id: 'corrections', label: '✏️ Korrekturanfragen' },
-        ...(review && review.length ? [{ id: 'review' as const, label: `✅ Zu prüfen${pending ? ` (${pending})` : ''}` }] : []),
+        { id: 'entries', label: 'Meine Buchungen' },
+        { id: 'corrections', label: 'Korrekturanfragen' },
+        ...(review && review.length ? [{ id: 'review' as const, label: `Zu prüfen${pending ? ` (${pending})` : ''}` }] : []),
       ]} />
       {tab === 'entries' && <Entries />}
       {tab === 'corrections' && <Corrections />}
@@ -95,10 +96,10 @@ function Entries() {
         <button className="btn sm" onClick={() => setWeek(new Date(week.getTime() + 7 * 86400000))}>›</button>
         <button className="btn sm" onClick={() => setWeek(monday(new Date()))}>Diese Woche</button>
         <span className="muted">Summe: <b>{fmtHours(total)}</b></span>
-        <a className="btn sm right" href={`/api/time/export?from=${from}&to=${to}`}>📊 CSV</a>
+        <a className="btn sm right" href={`/api/time/export?from=${from}&to=${to}`}><Icon name="chart" /> CSV</a>
         <button className="btn sm primary" onClick={() => setCorrect({ id: undefined })}>＋ Zeit nachtragen</button>
       </div>
-      {!days.length ? <Empty icon="⏱️" title="Keine Buchungen in dieser Woche" /> : days.map(([day, list]) => (
+      {!days.length ? <Empty icon="timer" title="Keine Buchungen in dieser Woche" /> : days.map(([day, list]) => (
         <div key={day} style={{ marginBottom: 16 }}>
           <div className="row" style={{ marginBottom: 6 }}><b>{new Date(day).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' })}</b><span className="muted small">{fmtHours(list.reduce((s, e) => s + e.hours, 0))}</span></div>
           <div className="table-wrap"><table className="table"><tbody>
@@ -107,7 +108,7 @@ function Entries() {
                 <td style={{ width: 130 }} className="mono small">{fmtTime(e.startedAt)} – {e.endedAt ? fmtTime(e.endedAt) : 'läuft'}</td>
                 <td>{e.projectNumber ? `${e.projectNumber} ${e.projectName}` : <span className="muted">ohne Projekt</span>}{e.taskTitle && <span className="muted"> · P{e.taskNumber} {e.taskTitle}</span>}</td>
                 <td className="small muted">{e.note}</td>
-                <td className="small">{e.source === 'correction' ? '✏️ korrigiert' : e.source === 'manual' ? '📝 nachgetragen' : ''}</td>
+                <td className="small">{e.source === 'correction' ? 'korrigiert' : e.source === 'manual' ? 'nachgetragen' : ''}</td>
                 <td style={{ width: 80 }}><b>{fmtHours(e.hours)}</b></td>
                 <td style={{ width: 110 }}>{e.endedAt && <button className="btn sm" onClick={() => setCorrect(e)}>Korrektur …</button>}</td>
               </tr>
@@ -172,7 +173,7 @@ function Corrections() {
   return (
     <div>
       <div className="toolbar"><span className="muted">Fehlbuchungen werden per Anfrage von der Teamleitung geprüft und genehmigt.</span><button className="btn primary right" onClick={() => setOpen(true)}>＋ Neue Anfrage</button></div>
-      {!data?.length ? <Empty icon="✏️" title="Keine Korrekturanfragen" /> : <CorrectionTable rows={data} />}
+      {!data?.length ? <Empty icon="edit" title="Keine Korrekturanfragen" /> : <CorrectionTable rows={data} />}
       {open && <CorrectionDialog entry={{}} onClose={() => setOpen(false)} />}
     </div>
   );

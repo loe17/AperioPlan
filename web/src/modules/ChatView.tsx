@@ -7,6 +7,7 @@ import { useSession } from '../session';
 import { fmtBytes, fmtDateTime, fmtTime } from '../lib/format';
 import { Avatar, Empty, useAction } from '../components/ui';
 import { VideoCall } from './Video';
+import { Icon } from '../components/Icon';
 
 export interface Message { id: string; channelId: string; userId: string; userName: string; body: string; attachments: { fileId: string; name: string; size: number }[]; createdAt: string; updatedAt: string; deletedAt: string | null }
 
@@ -82,11 +83,11 @@ export function ChatView({ channelId, title, height = 'calc(100vh - 48px)' }: { 
     <div className="chat-main" style={{ height }}>
       <div className="row" style={{ padding: '10px 20px', borderBottom: '1px solid var(--line)' }}>
         <b className="grow">{title}</b>
-        <button className="btn sm" onClick={() => setCall(true)}>📹 Videoanruf</button>
+        <button className="btn sm" onClick={() => setCall(true)}><Icon name="video" /> Videoanruf</button>
       </div>
       <div className="chat-messages" ref={listRef}>
         {hasMore && <div style={{ textAlign: 'center' }}><button className="btn sm" onClick={loadMore}>Ältere Nachrichten laden</button></div>}
-        {!messages.length && <Empty icon="💬" title="Noch keine Nachrichten">Schreiben Sie die erste Nachricht – @benutzername erwähnt Kollegen.</Empty>}
+        {!messages.length && <Empty icon="chat" title="Noch keine Nachrichten">Schreiben Sie die erste Nachricht – @benutzername erwähnt Kollegen.</Empty>}
         {messages.map((m, i) => {
           const day = new Date(m.createdAt).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long' });
           const showDay = day !== lastDay;
@@ -103,11 +104,11 @@ export function ChatView({ channelId, title, height = 'calc(100vh - 48px)' }: { 
                   {m.deletedAt ? <div className="body muted small">Nachricht gelöscht</div> : <div className="body">{renderBody(m.body)}</div>}
                   {!m.deletedAt && m.attachments?.map((a) => (
                     <a key={a.fileId} href={`/api/files/${a.fileId}/download${/\.(png|jpe?g|gif|webp)$/i.test(a.name) ? '?inline=1' : ''}`} target="_blank" rel="noreferrer" className="card row" style={{ display: 'inline-flex', padding: '6px 10px', marginTop: 4, marginRight: 6 }}>
-                      {/\.(png|jpe?g|gif|webp)$/i.test(a.name) ? <img src={`/api/files/${a.fileId}/download?inline=1`} style={{ maxHeight: 160, maxWidth: 260, borderRadius: 6 }} /> : <>📎 {a.name} <span className="muted small">{fmtBytes(a.size)}</span></>}
+                      {/\.(png|jpe?g|gif|webp)$/i.test(a.name) ? <img src={`/api/files/${a.fileId}/download?inline=1`} style={{ maxHeight: 160, maxWidth: 260, borderRadius: 6 }} /> : <><Icon name="paperclip" /> {a.name} <span className="muted small">{fmtBytes(a.size)}</span></>}
                     </a>
                   ))}
                 </div>
-                {m.userId === me?.id && !m.deletedAt && <button className="btn ghost sm" title="Löschen" style={{ opacity: 0.4 }} onClick={() => del(`/chat/messages/${m.id}`)}>✕</button>}
+                {m.userId === me?.id && !m.deletedAt && <button className="btn ghost sm" title="Löschen" style={{ opacity: 0.4 }} onClick={() => del(`/chat/messages/${m.id}`)}><Icon name="x" /></button>}
               </div>
             </div>
           );
@@ -115,7 +116,7 @@ export function ChatView({ channelId, title, height = 'calc(100vh - 48px)' }: { 
       </div>
       <div className="small muted" style={{ height: 18, padding: '0 20px' }}>{typing && `${typing} schreibt …`}</div>
       <div className="chat-input">
-        <button className="btn ghost" title="Datei anhängen" disabled={busy} onClick={() => fileRef.current?.click()}>📎</button>
+        <button className="btn ghost" title="Datei anhängen" disabled={busy} onClick={() => fileRef.current?.click()}><Icon name="paperclip" /></button>
         <input ref={fileRef} type="file" multiple hidden onChange={(e) => { if (e.target.files) void attach(e.target.files); e.target.value = ''; }} />
         <textarea value={text} placeholder="Nachricht schreiben … (Enter senden, Umschalt+Enter neue Zeile)" rows={1}
           onChange={(e) => {
@@ -156,7 +157,7 @@ export function IncomingCalls() {
     <>
       {incoming && createPortal(
         <div className="card" style={{ position: 'fixed', top: 60, right: 20, zIndex: 75, boxShadow: 'var(--shadow-lg)', width: 320 }}>
-          <div style={{ fontWeight: 600, marginBottom: 8 }}>📹 {incoming.from} ruft an</div>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}><Icon name="video" /> {incoming.from} ruft an</div>
           <div className="row">
             <button className="btn primary" onClick={() => { setJoined({ channelId: incoming.channelId, title: `Anruf mit ${incoming.from}` }); setIncoming(null); }}>Annehmen</button>
             <button className="btn" onClick={() => setIncoming(null)}>Ablehnen</button>

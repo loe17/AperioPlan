@@ -5,9 +5,10 @@ import { useCrumbs } from '../components/Layout';
 import { useSession } from '../session';
 import { Avatar, Empty } from '../components/ui';
 import { ChatView, useChannels } from '../modules/ChatView';
+import { EntityIcon, Icon } from '../components/Icon';
 
 export default function ChatPage() {
-  useCrumbs([{ label: '💬 Chat' }]);
+  useCrumbs([{ label: 'Chat' }]);
   const [params, setParams] = useSearchParams();
   const { users, me } = useSession();
   const { data: channels } = useChannels();
@@ -39,10 +40,10 @@ export default function ChatPage() {
               const other = users.find((u) => u.id === c.otherUserId);
               return (
                 <div key={c.id} className={`nav-item ${active === c.id ? 'active' : ''}`} onClick={() => setParams({ channel: c.id })}>
-                  <span className="ico">{kind === 'direct' ? <Avatar id={c.otherUserId} name={c.name} /> : kind === 'project' ? c.projectIcon : ''}</span>
+                  <span className="ico">{kind === 'direct' ? <Avatar id={c.otherUserId} name={c.name} /> : kind === 'project' ? <EntityIcon value={c.projectIcon} /> : <Icon name="team" />}</span>
                   <span className="grow" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</span>
                   {other?.online && <span className="dot ok" />}
-                  {c.activeCallId && <span title="Laufender Anruf">📹</span>}
+                  {c.activeCallId && <span title="Laufender Anruf"><Icon name="video" /></span>}
                   {c.unread > 0 && <span className="count">{c.unread}</span>}
                 </div>
               );
@@ -50,7 +51,7 @@ export default function ChatPage() {
           </div>
         ))}
       </div>
-      {current ? <ChatView key={current.id} channelId={current.id} title={current.name} /> : <div className="chat-main"><Empty icon="💬" title="Unterhaltung auswählen" /></div>}
+      {current ? <ChatView key={current.id} channelId={current.id} title={current.name} /> : <div className="chat-main"><Empty icon="chat" title="Unterhaltung auswählen" /></div>}
     </div>
   );
 }

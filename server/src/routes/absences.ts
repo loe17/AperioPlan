@@ -168,7 +168,7 @@ export default async function absenceRoutes(app: FastifyInstance, ctx: AppContex
     if (!(await canApprove(sql, u, a.user_id))) throw forbidden('Nur die zuständige Teamleitung kann entscheiden');
     await sql`update absences set status = ${b.approve ? 'approved' : 'rejected'}, approver_id = ${u.id}, decided_at = now(), updated_at = now() where id = ${id}`;
     await audit(sql, u, { action: 'absence.decide', entityType: 'absence', entityId: id, summary: `Abwesenheit ${a.start_date} – ${a.end_date} ${b.approve ? 'genehmigt' : 'abgelehnt'}` });
-    await notify(ctx, [a.user_id], { kind: 'absence.decision', title: `Antrag ${b.approve ? 'genehmigt ✅' : 'abgelehnt'}`, body: `${a.start_date} bis ${a.end_date}${b.note ? ` – ${b.note}` : ''}`, link: '/absences' });
+    await notify(ctx, [a.user_id], { kind: 'absence.decision', title: `Antrag ${b.approve ? 'genehmigt' : 'abgelehnt'}`, body: `${a.start_date} bis ${a.end_date}${b.note ? ` – ${b.note}` : ''}`, link: '/absences' });
     return { ok: true };
   });
 

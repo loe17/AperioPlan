@@ -3,6 +3,7 @@ import { useT } from '../i18n';
 import { fmtDate, fmtHours, relDue } from '../lib/format';
 import { Avatar, Empty, PRIORITY_META, Pill, StatusPill } from '../components/ui';
 import type { Task } from '../components/TaskPanel';
+import { Icon } from '../components/Icon';
 
 type SortKey = 'number' | 'title' | 'status' | 'priority' | 'assigneeName' | 'dueDate' | 'hoursBooked';
 const PRIO_ORDER: Record<string, number> = { low: 0, normal: 1, high: 2, urgent: 3 };
@@ -26,7 +27,7 @@ export function TaskTable({ tasks, onOpen, showProject }: { tasks: Task[]; onOpe
       {label}{sort.key === key ? (sort.dir === 1 ? ' ↑' : ' ↓') : ''}
     </th>
   );
-  if (!tasks.length) return <Empty icon="📋" title="Keine Aufgaben" />;
+  if (!tasks.length) return <Empty icon="list" title="Keine Aufgaben" />;
   return (
     <div className="table-wrap">
       <table className="table">
@@ -41,7 +42,7 @@ export function TaskTable({ tasks, onOpen, showProject }: { tasks: Task[]; onOpe
               <tr key={x.id} className="click" onClick={() => onOpen(x.id)}>
                 <td className="mono muted">P{x.number}</td>
                 {showProject && <td className="mono small">{x.projectNumber}</td>}
-                <td>{x.milestone && '◆ '}{x.title}</td>
+                <td>{x.milestone && <Icon name="milestone" className="mr" />}{x.title}</td>
                 <td><StatusPill status={x.status} /></td>
                 <td>{x.priority !== 'normal' ? <Pill tone={PRIORITY_META[x.priority]!.tone}>{t(PRIORITY_META[x.priority]!.label)}</Pill> : <span className="muted">{t('Normal')}</span>}</td>
                 <td>{x.assigneeId ? <span className="row" style={{ gap: 6 }}><Avatar id={x.assigneeId} name={x.assigneeName} />{x.assigneeName}</span> : <span className="muted">–</span>}</td>

@@ -7,12 +7,13 @@ import { useSession } from '../session';
 import { fmtBytes, fmtDateTime } from '../lib/format';
 import { Confirm, Empty, Field, Modal, Pill, SlideOver, useAction, useToast } from '../components/ui';
 import { OfficeButton } from './Office';
+import { Icon } from '../components/Icon';
 
 const ICONS: Record<string, string> = {
-  pdf: '📕', doc: '📘', docx: '📘', xls: '📗', xlsx: '📗', ppt: '📙', pptx: '📙', png: '🖼️', jpg: '🖼️', jpeg: '🖼️', gif: '🖼️', svg: '🖼️',
-  sldprt: '⚙️', sldasm: '🧩', slddrw: '📐', step: '🧊', stp: '🧊', dxf: '📏', zip: '🗜️', txt: '📝', csv: '📊', mp4: '🎞️',
+  pdf: 'file-pdf', doc: 'file-word', docx: 'file-word', xls: 'file-excel', xlsx: 'file-excel', ppt: 'file-slides', pptx: 'file-slides', png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', svg: 'image',
+  sldprt: 'part', sldasm: 'assembly', slddrw: 'drawing', step: 'cube', stp: 'cube', dxf: 'ruler', zip: 'zip', txt: 'file-text', csv: 'chart', mp4: 'film',
 };
-export const fileIcon = (name: string, isDir?: boolean) => (isDir ? '📁' : ICONS[name.toLowerCase().split('.').pop() ?? ''] ?? '📄');
+export const fileIcon = (name: string, isDir?: boolean) => (isDir ? 'folder' : ICONS[name.toLowerCase().split('.').pop() ?? ''] ?? 'file');
 
 interface Entry { name: string; isDir: boolean; size: number; modified: string; relPath: string; id?: string; version?: number; lockedBy?: string | null; lockedByName?: string | null; uploadedVia?: string | null; uploadedByName?: string | null }
 
@@ -61,13 +62,13 @@ export function ProjectFiles({ projectId, project, canEdit }: { projectId: strin
       onDrop={(e) => { e.preventDefault(); setOver(false); if (canEdit) void doUpload(e.dataTransfer.files); }}>
       <div className="toolbar">
         <div className="breadcrumbs" style={{ fontSize: 14 }}>
-          <a onClick={() => setPath('')} style={{ cursor: 'pointer' }}>📁 {project?.number ?? 'Projekt'}</a>
+          <a onClick={() => setPath('')} style={{ cursor: 'pointer' }}><Icon name="folder" /> {project?.number ?? 'Projekt'}</a>
           {crumbs.map((c, i) => <span key={i} className="row" style={{ gap: 6 }}><span className="sep">›</span><a style={{ cursor: 'pointer' }} onClick={() => setPath(crumbs.slice(0, i + 1).join('/'))}>{c}</a></span>)}
         </div>
         <div className="right row">
-          {canEdit && <button className="btn" onClick={() => setNewFolder(true)}>📁 Neuer Ordner</button>}
-          {canEdit && <button className="btn" onClick={() => setLinks(true)}>🔗 Freigaben</button>}
-          {canEdit && <button className="btn primary" onClick={() => inputRef.current?.click()}>⬆️ Hochladen</button>}
+          {canEdit && <button className="btn" onClick={() => setNewFolder(true)}><Icon name="folder" /> Neuer Ordner</button>}
+          {canEdit && <button className="btn" onClick={() => setLinks(true)}><Icon name="link" /> Freigaben</button>}
+          {canEdit && <button className="btn primary" onClick={() => inputRef.current?.click()}><Icon name="upload" /> Hochladen</button>}
           <input ref={inputRef} type="file" multiple hidden onChange={(e) => { if (e.target.files) void doUpload(e.target.files); e.target.value = ''; }} />
         </div>
       </div>
@@ -81,13 +82,13 @@ export function ProjectFiles({ projectId, project, canEdit }: { projectId: strin
         <div className="table-wrap"><table className="table">
           <thead><tr><th>Name</th><th>Größe</th><th>Geändert</th><th>Version</th><th /></tr></thead>
           <tbody>
-            {path && <tr className="click" onClick={() => setPath(crumbs.slice(0, -1).join('/'))}><td colSpan={5}>⬆️ ..</td></tr>}
+            {path && <tr className="click" onClick={() => setPath(crumbs.slice(0, -1).join('/'))}><td colSpan={5}><Icon name="upload" /> ..</td></tr>}
             {data.entries.map((e) => (
               <tr key={e.name} className="click file-row" onClick={() => (e.isDir ? setPath(e.relPath) : canPreview(e.name) ? setPreview(e) : (location.href = dl(e)))}>
                 <td>
                   <span className="row" style={{ gap: 8 }}>
-                    <span className="ico">{fileIcon(e.name, e.isDir)}</span><span>{e.name}</span>
-                    {e.lockedBy && <Pill tone="amber">🔒 {e.lockedByName}</Pill>}
+                    <span className="ico"><Icon name={fileIcon(e.name, e.isDir)} size={18} /></span><span>{e.name}</span>
+                    {e.lockedBy && <Pill tone="amber"><Icon name="lock" /> {e.lockedByName}</Pill>}
                     {e.uploadedVia && <Pill tone="blue">{e.uploadedVia}</Pill>}
                   </span>
                 </td>
@@ -96,13 +97,13 @@ export function ProjectFiles({ projectId, project, canEdit }: { projectId: strin
                 <td className="small">{e.isDir ? '' : e.version && e.version > 1 ? <a onClick={(ev) => { ev.stopPropagation(); setVersions(e); }}>v{e.version}</a> : 'v1'}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }} onClick={(ev) => ev.stopPropagation()}>
                   {!e.isDir && <OfficeButton projectId={projectId} entry={e} />}
-                  {!e.isDir && <a className="btn ghost sm" href={dl(e)}>⬇️</a>}
+                  {!e.isDir && <a className="btn ghost sm" href={dl(e)}><Icon name="download" /></a>}
                   {canEdit && !e.isDir && e.id && (
                     <button className="btn ghost sm" title={e.lockedBy ? 'Entsperren' : 'Für andere sperren'} disabled={Boolean(e.lockedBy && e.lockedBy !== me?.id && me?.role !== 'admin')}
-                      onClick={async () => { await act(() => post(`/files/${e.id}/lock`, { lock: !e.lockedBy })); reload(); }}>{e.lockedBy ? '🔓' : '🔒'}</button>
+                      onClick={async () => { await act(() => post(`/files/${e.id}/lock`, { lock: !e.lockedBy })); reload(); }}>{e.lockedBy ? <Icon name="unlock" /> : <Icon name="lock" />}</button>
                   )}
-                  {canEdit && <button className="btn ghost sm" title="Umbenennen" onClick={() => setRename(e)}>✏️</button>}
-                  {canEdit && <button className="btn ghost sm" title="Löschen" onClick={() => setRemove(e)}>🗑️</button>}
+                  {canEdit && <button className="btn ghost sm" title="Umbenennen" onClick={() => setRename(e)}><Icon name="edit" /></button>}
+                  {canEdit && <button className="btn ghost sm" title="Löschen" onClick={() => setRemove(e)}><Icon name="trash" /></button>}
                 </td>
               </tr>
             ))}
@@ -124,7 +125,7 @@ export function ProjectFiles({ projectId, project, canEdit }: { projectId: strin
       {versions?.id && <VersionsDialog fileId={versions.id} name={versions.name} onClose={() => setVersions(null)} />}
       {links && <LinksPanel projectId={projectId} path={path} onClose={() => setLinks(false)} />}
       {preview && (
-        <SlideOver wide title={<b>{preview.name}</b>} onClose={() => setPreview(null)} actions={<a className="btn sm" href={dl(preview)}>⬇️ Herunterladen</a>}>
+        <SlideOver wide title={<b>{preview.name}</b>} onClose={() => setPreview(null)} actions={<a className="btn sm" href={dl(preview)}><Icon name="download" /> Herunterladen</a>}>
           {/\.(png|jpe?g|gif|svg|webp)$/i.test(preview.name) ? <img src={dl(preview, true)} style={{ maxWidth: '100%' }} />
             : /\.mp4$/i.test(preview.name) ? <video src={dl(preview, true)} controls style={{ width: '100%' }} />
             : <iframe src={dl(preview, true)} style={{ width: '100%', height: 'calc(100vh - 120px)', border: 'none' }} />}
@@ -152,7 +153,7 @@ function VersionsDialog({ fileId, name, onClose }: { fileId: string; name: strin
           <tr key={v.version}>
             <td><b>v{v.version}</b> {v.current && <Pill tone="green">aktuell</Pill>}</td>
             <td className="small">{fmtDateTime(v.createdAt)}</td><td className="small">{v.uploadedByName ?? '–'}</td><td className="small">{fmtBytes(v.size)}</td>
-            <td><a className="btn sm" href={`/api/files/${fileId}/download${v.current ? '' : `?version=${v.version}`}`}>⬇️</a></td>
+            <td><a className="btn sm" href={`/api/files/${fileId}/download${v.current ? '' : `?version=${v.version}`}`}><Icon name="download" /></a></td>
           </tr>
         ))}
       </tbody></table>
@@ -161,9 +162,9 @@ function VersionsDialog({ fileId, name, onClose }: { fileId: string; name: strin
 }
 
 const KIND: Record<string, { label: string; icon: string; desc: string }> = {
-  share: { label: 'Daten teilen', icon: '📤', desc: 'Externe können Dateien dieses Ordners ansehen und herunterladen.' },
-  request: { label: 'Daten anfordern', icon: '📥', desc: 'Lieferanten laden Dateien ohne Benutzerkonto direkt in diesen Ordner hoch.' },
-  guest: { label: 'Gastzugang', icon: '👤', desc: 'Kunden, Statiker oder Partner sehen genau die freigegebenen Bereiche des Projekts.' },
+  share: { label: 'Daten teilen', icon: 'upload', desc: 'Externe können Dateien dieses Ordners ansehen und herunterladen.' },
+  request: { label: 'Daten anfordern', icon: 'inbox', desc: 'Lieferanten laden Dateien ohne Benutzerkonto direkt in diesen Ordner hoch.' },
+  guest: { label: 'Gastzugang', icon: 'user', desc: 'Kunden, Statiker oder Partner sehen genau die freigegebenen Bereiche des Projekts.' },
 };
 
 function LinksPanel({ projectId, path, onClose }: { projectId: string; path: string; onClose: () => void }) {
@@ -173,11 +174,11 @@ function LinksPanel({ projectId, path, onClose }: { projectId: string; path: str
   const [form, setForm] = useState<any | null>(null);
   const copy = (u: string) => { void navigator.clipboard.writeText(u); toast('Link kopiert'); };
   return (
-    <SlideOver title={<b>🔗 Externe Freigaben</b>} onClose={onClose} actions={<button className="btn primary sm" onClick={() => setForm({ kind: 'share', label: '', folderPath: path, password: '', expiresAt: '', maxUses: '', areas: ['files', 'drawings'] })}>＋ Neuer Link</button>}>
+    <SlideOver title={<b><Icon name="link" /> Externe Freigaben</b>} onClose={onClose} actions={<button className="btn primary sm" onClick={() => setForm({ kind: 'share', label: '', folderPath: path, password: '', expiresAt: '', maxUses: '', areas: ['files', 'drawings'] })}>＋ Neuer Link</button>}>
       {form && (
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="row wrap" style={{ marginBottom: 12 }}>
-            {Object.entries(KIND).map(([k, v]) => <button key={k} className={`btn ${form.kind === k ? 'primary' : ''}`} onClick={() => setForm({ ...form, kind: k })}>{v.icon} {v.label}</button>)}
+            {Object.entries(KIND).map(([k, v]) => <button key={k} className={`btn ${form.kind === k ? 'primary' : ''}`} onClick={() => setForm({ ...form, kind: k })}><Icon name={v.icon} /> {v.label}</button>)}
           </div>
           <p className="muted small">{KIND[form.kind]!.desc}</p>
           <Field label="Bezeichnung" hint="z. B. Name des Lieferanten"><input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} /></Field>
@@ -186,7 +187,7 @@ function LinksPanel({ projectId, path, onClose }: { projectId: string; path: str
           ) : (
             <Field label="Freigegebene Bereiche">
               <div className="row wrap">
-                {[['files', '📁 Dateien (nur lesen)'], ['drawings', '📐 Freigegebene Zeichnungen'], ['tasks', '📋 Aufgaben & Termine']].map(([a, l]) => (
+                {[['files', 'Dateien (nur lesen)'], ['drawings', 'Freigegebene Zeichnungen'], ['tasks', 'Aufgaben & Termine']].map(([a, l]) => (
                   <label key={a} className="row small" style={{ gap: 4 }}><input type="checkbox" checked={form.areas.includes(a)} onChange={() => setForm({ ...form, areas: form.areas.includes(a) ? form.areas.filter((x: string) => x !== a) : [...form.areas, a] })} />{l}</label>
                 ))}
               </div>
@@ -210,13 +211,13 @@ function LinksPanel({ projectId, path, onClose }: { projectId: string; path: str
           </div>
         </div>
       )}
-      {!data?.length ? <Empty icon="🔗" title="Noch keine Freigaben" /> : data.map((l) => {
+      {!data?.length ? <Empty icon="link" title="Noch keine Freigaben" /> : data.map((l) => {
         const dead = l.revokedAt || (l.expiresAt && new Date(l.expiresAt) < new Date()) || (l.maxUses && l.useCount >= l.maxUses);
         return (
           <div key={l.id} className="card" style={{ marginBottom: 10, opacity: dead ? 0.55 : 1 }}>
             <div className="row">
-              <b>{KIND[l.kind]!.icon} {l.label || KIND[l.kind]!.label}</b>
-              {l.hasPassword && <Pill>🔑 Passwort</Pill>}
+              <b className="row" style={{ gap: 6 }}><Icon name={KIND[l.kind]!.icon} /> {l.label || KIND[l.kind]!.label}</b>
+              {l.hasPassword && <Pill><Icon name="key" /> Passwort</Pill>}
               {l.revokedAt ? <Pill tone="red">widerrufen</Pill> : dead ? <Pill tone="amber">abgelaufen</Pill> : <Pill tone="green">aktiv</Pill>}
               <span className="right small muted">{l.useCount}{l.maxUses ? ` / ${l.maxUses}` : ''} Nutzungen</span>
             </div>

@@ -3,17 +3,18 @@ import { PROJECT_MODULES } from '@aperio/shared';
 import { patch, put, invalidate } from '../lib/api';
 import { useSession } from '../session';
 import { Avatar, Field, useAction } from '../components/ui';
+import { EntityIcon, Icon, IconPicker } from '../components/Icon';
 
 export const MODULE_LABELS: Record<string, { label: string; icon: string }> = {
-  kanban: { label: 'Kanban-Board', icon: '🗂️' },
-  list: { label: 'Aufgabenliste', icon: '📋' },
-  gantt: { label: 'Gantt-Diagramm', icon: '📊' },
-  whiteboard: { label: 'Whiteboard', icon: '🎨' },
-  report: { label: 'Abschlussbericht', icon: '📑' },
-  files: { label: 'Dateien', icon: '📁' },
-  cad: { label: 'CAD-Dateien', icon: '📐' },
-  chat: { label: 'Chat', icon: '💬' },
-  time: { label: 'Zeiterfassung', icon: '⏱️' },
+  kanban: { label: 'Kanban-Board', icon: 'projects' },
+  list: { label: 'Aufgabenliste', icon: 'list' },
+  gantt: { label: 'Gantt-Diagramm', icon: 'chart' },
+  whiteboard: { label: 'Whiteboard', icon: 'whiteboard' },
+  report: { label: 'Abschlussbericht', icon: 'report' },
+  files: { label: 'Dateien', icon: 'folder' },
+  cad: { label: 'CAD-Dateien', icon: 'cad' },
+  chat: { label: 'Chat', icon: 'chat' },
+  time: { label: 'Zeiterfassung', icon: 'timer' },
 };
 
 export const STATUS_OPTIONS = [
@@ -42,9 +43,9 @@ export function ProjectSettings({ project }: { project: any }) {
       <h2 style={{ marginBottom: 14 }}>Allgemein</h2>
       <div className="grid2">
         <Field label="Name" required><input value={p.name} onChange={set('name')} /></Field>
-        <Field label="Symbol"><input value={p.icon} onChange={set('icon')} maxLength={4} /></Field>
+        <Field label="Symbol"><IconPicker value={p.icon} onChange={(icon) => setP({ ...p, icon })} /></Field>
         <Field label="Status"><select value={p.status} onChange={set('status')}>{STATUS_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
-        <Field label="Team / Abteilung"><select value={p.teamId ?? ''} onChange={set('teamId')}><option value="">–</option>{teams.map((t) => <option key={t.id} value={t.id}>{t.icon} {t.name}</option>)}</select></Field>
+        <Field label="Team / Abteilung"><select value={p.teamId ?? ''} onChange={set('teamId')}><option value="">–</option>{teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
         <Field label="Sichtbarkeit">
           <select value={p.visibility} onChange={set('visibility')}>
             <option value="company">Ganze Firma</option><option value="team">Nur Team</option><option value="members">Nur Projektmitglieder</option>
@@ -63,7 +64,7 @@ export function ProjectSettings({ project }: { project: any }) {
           return (
             <div key={m} className="row" style={{ padding: '4px 6px' }}>
               <input type="checkbox" checked={on} onChange={() => setP({ ...p, modules: on ? mods.filter((x) => x !== m) : [...mods, m] })} />
-              <span>{MODULE_LABELS[m]?.icon} {MODULE_LABELS[m]?.label}</span>
+              <span className="row" style={{ gap: 6 }}><Icon name={MODULE_LABELS[m]?.icon ?? 'square'} /> {MODULE_LABELS[m]?.label}</span>
               {on && <span className="right row" style={{ gap: 4 }}><button className="btn ghost sm" onClick={() => moveMod(m, -1)}>↑</button><button className="btn ghost sm" onClick={() => moveMod(m, 1)}>↓</button></span>}
             </div>
           );
@@ -90,7 +91,7 @@ export function ProjectSettings({ project }: { project: any }) {
                   <option value="owner">Verantwortlich</option><option value="member">Mitarbeit</option><option value="viewer">Nur lesen</option>
                 </select>
               </td>
-              <td style={{ width: 60 }}><button className="btn ghost sm" onClick={() => setMembers(members.filter((x) => x.userId !== m.userId))}>✕</button></td>
+              <td style={{ width: 60 }}><button className="btn ghost sm" onClick={() => setMembers(members.filter((x) => x.userId !== m.userId))}><Icon name="x" /></button></td>
             </tr>
           );
         })}

@@ -11,6 +11,7 @@ import { Avatar, Dropdown } from './ui';
 import { CommandPalette } from './CommandPalette';
 import { ChangelogDialog } from './ChangelogDialog';
 import { IncomingCalls, useChannels } from '../modules/ChatView';
+import { EntityIcon, Icon } from './Icon';
 
 // ---------------------------------------------------------------- Brotkrumen
 export interface Crumb { label: string; to?: string }
@@ -26,7 +27,7 @@ interface ProjectLite { id: string; number: string; name: string; icon: string; 
 function NavItem({ to, ico, label, count, end }: { to: string; ico: string; label: string; count?: number; end?: boolean }) {
   return (
     <NavLink to={to} end={end} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-      <span className="ico">{ico}</span><span className="grow" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+      <span className="ico"><EntityIcon value={ico} /></span><span className="grow" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
       {count ? <span className="count">{count}</span> : null}
     </NavLink>
   );
@@ -46,9 +47,9 @@ function TeamTree({ projects }: { projects: ProjectLite[] }) {
         return (
           <div key={team.id}>
             <div className={`nav-item ${location.pathname === `/teams/${team.id}` ? 'active' : ''}`}>
-              <span className={`chev ${isOpen ? 'open' : ''}`} onClick={() => setOpen({ ...open, [team.id]: !isOpen })}>▶</span>
+              <span className={`chev ${isOpen ? 'open' : ''}`} onClick={() => setOpen({ ...open, [team.id]: !isOpen })}><Icon name="chevron-right" /></span>
               <Link to={`/teams/${team.id}`} className="grow" style={{ color: 'inherit', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {team.icon} {team.name}
+                <EntityIcon value={team.icon} fallback="team" /> {team.name}
               </Link>
             </div>
             {isOpen && (
@@ -71,7 +72,7 @@ function Notifications() {
   const unread = data?.filter((n) => !n.readAt).length ?? 0;
   return (
     <Dropdown trigger={(toggle) => (
-      <button className="icon-btn" onClick={toggle} title="Benachrichtigungen">🔔{unread > 0 && <span className="badge-count">{unread}</span>}</button>
+      <button className="icon-btn" onClick={toggle} title="Benachrichtigungen"><Icon name="bell" />{unread > 0 && <span className="badge-count">{unread}</span>}</button>
     )}>
       {(close) => (
         <div style={{ width: 360, maxHeight: 440, overflow: 'auto' }}>
@@ -86,7 +87,7 @@ function Notifications() {
               if (!n.readAt) { await post('/notifications/read', { ids: [n.id] }); invalidate('/notifications'); }
               if (n.link) nav(n.link);
             }}>
-              <span>{n.readAt ? '○' : '●'}</span>
+              <span className={`read-dot ${n.readAt ? '' : 'unread'}`} />
               <div className="grow">
                 <div style={{ fontWeight: 550 }}>{n.title}</div>
                 {n.body && <div className="small muted" style={{ whiteSpace: 'pre-wrap' }}>{n.body}</div>}
@@ -114,12 +115,12 @@ function UserMenu() {
         <>
           <div style={{ padding: '6px 10px' }}><b>{me!.displayName}</b><div className="small muted">{me!.username} · {me!.role}</div></div>
           <hr />
-          <div className="item" onClick={() => { close(); nav('/settings/profile'); }}>👤 {t('Profil')}</div>
-          <div className="item" onClick={() => setTheme('light')}>{theme === 'light' ? '●' : '○'} ☀️ {t('Hellmodus')}</div>
-          <div className="item" onClick={() => setTheme('dark')}>{theme === 'dark' ? '●' : '○'} 🌙 {t('Dunkelmodus')}</div>
-          <div className="item" onClick={() => setTheme('system')}>{theme === 'system' ? '●' : '○'} 🖥️ {t('Wie System')}</div>
+          <div className="item" onClick={() => { close(); nav('/settings/profile'); }}><Icon name="user" /> {t('Profil')}</div>
+          <div className="item" onClick={() => setTheme('light')}><span className={`radio-dot ${theme === 'light' ? 'on' : ''}`} /><Icon name="sun" /> {t('Hellmodus')}</div>
+          <div className="item" onClick={() => setTheme('dark')}><span className={`radio-dot ${theme === 'dark' ? 'on' : ''}`} /><Icon name="moon" /> {t('Dunkelmodus')}</div>
+          <div className="item" onClick={() => setTheme('system')}><span className={`radio-dot ${theme === 'system' ? 'on' : ''}`} /><Icon name="monitor" /> {t('Wie System')}</div>
           <hr />
-          <div className="item" onClick={async () => { await post('/auth/logout'); location.href = '/'; }}>🚪 {t('Abmelden')}</div>
+          <div className="item" onClick={async () => { await post('/auth/logout'); location.href = '/'; }}><Icon name="logout" /> {t('Abmelden')}</div>
         </>
       )}
     </Dropdown>
@@ -162,37 +163,37 @@ export function Layout({ children }: { children: ReactNode }) {
             <button className="icon-btn" onClick={() => setCollapsed(true)} title="Seitenleiste einklappen (Strg + \)">«</button>
           </div>
           <div className="sidebar-scroll">
-            <div className="nav-title">📁 {t('Mein Schreibtisch')}</div>
-            <NavItem to="/" end ico="🏠" label={t('Übersicht')} />
-            {!isGuest && <NavItem to="/inbox" ico="📥" label={t('Posteingang')} count={unread} />}
-            {!isGuest && <NavItem to="/calendar" end ico="📅" label={t('Mein Kalender')} />}
-            {!isGuest && <NavItem to="/time" ico="⏱️" label={t('Stempeluhr')} />}
-            {!isGuest && <NavItem to="/absences" ico="🏖️" label={t('Urlaubskonto')} />}
-            {!isGuest && <NavItem to="/notes" ico="🔒" label={t('Private Notizen')} />}
+            <div className="nav-title"><Icon name="folder" /> {t('Mein Schreibtisch')}</div>
+            <NavItem to="/" end ico="home" label={t('Übersicht')} />
+            {!isGuest && <NavItem to="/inbox" ico="inbox" label={t('Posteingang')} count={unread} />}
+            {!isGuest && <NavItem to="/calendar" end ico="calendar" label={t('Mein Kalender')} />}
+            {!isGuest && <NavItem to="/time" ico="timer" label={t('Stempeluhr')} />}
+            {!isGuest && <NavItem to="/absences" ico="palm" label={t('Urlaubskonto')} />}
+            {!isGuest && <NavItem to="/notes" ico="lock" label={t('Private Notizen')} />}
 
             {favorites && favorites.length > 0 && (
               <div className="nav-section">
-                <div className="nav-title">⭐ {t('Favoriten')}</div>
+                <div className="nav-title"><Icon name="star-filled" /> {t('Favoriten')}</div>
                 {favorites.map((f) => <NavItem key={f.entityId} to={`/projects/${f.entityId}`} ico={f.icon} label={`${f.number} ${f.name}`} />)}
               </div>
             )}
 
             <div className="nav-section">
-              <div className="nav-title">👥 {t('Meine Teams')}</div>
+              <div className="nav-title"><Icon name="users" /> {t('Meine Teams')}</div>
               <TeamTree projects={projects ?? []} />
-              <NavItem to="/projects" end ico="🗂️" label={t('Alle Projekte')} />
+              <NavItem to="/projects" end ico="projects" label={t('Alle Projekte')} />
             </div>
 
             <div className="nav-section">
-              <div className="nav-title">🧰 {t('Werkzeuge')}</div>
-              <NavItem to="/cad" ico="📐" label={t('CAD-Zentrale')} />
-              {!isGuest && <NavItem to="/chat" ico="💬" label={t('Chat')} count={chatUnread} />}
-              {!isGuest && settings?.mailEnabled && <NavItem to="/mail" ico="✉️" label={t('E-Mail')} />}
-              {!isGuest && <NavItem to="/kvp" ico="💡" label={t('KVP-Ideenbox')} />}
-              {!isGuest && <NavItem to="/calendar/team" ico="🗓️" label={t('Teamkalender')} />}
-              {!isGuest && <NavItem to="/calendar/resources" ico="🚗" label={t('Ressourcen')} />}
-              {plugins?.filter((p) => p.enabled && p.page).map((p) => <NavItem key={p.id} to={`/plugin/${p.id}`} ico={p.page.icon ?? '🧩'} label={p.page.label} />)}
-              <NavItem to="/settings" ico="⚙️" label={t('Einstellungen')} />
+              <div className="nav-title"><Icon name="tools" /> {t('Werkzeuge')}</div>
+              <NavItem to="/cad" ico="cad" label={t('CAD-Zentrale')} />
+              {!isGuest && <NavItem to="/chat" ico="chat" label={t('Chat')} count={chatUnread} />}
+              {!isGuest && settings?.mailEnabled && <NavItem to="/mail" ico="mail" label={t('E-Mail')} />}
+              {!isGuest && <NavItem to="/kvp" ico="lightbulb" label={t('KVP-Ideenbox')} />}
+              {!isGuest && <NavItem to="/calendar/team" ico="calendar-team" label={t('Teamkalender')} />}
+              {!isGuest && <NavItem to="/calendar/resources" ico="car" label={t('Ressourcen')} />}
+              {plugins?.filter((p) => p.enabled && p.page).map((p) => <NavItem key={p.id} to={`/plugin/${p.id}`} ico={p.page.icon ?? 'puzzle'} label={p.page.label} />)}
+              <NavItem to="/settings" ico="settings" label={t('Einstellungen')} />
             </div>
           </div>
           <div className="sidebar-foot">
@@ -204,7 +205,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
         <div className="main">
           <header className="topbar">
-            {collapsed && <button className="icon-btn" onClick={() => setCollapsed(false)} title="Seitenleiste öffnen">☰</button>}
+            {collapsed && <button className="icon-btn" onClick={() => setCollapsed(false)} title="Seitenleiste öffnen"><Icon name="menu" /></button>}
             <div className="breadcrumbs">
               <Link to="/">Home</Link>
               {crumbs.map((c, i) => (
@@ -214,9 +215,9 @@ export function Layout({ children }: { children: ReactNode }) {
                 </span>
               ))}
             </div>
-            <div className="search-trigger" onClick={() => setPalette(true)}>🔍 <span className="label">{t('Blitzsuche')}</span><kbd>Strg + K</kbd></div>
+            <div className="search-trigger" onClick={() => setPalette(true)}><Icon name="search" /> <span className="label">{t('Blitzsuche')}</span><kbd>Strg + K</kbd></div>
             <button className="icon-btn" title="Hell/Dunkel" onClick={() => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark')}>
-              {theme === 'dark' || (theme === 'system' && document.documentElement.dataset.theme === 'dark') ? '☀️' : '🌙'}
+              {theme === 'dark' || (theme === 'system' && document.documentElement.dataset.theme === 'dark') ? <Icon name="sun" /> : <Icon name="moon" />}
             </button>
             {!isGuest && <Notifications />}
             <UserMenu />

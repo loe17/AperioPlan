@@ -18,7 +18,7 @@ export default async function teamRoutes(app: FastifyInstance, ctx: AppContext) 
 
   const teamBody = z.object({
     name: z.string().trim().min(1),
-    icon: z.string().max(8).default('👥'),
+    icon: z.string().max(40).default('team'),
     description: z.string().default(''),
     parentId: z.string().uuid().nullable().default(null),
     sort: z.number().int().default(0),

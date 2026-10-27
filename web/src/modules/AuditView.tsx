@@ -5,7 +5,7 @@ import { Avatar, Empty } from '../components/ui';
 /** Lückenloses Änderungsprotokoll: Wer? Wann? Was? */
 export function AuditView({ projectId }: { projectId?: string }) {
   const { data } = useApi<any[]>(projectId ? `/audit?projectId=${projectId}&limit=300` : '/audit?limit=300');
-  if (!data?.length) return <Empty icon="📜" title="Keine Einträge" />;
+  if (!data?.length) return <Empty icon="history" title="Keine Einträge" />;
   return (
     <div className="table-wrap"><table className="table">
       <thead><tr><th>Wann</th><th>Wer</th><th>Was</th><th>Bereich</th></tr></thead>

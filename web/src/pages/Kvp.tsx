@@ -8,6 +8,7 @@ import { useT } from '../i18n';
 import { fmtDate, fmtEuro } from '../lib/format';
 import { Avatar, Confirm, Empty, Field, Modal, SlideOver, StatusPill, useAction, UserSelect } from '../components/ui';
 import { Comments } from '../components/TaskPanel';
+import { Icon } from '../components/Icon';
 
 export const KVP_META: Record<string, { label: string; tone: string }> = {
   new: { label: 'Neu', tone: 'blue' }, review: { label: 'In Prüfung', tone: 'amber' }, accepted: { label: 'Angenommen', tone: 'accent' },
@@ -17,7 +18,7 @@ export const KVP_META: Record<string, { label: string; tone: string }> = {
 /** KVP-Verbesserungsbox: digitaler Kummer- und Ideenkasten */
 export default function KvpPage() {
   const t = useT();
-  useCrumbs([{ label: `💡 ${t('KVP-Ideenbox')}` }]);
+  useCrumbs([{ label: `${t('KVP-Ideenbox')}` }]);
   const [params, setParams] = useSearchParams();
   const [status, setStatus] = useState('');
   const { data } = useApi<any[]>(`/kvp${status ? `?status=${status}` : ''}`);
@@ -38,7 +39,7 @@ export default function KvpPage() {
       <div className="toolbar">
         {['', ...Object.keys(KVP_META)].map((s) => <button key={s} className={`btn sm ${status === s ? 'primary' : ''}`} onClick={() => setStatus(s)}>{s ? KVP_META[s]!.label : 'Alle'}</button>)}
       </div>
-      {!data?.length ? <Empty icon="💡" title="Noch keine Ideen">Haben Sie eine Idee, wie es besser, sicherer oder günstiger geht? Reichen Sie sie ein!</Empty> : (
+      {!data?.length ? <Empty icon="lightbulb" title="Noch keine Ideen">Haben Sie eine Idee, wie es besser, sicherer oder günstiger geht? Reichen Sie sie ein!</Empty> : (
         <div className="card-grid">
           {data.map((k) => (
             <div key={k.id} className="card click" onClick={() => setParams({ idea: k.id })}>
@@ -46,7 +47,7 @@ export default function KvpPage() {
               <div className="row" style={{ marginBottom: 6 }}><span className="mono muted">#{k.number}</span><StatusPill status={k.status} meta={KVP_META} />{k.savingsEur ? <span className="right small"><b>{fmtEuro(k.savingsEur)}</b></span> : null}</div>
               <h3 style={{ marginBottom: 4 }}>{k.title}</h3>
               <div className="small muted" style={{ marginBottom: 8, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{k.description}</div>
-              <div className="row small muted"><Avatar id={k.createdBy} name={k.createdByName} />{k.createdByName} · {fmtDate(k.createdAt)}{k.teamName && ` · ${k.teamIcon} ${k.teamName}`}{k.commentCount > 0 && ` · 💬 ${k.commentCount}`}</div>
+              <div className="row small muted"><Avatar id={k.createdBy} name={k.createdByName} />{k.createdByName} · {fmtDate(k.createdAt)}{k.teamName && ` · ${k.teamName}`}{k.commentCount > 0 && ` · ${k.commentCount}`}</div>
             </div>
           ))}
         </div>
@@ -63,7 +64,7 @@ function IdeaForm({ onClose }: { onClose: () => void }) {
   const [d, setD] = useState({ title: '', description: '', teamId: '', savingsEur: '', leadId: null as string | null });
   const [files, setFiles] = useState<File[]>([]);
   return (
-    <Modal title="💡 Neue Verbesserungsidee" onClose={onClose} footer={<>
+    <Modal title="Neue Verbesserungsidee" onClose={onClose} footer={<>
       <button className="btn" onClick={onClose}>Abbrechen</button>
       <button className="btn primary" disabled={d.title.trim().length < 3} onClick={async () => {
         const r = await act(() => post('/kvp', { ...d, teamId: d.teamId || null, savingsEur: d.savingsEur ? Number(d.savingsEur) : null }));
@@ -75,7 +76,7 @@ function IdeaForm({ onClose }: { onClose: () => void }) {
       <Field label="Titel" required><input autoFocus value={d.title} onChange={(e) => setD({ ...d, title: e.target.value })} placeholder="z. B. Werkzeugwand an Station 3" /></Field>
       <Field label="Beschreibung" hint="Was ist das Problem? Was schlagen Sie vor?"><textarea rows={5} value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} /></Field>
       <div className="grid2">
-        <Field label="Abteilung"><select value={d.teamId} onChange={(e) => setD({ ...d, teamId: e.target.value })}><option value="">–</option>{teams.map((t) => <option key={t.id} value={t.id}>{t.icon} {t.name}</option>)}</select></Field>
+        <Field label="Abteilung"><select value={d.teamId} onChange={(e) => setD({ ...d, teamId: e.target.value })}><option value="">–</option>{teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
         <Field label="Geschätztes Einsparpotenzial (€/Jahr)"><input type="number" min={0} value={d.savingsEur} onChange={(e) => setD({ ...d, savingsEur: e.target.value })} /></Field>
       </div>
       <Field label="Zuständige Teamleitung" hint="leer = Teamleitung der Abteilung"><UserSelect users={users.filter((u) => u.role === 'teamlead' || u.role === 'admin')} value={d.leadId} onChange={(v) => setD({ ...d, leadId: v })} /></Field>
@@ -100,7 +101,7 @@ function IdeaPanel({ id, onClose }: { id: string; onClose: () => void }) {
       <div className="row small muted" style={{ marginBottom: 12 }}><Avatar id={k.createdBy} name={k.createdByName} />{k.createdByName} · {fmtDate(k.createdAt)}</div>
       <div style={{ whiteSpace: 'pre-wrap', marginBottom: 14 }}>{k.description || <span className="muted">Keine Beschreibung</span>}</div>
       <table className="table" style={{ marginBottom: 14 }}><tbody>
-        <tr><td className="muted">Abteilung</td><td>{k.teamName ? `${k.teamIcon} ${k.teamName}` : '–'}</td></tr>
+        <tr><td className="muted">Abteilung</td><td>{k.teamName ? k.teamName : '–'}</td></tr>
         <tr><td className="muted">Einsparpotenzial</td><td><b>{fmtEuro(k.savingsEur)}</b> / Jahr</td></tr>
         <tr><td className="muted">Zuständig</td><td>{isLead ? <UserSelect users={users} value={k.leadId} onChange={async (v) => { await act(() => patch(`/kvp/${id}`, { leadId: v })); refresh(); }} /> : (k.leadName ?? '–')}</td></tr>
         {k.decisionNote && <tr><td className="muted">Entscheidung</td><td>{k.decisionNote}</td></tr>}
@@ -123,10 +124,10 @@ function IdeaPanel({ id, onClose }: { id: string; onClose: () => void }) {
         {k.photos.map((p: any) => (
           <div key={p.id} style={{ position: 'relative' }}>
             <a href={`/api/kvp/photos/${p.id}`} target="_blank" rel="noreferrer"><img src={`/api/kvp/photos/${p.id}`} style={{ height: 120, borderRadius: 8 }} /></a>
-            {(k.createdBy === me?.id || me?.role === 'admin') && <button className="btn sm" style={{ position: 'absolute', top: 4, right: 4 }} onClick={async () => { await del(`/kvp/photos/${p.id}`); refresh(); }}>✕</button>}
+            {(k.createdBy === me?.id || me?.role === 'admin') && <button className="btn sm" style={{ position: 'absolute', top: 4, right: 4 }} onClick={async () => { await del(`/kvp/photos/${p.id}`); refresh(); }}><Icon name="x" /></button>}
           </div>
         ))}
-        <button className="btn" onClick={() => fileRef.current?.click()}>📷 Foto hinzufügen</button>
+        <button className="btn" onClick={() => fileRef.current?.click()}><Icon name="camera" /> Foto hinzufügen</button>
         <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={async (e) => {
           if (!e.target.files?.length) return;
           const fd = new FormData(); [...e.target.files].forEach((f) => fd.append('file', f, f.name));

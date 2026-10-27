@@ -6,10 +6,11 @@ import { realtime } from '../lib/realtime';
 import { useCrumbs } from '../components/Layout';
 import { fmtBytes, fmtDateTime } from '../lib/format';
 import { Empty, Field, Modal, Pill, Tabs, useAction } from '../components/ui';
+import { Icon } from '../components/Icon';
 
 /** Integrierte E-Mail-Verwaltung: Projektpostfach lesen, beantworten und Vorgängen zuordnen */
 export default function MailPage() {
-  useCrumbs([{ label: '✉️ E-Mail' }]);
+  useCrumbs([{ label: 'E-Mail' }]);
   const [params, setParams] = useSearchParams();
   const filter = (params.get('filter') ?? 'all') as 'all' | 'unassigned' | 'sent';
   const projectId = params.get('projectId') ?? '';
@@ -27,21 +28,21 @@ export default function MailPage() {
       <div style={{ width: 420, borderRight: '1px solid var(--line)', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: 12, borderBottom: '1px solid var(--line)' }}>
           <div className="row" style={{ marginBottom: 8 }}>
-            <button className="btn primary" onClick={() => setCompose({ to: '', subject: '', text: '', projectId })}>✏️ Neue E-Mail</button>
-            <button className="btn" onClick={async () => { const r = await act(() => post('/mail/sync')); if (r) { reload(); } }}>🔄 Abrufen</button>
+            <button className="btn primary" onClick={() => setCompose({ to: '', subject: '', text: '', projectId })}><Icon name="edit" /> Neue E-Mail</button>
+            <button className="btn" onClick={async () => { const r = await act(() => post('/mail/sync')); if (r) { reload(); } }}><Icon name="refresh" /> Abrufen</button>
           </div>
-          <input placeholder="🔍 Suchen …" value={q} onChange={(e) => setQ(e.target.value)} style={{ marginBottom: 8 }} />
+          <input placeholder="Suchen …" value={q} onChange={(e) => setQ(e.target.value)} style={{ marginBottom: 8 }} />
           <select value={projectId} onChange={(e) => { if (e.target.value) params.set('projectId', e.target.value); else params.delete('projectId'); setParams(params); }}>
             <option value="">Alle Projekte</option>{projects?.map((p) => <option key={p.id} value={p.id}>{p.number} {p.name}</option>)}
           </select>
         </div>
         <Tabs value={filter} onChange={(v) => { params.set('filter', v); setParams(params); }} tabs={[{ id: 'all', label: 'Alle' }, { id: 'unassigned', label: 'Nicht zugeordnet' }, { id: 'sent', label: 'Gesendet' }]} />
         <div style={{ overflowY: 'auto', flex: 1 }}>
-          {!data?.length && <Empty icon="✉️" title="Keine E-Mails" />}
+          {!data?.length && <Empty icon="mail" title="Keine E-Mails" />}
           {data?.map((m) => (
             <div key={m.id} className={`nav-item ${selected === m.id ? 'active' : ''}`} style={{ display: 'block', padding: '8px 12px', borderRadius: 0, borderBottom: '1px solid var(--line)', whiteSpace: 'normal' }} onClick={() => setSelected(m.id)}>
               <div className="row"><b className="grow" style={{ fontWeight: m.seen ? 450 : 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.direction === 'out' ? `An: ${m.to}` : m.from}</b><span className="small muted">{fmtDateTime(m.date)}</span></div>
-              <div style={{ fontWeight: m.seen ? 400 : 650 }}>{m.subject || '(kein Betreff)'} {m.attachmentCount > 0 && '📎'}</div>
+              <div style={{ fontWeight: m.seen ? 400 : 650 }}>{m.subject || '(kein Betreff)'} {m.attachmentCount > 0 && <Icon name="paperclip" />}</div>
               <div className="small muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.preview}</div>
               {m.projectNumber && <Pill tone="accent">{m.projectNumber} {m.projectName}</Pill>}
             </div>
@@ -49,7 +50,7 @@ export default function MailPage() {
         </div>
       </div>
       <div className="chat-main" style={{ overflowY: 'auto' }}>
-        {selected ? <MailDetail id={selected} projects={projects ?? []} onReply={setCompose} onChanged={reload} /> : <Empty icon="✉️" title="E-Mail auswählen" />}
+        {selected ? <MailDetail id={selected} projects={projects ?? []} onReply={setCompose} onChanged={reload} /> : <Empty icon="mail" title="E-Mail auswählen" />}
       </div>
       {compose && <ComposeDialog initial={compose} projects={projects ?? []} onClose={() => setCompose(null)} onSent={() => { setCompose(null); reload(); }} />}
     </div>
@@ -79,10 +80,10 @@ function MailDetail({ id, projects, onReply, onChanged }: { id: string; projects
           <option value="">– Aufgabe (optional) –</option>{tasks?.map((t) => <option key={t.id} value={t.id}>P{t.number} {t.title}</option>)}
         </select>}
         <button className="btn" onClick={() => onReply({ to: m.direction === 'in' ? m.from : m.to, subject: m.subject.startsWith('AW:') ? m.subject : `AW: ${m.subject}`,
-          text: `\n\n---- Am ${fmtDateTime(m.date)} schrieb ${m.from}:\n${(m.text ?? '').split('\n').map((l: string) => '> ' + l).join('\n')}`, projectId: m.projectId ?? '', replyTo: m.id })}>↩️ Antworten</button>
+          text: `\n\n---- Am ${fmtDateTime(m.date)} schrieb ${m.from}:\n${(m.text ?? '').split('\n').map((l: string) => '> ' + l).join('\n')}`, projectId: m.projectId ?? '', replyTo: m.id })}><Icon name="undo" /> Antworten</button>
       </div>
       {m.attachments.length > 0 && <div className="row wrap" style={{ marginBottom: 14 }}>
-        {m.attachments.map((a: any) => <a key={a.index} className="card row" style={{ padding: '6px 10px' }} href={`/api/mail/${id}/attachments/${a.index}`}>📎 {a.name} <span className="small muted">{fmtBytes(a.size)}</span></a>)}
+        {m.attachments.map((a: any) => <a key={a.index} className="card row" style={{ padding: '6px 10px' }} href={`/api/mail/${id}/attachments/${a.index}`}><Icon name="paperclip" /> {a.name} <span className="small muted">{fmtBytes(a.size)}</span></a>)}
       </div>}
       {m.html ? <iframe sandbox="" srcDoc={m.html} style={{ width: '100%', minHeight: '60vh', border: '1px solid var(--line)', borderRadius: 8, background: '#fff' }} />
         : <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{m.text}</pre>}
@@ -94,7 +95,7 @@ function ComposeDialog({ initial, projects, onClose, onSent }: { initial: any; p
   const act = useAction();
   const [d, setD] = useState({ cc: '', ...initial });
   return (
-    <Modal size="lg" title="✏️ E-Mail schreiben" onClose={onClose} footer={<>
+    <Modal size="lg" title="E-Mail schreiben" onClose={onClose} footer={<>
       <button className="btn" onClick={onClose}>Abbrechen</button>
       <button className="btn primary" disabled={!d.to || !d.subject} onClick={async () => { const r = await act(() => post('/mail/send', { ...d, projectId: d.projectId || null, cc: d.cc || undefined }), 'Gesendet'); if (r) onSent(); }}>Senden</button>
     </>}>

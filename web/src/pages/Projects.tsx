@@ -9,6 +9,7 @@ import { useT } from '../i18n';
 import { fmtDate } from '../lib/format';
 import { Empty, Field, Modal, Progress, useAction } from '../components/ui';
 import { MODULE_LABELS, STATUS_OPTIONS } from '../modules/ProjectSettings';
+import { EntityIcon, Icon, IconPicker } from '../components/Icon';
 
 export interface ProjectRow {
   id: string; number: string; name: string; icon: string; parentId: string | null; teamId: string | null; teamName: string | null; teamIcon: string | null;
@@ -24,15 +25,15 @@ export function ProjectCards({ projects }: { projects: ProjectRow[] }) {
         return (
           <div key={p.id} className="card">
             <Link to={`/projects/${p.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-              <div className="card-title"><span style={{ fontSize: 20 }}>{p.icon}</span><b className="mono">{p.number}</b>{p.favorite && '⭐'}<span className="right pill">{STATUS_OPTIONS.find(([v]) => v === p.status)?.[1]}</span></div>
+              <div className="card-title"><EntityIcon value={p.icon} size={20} /><b className="mono">{p.number}</b>{p.favorite && <Icon name="star-filled" />}<span className="right pill">{STATUS_OPTIONS.find(([v]) => v === p.status)?.[1]}</span></div>
               <h3 style={{ marginBottom: 6 }}>{p.name}</h3>
-              <div className="small muted" style={{ marginBottom: 8 }}>{p.teamName ? `${p.teamIcon} ${p.teamName}` : 'ohne Team'}{p.customer ? ` · ${p.customer}` : ''}{p.dueDate ? ` · bis ${fmtDate(p.dueDate)}` : ''}</div>
+              <div className="small muted" style={{ marginBottom: 8 }}>{p.teamName ? p.teamName : 'ohne Team'}{p.customer ? ` · ${p.customer}` : ''}{p.dueDate ? ` · bis ${fmtDate(p.dueDate)}` : ''}</div>
               <Progress value={p.totalTasks ? (p.totalTasks - p.openTasks) / p.totalTasks : 0} />
               <div className="small muted" style={{ marginTop: 6 }}>{p.openTasks} offene von {p.totalTasks} Aufgaben</div>
             </Link>
             {children.length > 0 && (
               <div className="tree-line" style={{ marginTop: 10 }}>
-                {children.map((c) => <div key={c.id}><Link to={`/projects/${c.id}`}>{c.icon} {c.number} {c.name}</Link></div>)}
+                {children.map((c) => <div key={c.id}><Link to={`/projects/${c.id}`}>{c.number} {c.name}</Link></div>)}
               </div>
             )}
           </div>
@@ -49,7 +50,7 @@ export function NewProjectDialog({ onClose, parentId, teamId }: { onClose: () =>
   const { teams, settings, me } = useSession();
   const { data: projects } = useApi<ProjectRow[]>('/projects?parentId=root');
   const [d, setD] = useState({
-    name: '', description: '', icon: '🚀', parentId: parentId ?? '', teamId: teamId ?? '', visibility: 'company', customer: '',
+    name: '', description: '', icon: 'rocket', parentId: parentId ?? '', teamId: teamId ?? '', visibility: 'company', customer: '',
     startDate: '', dueDate: '', number: '', modules: settings?.defaultModules ?? [...PROJECT_MODULES],
   });
   useEffect(() => { if (settings) setD((x) => ({ ...x, modules: settings.defaultModules })); }, [settings]);
@@ -66,14 +67,14 @@ export function NewProjectDialog({ onClose, parentId, teamId }: { onClose: () =>
     </>}>
       <div className="grid2">
         <Field label="Projektname" required><input autoFocus value={d.name} onChange={set('name')} placeholder="z. B. Verpackungsanlage" /></Field>
-        <Field label="Symbol"><input value={d.icon} onChange={set('icon')} maxLength={4} /></Field>
+        <Field label="Symbol"><IconPicker value={d.icon} onChange={(icon) => setD({ ...d, icon })} /></Field>
         <Field label="Teilprojekt von" hint="Teilprojekte erhalten die Nummer des Hauptprojekts mit Buchstabe, z. B. 0100-A">
           <select value={d.parentId} onChange={set('parentId')}>
             <option value="">– eigenständiges Hauptprojekt –</option>
             {projects?.map((p) => <option key={p.id} value={p.id}>{p.number} {p.name}</option>)}
           </select>
         </Field>
-        <Field label="Team / Abteilung"><select value={d.teamId} onChange={set('teamId')}><option value="">–</option>{teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.icon} {tm.name}</option>)}</select></Field>
+        <Field label="Team / Abteilung"><select value={d.teamId} onChange={set('teamId')}><option value="">–</option>{teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}</select></Field>
         <Field label="Kunde"><input value={d.customer} onChange={set('customer')} /></Field>
         <Field label="Sichtbarkeit"><select value={d.visibility} onChange={set('visibility')}><option value="company">Ganze Firma</option><option value="team">Nur Team</option><option value="members">Nur Projektmitglieder</option></select></Field>
         <Field label="Start"><input type="date" value={d.startDate} onChange={set('startDate')} /></Field>
@@ -90,7 +91,7 @@ export function NewProjectDialog({ onClose, parentId, teamId }: { onClose: () =>
           {PROJECT_MODULES.map((m) => (
             <label key={m} className="row small" style={{ gap: 4 }}>
               <input type="checkbox" checked={d.modules.includes(m)} onChange={() => setD({ ...d, modules: d.modules.includes(m) ? d.modules.filter((x) => x !== m) : [...d.modules, m] })} />
-              {MODULE_LABELS[m]?.icon} {MODULE_LABELS[m]?.label}
+              <Icon name={MODULE_LABELS[m]?.icon ?? 'square'} /> {MODULE_LABELS[m]?.label}
             </label>
           ))}
         </div>
@@ -102,7 +103,7 @@ export function NewProjectDialog({ onClose, parentId, teamId }: { onClose: () =>
 
 export default function ProjectsPage() {
   const t = useT();
-  useCrumbs([{ label: `🗂️ ${t('Alle Projekte')}` }]);
+  useCrumbs([{ label: `${t('Alle Projekte')}` }]);
   const [params, setParams] = useSearchParams();
   const [status, setStatus] = useState('');
   const [q, setQ] = useState('');
@@ -116,12 +117,12 @@ export default function ProjectsPage() {
         <div className="actions">{me?.role !== 'guest' && <button className="btn primary" onClick={() => setParams({ new: '1' })}>＋ {t('Neues Projekt')}</button>}</div>
       </div>
       <div className="toolbar">
-        <input placeholder="🔍 Nummer, Name oder Kunde" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 260 }} />
+        <input placeholder="Nummer, Name oder Kunde" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 260 }} />
         <select value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">Alle außer archivierte</option>{STATUS_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
       </div>
-      {shown.length ? <ProjectCards projects={shown} /> : <Empty icon="🗂️" title="Keine Projekte gefunden" />}
+      {shown.length ? <ProjectCards projects={shown} /> : <Empty icon="projects" title="Keine Projekte gefunden" />}
       {params.get('new') && <NewProjectDialog onClose={() => setParams({})} />}
     </div>
   );

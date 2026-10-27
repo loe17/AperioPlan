@@ -3,8 +3,9 @@ import { TASK_STATUSES } from '@aperio/shared';
 import { patch, invalidate } from '../lib/api';
 import { relDue, fmtHours } from '../lib/format';
 import { useT } from '../i18n';
-import { Avatar, PRIORITY_META, STATUS_META, Pill, useAction } from '../components/ui';
+import { Avatar, PRIORITY_META, STATUS_META, StatusDot, Pill, useAction } from '../components/ui';
 import { quickCreateTask, type Task } from '../components/TaskPanel';
+import { Icon } from '../components/Icon';
 
 /** Kanban-Board: Aufgaben visuell zwischen Spalten verschieben */
 export function Kanban({ projectId, tasks, onOpen, canEdit }: { projectId: string; tasks: Task[]; onOpen: (id: string) => void; canEdit: boolean }) {
@@ -40,7 +41,7 @@ export function Kanban({ projectId, tasks, onOpen, canEdit }: { projectId: strin
           onDragOver={(e) => { if (!dragId) return; e.preventDefault(); if (over?.status !== col.status) setOver({ status: col.status, index: col.items.length }); }}
           onDragLeave={(e) => { if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) setOver(null); }}
           onDrop={(e) => { e.preventDefault(); void drop(col.status, over?.status === col.status ? over.index : col.items.length); }}>
-          <div className="kanban-col-head">{STATUS_META[col.status]!.ico} {t(STATUS_META[col.status]!.label)} <span className="muted">({col.items.length})</span>
+          <div className="kanban-col-head"><StatusDot status={col.status} /> {t(STATUS_META[col.status]!.label)} <span className="muted">({col.items.length})</span>
             {canEdit && <button className="btn ghost sm right" onClick={() => { setAdding(col.status); setNewTitle(''); }}>＋</button>}
           </div>
           <div className="kanban-cards">
@@ -59,14 +60,14 @@ export function Kanban({ projectId, tasks, onOpen, canEdit }: { projectId: strin
                   }}
                   style={over?.status === col.status && dragId && dragId !== task.id ? (over.index === i ? { boxShadow: '0 -3px 0 var(--accent)' } : over.index === i + 1 && i === col.items.length - 1 ? { boxShadow: '0 3px 0 var(--accent)' } : undefined) : undefined}
                   onClick={() => onOpen(task.id)}>
-                  <div className="title"><span className="muted mono small">P{task.number}</span> {task.milestone && '◆ '}{task.title}</div>
+                  <div className="title"><span className="muted mono small">P{task.number}</span> {task.milestone && <Icon name="milestone" className="mr" />}{task.title}</div>
                   <div className="meta">
                     {task.priority !== 'normal' && <Pill tone={PRIORITY_META[task.priority]!.tone}>{t(PRIORITY_META[task.priority]!.label)}</Pill>}
-                    {due.text && <span style={{ color: due.tone ? `var(--${due.tone})` : undefined }}>📅 {t(due.text)}</span>}
+                    {due.text && <span style={{ color: due.tone ? `var(--${due.tone})` : undefined }}><Icon name="calendar" /> {t(due.text)}</span>}
                     {task.assigneeId && <span className="row" style={{ gap: 4 }}><Avatar id={task.assigneeId} name={task.assigneeName} /> {task.assigneeName}{task.teamName ? ` (${task.teamName})` : ''}</span>}
-                    {task.commentCount > 0 && <span>💬 {task.commentCount}</span>}
-                    {task.hoursBooked > 0.05 && <span>⏱️ {fmtHours(task.hoursBooked)}</span>}
-                    {task.dependsOn.length > 0 && <span title="hat Abhängigkeiten">🔗 {task.dependsOn.length}</span>}
+                    {task.commentCount > 0 && <span><Icon name="chat" /> {task.commentCount}</span>}
+                    {task.hoursBooked > 0.05 && <span><Icon name="timer" /> {fmtHours(task.hoursBooked)}</span>}
+                    {task.dependsOn.length > 0 && <span title="hat Abhängigkeiten"><Icon name="link" /> {task.dependsOn.length}</span>}
                   </div>
                 </div>
               );

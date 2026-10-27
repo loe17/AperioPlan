@@ -11,7 +11,7 @@ import { allocateProjectNumber, createProjectFolders, normalizeModules } from '.
 const projectBody = z.object({
   name: z.string().trim().min(1).max(200),
   description: z.string().default(''),
-  icon: z.string().max(8).default('🚀'),
+  icon: z.string().max(40).default('rocket'),
   parentId: z.string().uuid().nullable().default(null),
   teamId: z.string().uuid().nullable().default(null),
   status: z.enum(['planned', 'active', 'paused', 'done', 'archived']).default('active'),

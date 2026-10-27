@@ -4,6 +4,7 @@ import { useApi } from '../lib/hooks';
 import { useCrumbs } from '../components/Layout';
 import { useSession } from '../session';
 import { Avatar, Empty, Pill } from '../components/ui';
+import { EntityIcon } from '../components/Icon';
 import { NewProjectDialog, ProjectCards, type ProjectRow } from './Projects';
 
 export default function TeamPage() {
@@ -12,12 +13,12 @@ export default function TeamPage() {
   const team = teams.find((t) => t.id === id);
   const { data } = useApi<ProjectRow[]>(`/projects?teamId=${id}`);
   const [newOpen, setNewOpen] = useState(false);
-  useCrumbs(team ? [{ label: `${team.icon} ${team.name}` }] : []);
+  useCrumbs(team ? [{ label: team.name }] : []);
   if (!team) return <div className="page"><Empty title="Team nicht gefunden" /></div>;
   return (
     <div className="page">
       <div className="page-head">
-        <div style={{ fontSize: 34 }}>{team.icon}</div>
+        <div className="entity-big"><EntityIcon value={team.icon} size={30} fallback="team" /></div>
         <div className="grow"><h1>{team.name}</h1><div className="sub">{team.description}</div></div>
         <div className="actions">{me?.role !== 'guest' && <button className="btn primary" onClick={() => setNewOpen(true)}>＋ Neues Projekt</button>}</div>
       </div>
@@ -34,7 +35,7 @@ export default function TeamPage() {
         {!team.members.length && <span className="muted">Noch keine Mitglieder – Administratoren pflegen Teams unter Einstellungen.</span>}
       </div>
       <h3 style={{ marginBottom: 10 }}>Projekte</h3>
-      {data?.length ? <ProjectCards projects={data} /> : <Empty icon="🗂️" title="Noch keine Projekte in diesem Team" />}
+      {data?.length ? <ProjectCards projects={data} /> : <Empty icon="projects" title="Noch keine Projekte in diesem Team" />}
       {newOpen && <NewProjectDialog teamId={team.id} onClose={() => setNewOpen(false)} />}
     </div>
   );

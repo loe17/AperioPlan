@@ -8,12 +8,13 @@ import { TaskTable } from '../modules/TaskTable';
 import { ClockWidget } from './Time';
 import { ProjectCards, type ProjectRow } from './Projects';
 import type { Task } from '../components/TaskPanel';
+import { Icon } from '../components/Icon';
 
 export function DeskPage() {
   const t = useT();
   const me = useMe();
   const nav = useNavigate();
-  useCrumbs([{ label: `📁 ${t('Mein Schreibtisch')}` }]);
+  useCrumbs([{ label: `${t('Mein Schreibtisch')}` }]);
   const { data: tasks } = useApi<Task[]>('/tasks/mine');
   const { data: favorites } = useApi<ProjectRow[]>('/projects');
   const h = new Date().getHours();
@@ -36,10 +37,10 @@ export function DeskPage() {
           {overdue > 0 && <div className="small" style={{ color: 'var(--red)' }}>{overdue} überfällig</div>}
         </div>
       </div>
-      {favs.length > 0 && <><h2 style={{ marginBottom: 10 }}>⭐ {t('Favoriten')}</h2><ProjectCards projects={favs} /><div className="spacer" /></>}
+      {favs.length > 0 && <><h2 style={{ marginBottom: 10 }}><Icon name="star-filled" /> {t('Favoriten')}</h2><ProjectCards projects={favs} /><div className="spacer" /></>}
       <h2 id="mytasks" style={{ marginBottom: 10 }}>{t('Meine Aufgaben')}</h2>
       {tasks?.length ? <TaskTable tasks={tasks} showProject onOpen={(id) => { const tk = tasks.find((x) => x.id === id)!; nav(`/projects/${tk.projectId}?task=${id}`); }} />
-        : <Empty icon="🎉" title="Keine offenen Aufgaben" />}
+        : <Empty icon="check-circle" title="Keine offenen Aufgaben" />}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { patch, invalidate } from '../lib/api';
 import { isoDate } from '../lib/format';
 import { useAction, Empty } from '../components/ui';
 import type { Task } from '../components/TaskPanel';
+import { Icon } from '../components/Icon';
 
 const DAY = 86400000;
 const ROW = 34;
@@ -78,7 +79,7 @@ export function Gantt({ projectId, tasks, onOpen, canEdit }: { projectId: string
     window.addEventListener('mouseup', up);
   };
 
-  if (!planned.length) return <Empty icon="📊" title="Noch keine terminierten Aufgaben">Tragen Sie bei Aufgaben Start- und Fälligkeitsdatum ein, dann erscheinen sie hier als Zeitbalken.</Empty>;
+  if (!planned.length) return <Empty icon="chart" title="Noch keine terminierten Aufgaben">Tragen Sie bei Aufgaben Start- und Fälligkeitsdatum ein, dann erscheinen sie hier als Zeitbalken.</Empty>;
 
   const width = days * zoom;
   const height = planned.length * ROW + 36;
@@ -94,7 +95,7 @@ export function Gantt({ projectId, tasks, onOpen, canEdit }: { projectId: string
         <span className="muted small">Zoom</span>
         <button className="btn sm" onClick={() => setZoom((z) => Math.max(8, z - 6))}>−</button>
         <button className="btn sm" onClick={() => setZoom((z) => Math.min(60, z + 6))}>＋</button>
-        <span className="muted small">◆ Meilenstein · Pfeile zeigen Abhängigkeiten · Balken ziehen zum Verschieben, rechte Kante zum Verlängern</span>
+        <span className="muted small"><Icon name="milestone" /> Meilenstein · Pfeile zeigen Abhängigkeiten · Balken ziehen zum Verschieben, rechte Kante zum Verlängern</span>
       </div>
       <div className="gantt" style={{ maxHeight: 'calc(100vh - 260px)' }}>
         <div style={{ display: 'flex', minWidth: LABEL + width }}>

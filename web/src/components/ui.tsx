@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { createPortal } from 'react-dom';
 import { colorFor, initials } from '../lib/format';
 import { useT } from '../i18n';
+import { Icon } from './Icon';
 
 // ---------------------------------------------------------------- Toasts
 interface Toast { id: number; text: string; kind: 'info' | 'error' }
@@ -57,7 +58,7 @@ export function Modal({ title, onClose, children, footer, size }: { title: React
     <>
       <div className="overlay" onClick={onClose} />
       <div className={`modal ${size ?? ''}`} role="dialog">
-        <div className="modal-head"><h2 className="grow">{title}</h2><button className="icon-btn" onClick={onClose} aria-label="Schließen">✕</button></div>
+        <div className="modal-head"><h2 className="grow">{title}</h2><button className="icon-btn" onClick={onClose} aria-label="Schließen"><Icon name="x" /></button></div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
       </div>
@@ -76,7 +77,7 @@ export function SlideOver({ title, onClose, children, actions, wide }: { title: 
         <div className="slideover-head">
           <div className="grow" style={{ minWidth: 0 }}>{title}</div>
           {actions}
-          <button className="icon-btn" onClick={onClose} aria-label="Schließen">✕</button>
+          <button className="icon-btn" onClick={onClose} aria-label="Schließen"><Icon name="x" /></button>
         </div>
         <div className="slideover-body">{children}</div>
       </aside>
@@ -122,8 +123,8 @@ export function Avatar({ id, name, size }: { id?: string | null; name?: string |
   return <span className={`avatar ${size ?? ''}`} style={{ background: colorFor(id ?? name) }} title={name ?? ''}>{initials(name)}</span>;
 }
 
-export function Empty({ icon = '📭', title, children }: { icon?: string; title: string; children?: ReactNode }) {
-  return <div className="empty"><div className="big">{icon}</div><div style={{ fontWeight: 550, color: 'var(--text-2)' }}>{title}</div>{children && <div style={{ marginTop: 8 }}>{children}</div>}</div>;
+export function Empty({ icon = 'inbox', title, children }: { icon?: string; title: string; children?: ReactNode }) {
+  return <div className="empty"><div className="big"><Icon name={icon} size={36} strokeWidth={1.5} /></div><div style={{ fontWeight: 550, color: 'var(--text-2)' }}>{title}</div>{children && <div style={{ marginTop: 8 }}>{children}</div>}</div>;
 }
 
 export function Loading() {
@@ -146,11 +147,11 @@ export function Field({ label, required, hint, children }: { label: string; requ
   );
 }
 
-export const STATUS_META: Record<string, { label: string; tone: string; ico: string }> = {
-  todo: { label: 'Zu erledigen', tone: 'amber', ico: '🟡' },
-  in_progress: { label: 'In Arbeit', tone: 'blue', ico: '🔵' },
-  review: { label: 'Prüfung', tone: 'accent', ico: '🟣' },
-  done: { label: 'Fertig', tone: 'green', ico: '🟢' },
+export const STATUS_META: Record<string, { label: string; tone: string }> = {
+  todo: { label: 'Zu erledigen', tone: 'amber' },
+  in_progress: { label: 'In Arbeit', tone: 'blue' },
+  review: { label: 'Prüfung', tone: 'accent' },
+  done: { label: 'Fertig', tone: 'green' },
 };
 export const PRIORITY_META: Record<string, { label: string; tone: string }> = {
   low: { label: 'Niedrig', tone: '' },
@@ -173,6 +174,10 @@ export const REQUEST_META: Record<string, { label: string; tone: string }> = {
 
 export function Pill({ tone, children }: { tone?: string; children: ReactNode }) {
   return <span className={`pill ${tone ?? ''}`}>{children}</span>;
+}
+
+export function StatusDot({ status }: { status: string }) {
+  return <span className={`status-dot ${STATUS_META[status]?.tone ?? ''}`} />;
 }
 
 export function StatusPill({ status, meta = STATUS_META }: { status: string; meta?: Record<string, { label: string; tone: string }> }) {

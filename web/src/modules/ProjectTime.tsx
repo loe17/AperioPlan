@@ -2,6 +2,7 @@ import { useApi } from '../lib/hooks';
 import { fmtDateTime, fmtHours, fmtTime } from '../lib/format';
 import { Avatar, Empty, Progress } from '../components/ui';
 import { ClockWidget } from '../pages/Time';
+import { Icon } from '../components/Icon';
 
 /** Zeiterfassung im Projekt: Stempeluhr, Auswertung nach Mitarbeiter und Aufgabe */
 export function ProjectTime({ projectId }: { projectId: string; project?: any }) {
@@ -12,9 +13,9 @@ export function ProjectTime({ projectId }: { projectId: string; project?: any })
       <div className="row" style={{ alignItems: 'stretch', flexWrap: 'wrap' }}>
         <ProjectClock projectId={projectId} />
         <div className="card"><div className="muted small">Gesamt gebucht</div><div className="stat">{fmtHours(data?.total ?? 0)}</div>
-          <a className="small" href={`/api/time/export?from=2000-01-01&to=2100-12-31&projectId=${projectId}`}>📊 Als CSV exportieren</a></div>
+          <a className="small" href={`/api/time/export?from=2000-01-01&to=2100-12-31&projectId=${projectId}`}><Icon name="chart" /> Als CSV exportieren</a></div>
       </div>
-      {!data?.recent?.length ? <Empty icon="⏱️" title="Noch keine Zeiten auf diesem Projekt" /> : <>
+      {!data?.recent?.length ? <Empty icon="timer" title="Noch keine Zeiten auf diesem Projekt" /> : <>
         <div className="grid2" style={{ gap: 14 }}>
           <div className="card"><h3 style={{ marginBottom: 10 }}>Nach Mitarbeiter</h3>
             {data.byUser.map((u: any) => <div key={u.userId} style={{ marginBottom: 8 }}><div className="row"><Avatar id={u.userId} name={u.userName} /><span className="grow">{u.userName}</span><b>{fmtHours(u.hours)}</b></div><Progress value={u.hours / max} /></div>)}

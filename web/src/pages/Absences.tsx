@@ -6,12 +6,13 @@ import { useCrumbs } from '../components/Layout';
 import { useT } from '../i18n';
 import { fmtDate } from '../lib/format';
 import { Avatar, Empty, Field, Modal, Progress, REQUEST_META, StatusPill, Tabs, useAction } from '../components/ui';
+import { Icon } from '../components/Icon';
 
-const KIND: Record<string, string> = { vacation: '🏖️ Urlaub', other: '🚪 Sonstige Abwesenheit' };
+const KIND: Record<string, string> = { vacation: 'Urlaub', other: 'Sonstige Abwesenheit' };
 
 export default function AbsencesPage() {
   const t = useT();
-  useCrumbs([{ label: `🏖️ ${t('Urlaubskonto')}` }]);
+  useCrumbs([{ label: `${t('Urlaubskonto')}` }]);
   const [params, setParams] = useSearchParams();
   const tab = (params.get('tab') ?? 'mine') as 'mine' | 'review';
   const [year, setYear] = useState(new Date().getFullYear());
@@ -38,10 +39,10 @@ export default function AbsencesPage() {
         </div>
       )}
       <Tabs value={tab} onChange={(v) => setParams({ tab: v })} tabs={[
-        { id: 'mine', label: '📋 Meine Anträge' },
-        ...(review?.length ? [{ id: 'review' as const, label: `✅ Zu genehmigen${pending ? ` (${pending})` : ''}` }] : []),
+        { id: 'mine', label: 'Meine Anträge' },
+        ...(review?.length ? [{ id: 'review' as const, label: `Zu genehmigen${pending ? ` (${pending})` : ''}` }] : []),
       ]} />
-      {tab === 'mine' && (!list?.length ? <Empty icon="🏖️" title="Noch keine Anträge in diesem Jahr" /> : (
+      {tab === 'mine' && (!list?.length ? <Empty icon="palm" title="Noch keine Anträge in diesem Jahr" /> : (
         <div className="table-wrap"><table className="table">
           <thead><tr><th>Art</th><th>Zeitraum</th><th>Tage</th><th>Notiz</th><th>Status</th><th /></tr></thead>
           <tbody>{list.map((a) => (
@@ -73,7 +74,7 @@ export default function AbsencesPage() {
           ))}</tbody>
         </table></div>
       )}
-      <p className="hint" style={{ marginTop: 16 }}>🔒 Datenschutz: Kollegen sehen im Teamkalender nur, <b>wann</b> Sie abwesend sind – nie die Art oder einen Grund.</p>
+      <p className="hint" style={{ marginTop: 16 }}><Icon name="lock" /> Datenschutz: Kollegen sehen im Teamkalender nur, <b>wann</b> Sie abwesend sind – nie die Art oder einen Grund.</p>
       {params.get('new') && <RequestDialog onClose={() => setParams({})} />}
     </div>
   );

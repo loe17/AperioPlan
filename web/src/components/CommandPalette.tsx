@@ -5,6 +5,7 @@ import { get } from '../lib/api';
 import { useT } from '../i18n';
 import { useSession } from '../session';
 import { STATUS_META, CAD_STATE_META } from './ui';
+import { EntityIcon } from './Icon';
 
 interface Item { group: string; icon: string; label: string; meta?: string; go: () => void }
 
@@ -33,25 +34,25 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   const items: Item[] = useMemo(() => {
     const out: Item[] = [];
     const commands: Item[] = [
-      { group: 'Befehle', icon: '🚀', label: t('Neues Projekt'), go: go('/projects?new=1') },
-      { group: 'Befehle', icon: '⏱️', label: t('Stempeluhr'), go: go('/time') },
-      { group: 'Befehle', icon: '🏖️', label: t('Urlaub beantragen'), go: go('/absences?new=1') },
-      { group: 'Befehle', icon: '💡', label: t('Neue Idee'), go: go('/kvp?new=1') },
-      { group: 'Befehle', icon: '📐', label: t('CAD-Zentrale'), go: go('/cad') },
-      { group: 'Befehle', icon: '💬', label: t('Chat'), go: go('/chat') },
-      { group: 'Befehle', icon: '⚙️', label: t('Einstellungen'), go: go('/settings') },
-      { group: 'Befehle', icon: '🌙', label: t('Dunkelmodus'), go: () => { setTheme('dark'); onClose(); } },
-      { group: 'Befehle', icon: '☀️', label: t('Hellmodus'), go: () => { setTheme('light'); onClose(); } },
+      { group: 'Befehle', icon: 'rocket', label: t('Neues Projekt'), go: go('/projects?new=1') },
+      { group: 'Befehle', icon: 'timer', label: t('Stempeluhr'), go: go('/time') },
+      { group: 'Befehle', icon: 'palm', label: t('Urlaub beantragen'), go: go('/absences?new=1') },
+      { group: 'Befehle', icon: 'lightbulb', label: t('Neue Idee'), go: go('/kvp?new=1') },
+      { group: 'Befehle', icon: 'cad', label: t('CAD-Zentrale'), go: go('/cad') },
+      { group: 'Befehle', icon: 'chat', label: t('Chat'), go: go('/chat') },
+      { group: 'Befehle', icon: 'settings', label: t('Einstellungen'), go: go('/settings') },
+      { group: 'Befehle', icon: 'moon', label: t('Dunkelmodus'), go: () => { setTheme('dark'); onClose(); } },
+      { group: 'Befehle', icon: 'sun', label: t('Hellmodus'), go: () => { setTheme('light'); onClose(); } },
     ];
     const ql = q.trim().toLowerCase();
     out.push(...commands.filter((c) => !ql || c.label.toLowerCase().includes(ql)));
     if (results) {
       for (const p of results.projects) out.push({ group: 'Projekte', icon: p.icon, label: `${p.number} ${p.name}`, go: go(`/projects/${p.id}`) });
-      for (const tk of results.tasks) out.push({ group: 'Aufgaben', icon: STATUS_META[tk.status]?.ico ?? '•', label: `P${tk.number} ${tk.title}`, meta: tk.projectNumber, go: go(`/projects/${tk.projectId}?task=${tk.id}`) });
-      for (const c of results.cad) out.push({ group: 'Baugruppen & Teile', icon: c.type === 'assembly' ? '🧩' : c.type === 'drawing' ? '📄' : '⚙️', label: `${c.baseNumber}-${String(c.revision).padStart(2, '0')} ${c.designation}`, meta: CAD_STATE_META[c.state]?.label, go: go(`/cad?item=${c.id}`) });
-      for (const f of results.files) out.push({ group: 'Dateien', icon: '📄', label: f.name, meta: f.path.split('/').slice(-2, -1)[0], go: go(`/projects/${f.projectId}?tab=files&path=${encodeURIComponent(f.path.split('/').slice(0, -1).join('/'))}`) });
-      for (const u of results.users) out.push({ group: 'Mitarbeiter', icon: '👤', label: u.displayName, meta: u.email ?? u.username, go: go(`/chat?user=${u.id}`) });
-      for (const k of results.kvp) out.push({ group: 'KVP-Ideen', icon: '💡', label: `#${k.number} ${k.title}`, go: go(`/kvp?idea=${k.id}`) });
+      for (const tk of results.tasks) out.push({ group: 'Aufgaben', icon: 'check-circle', label: `P${tk.number} ${tk.title}`, meta: tk.projectNumber, go: go(`/projects/${tk.projectId}?task=${tk.id}`) });
+      for (const c of results.cad) out.push({ group: 'Baugruppen & Teile', icon: c.type === 'assembly' ? 'assembly' : c.type === 'drawing' ? 'drawing' : 'part', label: `${c.baseNumber}-${String(c.revision).padStart(2, '0')} ${c.designation}`, meta: CAD_STATE_META[c.state]?.label, go: go(`/cad?item=${c.id}`) });
+      for (const f of results.files) out.push({ group: 'Dateien', icon: 'file', label: f.name, meta: f.path.split('/').slice(-2, -1)[0], go: go(`/projects/${f.projectId}?tab=files&path=${encodeURIComponent(f.path.split('/').slice(0, -1).join('/'))}`) });
+      for (const u of results.users) out.push({ group: 'Mitarbeiter', icon: 'user', label: u.displayName, meta: u.email ?? u.username, go: go(`/chat?user=${u.id}`) });
+      for (const k of results.kvp) out.push({ group: 'KVP-Ideen', icon: 'lightbulb', label: `#${k.number} ${k.title}`, go: go(`/kvp?idea=${k.id}`) });
     }
     return out;
   }, [results, q]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -81,7 +82,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
               <div key={i}>
                 {head}
                 <div className={`palette-item ${i === sel ? 'sel' : ''}`} onMouseEnter={() => setSel(i)} onClick={it.go}>
-                  <span>{it.icon}</span><span>{it.label}</span>{it.meta && <span className="meta">{it.meta}</span>}
+                  <EntityIcon value={it.icon} /><span>{it.label}</span>{it.meta && <span className="meta">{it.meta}</span>}
                 </div>
               </div>
             );

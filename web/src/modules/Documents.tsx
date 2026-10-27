@@ -16,7 +16,7 @@ export function Documents({ projectId, canEdit }: { projectId: string; canEdit: 
         <span className="muted">Schriftverkehr, Verträge, Berichte – jedes Dokument erhält eine fortlaufende Nummer.</span>
         {canEdit && <button className="btn primary right" onClick={() => setOpen(true)}>＋ Dokument anlegen</button>}
       </div>
-      {!data?.length ? <Empty icon="📄" title="Noch keine Dokumente" /> : (
+      {!data?.length ? <Empty icon="file" title="Noch keine Dokumente" /> : (
         <div className="table-wrap"><table className="table">
           <thead><tr><th>Nummer</th><th>Titel</th><th>Datei</th><th>Angelegt</th><th>von</th></tr></thead>
           <tbody>{data.map((d) => (

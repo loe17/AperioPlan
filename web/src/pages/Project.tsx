@@ -8,7 +8,7 @@ import { useCrumbs } from '../components/Layout';
 import { useSession } from '../session';
 import { useT } from '../i18n';
 import { fmtDate } from '../lib/format';
-import { Avatar, ErrorBox, Loading, Modal, Field, PRIORITY_META, Progress, STATUS_META, StatusPill, useAction, UserSelect } from '../components/ui';
+import { Avatar, ErrorBox, Loading, Modal, Field, PRIORITY_META, Progress, STATUS_META, StatusDot, StatusPill, useAction, UserSelect } from '../components/ui';
 import { TaskPanel, quickCreateTask, type Task } from '../components/TaskPanel';
 import { Kanban } from '../modules/Kanban';
 import { TaskTable } from '../modules/TaskTable';
@@ -23,6 +23,7 @@ import { ProjectCad } from '../modules/ProjectCad';
 import { ProjectChat } from '../modules/ProjectChat';
 import { ProjectTime } from '../modules/ProjectTime';
 import { AiPanel } from '../modules/AiPanel';
+import { EntityIcon, Icon, IconPicker } from '../components/Icon';
 
 const TASK_VIEWS = ['kanban', 'list', 'gantt'];
 
@@ -52,11 +53,11 @@ export default function ProjectPage() {
   }), [id]);
 
   const crumbs = [] as { label: string; to?: string }[];
-  if (project?.teamName) crumbs.push({ label: `${project.teamIcon} ${project.teamName}`, to: `/teams/${project.teamId}` });
-  if (project?.parent) crumbs.push({ label: `${project.parent.icon} ${project.parent.number}`, to: `/projects/${project.parent.id}` });
-  if (project) crumbs.push({ label: `${project.icon} Projekt ${project.number} (${project.name})`, to: `/projects/${project.id}` });
+  if (project?.teamName) crumbs.push({ label: project.teamName, to: `/teams/${project.teamId}` });
+  if (project?.parent) crumbs.push({ label: project.parent.number, to: `/projects/${project.parent.id}` });
+  if (project) crumbs.push({ label: `Projekt ${project.number} (${project.name})`, to: `/projects/${project.id}` });
   const tabLabel = tab === 'overview' ? 'Übersicht' : tab === 'documents' ? 'Dokumente' : tab === 'audit' ? 'Änderungsprotokoll' : tab === 'settings' ? 'Einstellungen' : MODULE_LABELS[tab]?.label;
-  if (tabLabel) crumbs.push({ label: `${MODULE_LABELS[tab]?.icon ?? ''} ${t(tabLabel)}`.trim() });
+  if (tabLabel) crumbs.push({ label: t(tabLabel) });
   useCrumbs(crumbs);
 
   const filtered = useMemo(() => (tasks ?? []).filter((x) =>
@@ -70,12 +71,12 @@ export default function ProjectPage() {
   if (!project) return <Loading />;
 
   const tabs = [
-    { id: 'overview', label: `🏠 ${t('Übersicht')}` },
-    ...project.modules.map((m: string) => ({ id: m, label: `${MODULE_LABELS[m]?.icon} ${t(MODULE_LABELS[m]?.label ?? m)}` })),
-    ...pluginTabs.map((p) => ({ id: `plugin:${p.id}`, label: `${p.projectTab.icon ?? '🧩'} ${p.projectTab.label}` })),
-    { id: 'documents', label: '📄 Dokumente' },
-    { id: 'audit', label: `📜 ${t('Änderungsprotokoll')}` },
-    ...(project.canManage ? [{ id: 'settings', label: `⚙️ ${t('Einstellungen')}` }] : []),
+    { id: 'overview', label: `${t('Übersicht')}` },
+    ...project.modules.map((m: string) => ({ id: m, label: t(MODULE_LABELS[m]?.label ?? m) })),
+    ...pluginTabs.map((p) => ({ id: `plugin:${p.id}`, label: p.projectTab.label })),
+    { id: 'documents', label: 'Dokumente' },
+    { id: 'audit', label: `${t('Änderungsprotokoll')}` },
+    ...(project.canManage ? [{ id: 'settings', label: `${t('Einstellungen')}` }] : []),
   ];
   const isTaskView = TASK_VIEWS.includes(tab);
   const statusLabel = STATUS_OPTIONS.find(([v]) => v === project.status)?.[1];
@@ -83,26 +84,26 @@ export default function ProjectPage() {
   return (
     <div className={`page ${['kanban', 'gantt', 'whiteboard', 'chat'].includes(tab) ? 'wide' : ''}`}>
       <div className="page-head">
-        <div style={{ fontSize: 34, lineHeight: 1 }}>{project.icon}</div>
+        <div className="entity-big"><EntityIcon value={project.icon} size={30} /></div>
         <div className="grow">
           <div className="row">
             <h1>{project.name}</h1>
             <button className="icon-btn" title={project.favorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten'} onClick={async () => {
               await act(() => (project.favorite ? del(`/favorites/project/${project.id}`) : put(`/favorites/project/${project.id}`, {})));
               invalidate(`/projects/${project.id}`); invalidate('/favorites');
-            }}>{project.favorite ? '⭐' : '☆'}</button>
+            }}>{project.favorite ? <Icon name="star-filled" /> : <Icon name="star" />}</button>
           </div>
           <div className="sub row wrap">
             <span className="mono">{project.number}</span>
             <span className="pill">{statusLabel}</span>
             {project.customer && <span>Kunde: {project.customer}</span>}
-            {(project.startDate || project.dueDate) && <span>📅 {fmtDate(project.startDate)} – {fmtDate(project.dueDate)}</span>}
-            {project.networkPath && <span title="Im Windows-Explorer öffnen" className="mono small">📂 {project.networkPath}</span>}
+            {(project.startDate || project.dueDate) && <span><Icon name="calendar" /> {fmtDate(project.startDate)} – {fmtDate(project.dueDate)}</span>}
+            {project.networkPath && <span title="Im Windows-Explorer öffnen" className="mono small"><Icon name="folder-open" /> {project.networkPath}</span>}
           </div>
         </div>
         <div className="actions">
-          {settings?.mailEnabled && <Link className="btn" to={`/mail?projectId=${project.id}`}>✉️ E-Mails</Link>}
-          {settings?.aiEnabled && <button className="btn" onClick={() => setAi(true)}>🤖 KI</button>}
+          {settings?.mailEnabled && <Link className="btn" to={`/mail?projectId=${project.id}`}><Icon name="mail" /> E-Mails</Link>}
+          {settings?.aiEnabled && <button className="btn" onClick={() => setAi(true)}><Icon name="sparkles" /> KI</button>}
           {isTaskView && project.canEdit && <button className="btn primary" onClick={() => setNewTask(true)}>＋ {t('Neue Aufgabe')}</button>}
         </div>
       </div>
@@ -113,13 +114,13 @@ export default function ProjectPage() {
 
       {isTaskView && tab !== 'gantt' && (
         <div className="toolbar">
-          <input placeholder={`🔍 ${t('Filtern nach …')}`} value={filter.q} onChange={(e) => setFilter({ ...filter, q: e.target.value })} style={{ width: 220 }} />
+          <input placeholder={`${t('Filtern nach …')}`} value={filter.q} onChange={(e) => setFilter({ ...filter, q: e.target.value })} style={{ width: 220 }} />
           <select value={filter.assignee} onChange={(e) => setFilter({ ...filter, assignee: e.target.value })}>
             <option value="">{t('Bearbeiter')}: alle</option><option value="none">ohne Bearbeiter</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.displayName}</option>)}
           </select>
           <select value={filter.team} onChange={(e) => setFilter({ ...filter, team: e.target.value })}>
-            <option value="">{t('Abteilung')}: alle</option>{teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.icon} {tm.name}</option>)}
+            <option value="">{t('Abteilung')}: alle</option>{teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
           </select>
           <select value={filter.priority} onChange={(e) => setFilter({ ...filter, priority: e.target.value })}>
             <option value="">{t('Priorität')}: alle</option>{TASK_PRIORITIES.map((p) => <option key={p} value={p}>{t(PRIORITY_META[p]!.label)}</option>)}
@@ -174,7 +175,7 @@ function NewTaskDialog({ projectId, onClose, onCreated }: { projectId: string; o
       <Field label={t('Beschreibung')}><textarea value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} /></Field>
       <div className="grid2">
         <Field label={t('Bearbeiter')}><UserSelect users={users} value={d.assigneeId} onChange={(v) => setD({ ...d, assigneeId: v })} /></Field>
-        <Field label={t('Abteilung')}><select value={d.teamId} onChange={(e) => setD({ ...d, teamId: e.target.value })}><option value="">–</option>{teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.icon} {tm.name}</option>)}</select></Field>
+        <Field label={t('Abteilung')}><select value={d.teamId} onChange={(e) => setD({ ...d, teamId: e.target.value })}><option value="">–</option>{teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}</select></Field>
         <Field label={t('Priorität')}><select value={d.priority} onChange={(e) => setD({ ...d, priority: e.target.value })}>{TASK_PRIORITIES.map((p) => <option key={p} value={p}>{t(PRIORITY_META[p]!.label)}</option>)}</select></Field>
         <Field label={t('Status')}><select value={d.status} onChange={(e) => setD({ ...d, status: e.target.value })}>{TASK_STATUSES.map((s) => <option key={s} value={s}>{t(STATUS_META[s]!.label)}</option>)}</select></Field>
         <Field label={t('Start')}><input type="date" value={d.startDate} onChange={(e) => setD({ ...d, startDate: e.target.value })} /></Field>
@@ -199,7 +200,7 @@ function Overview({ project, tasks, onOpen }: { project: any; tasks: Task[]; onO
           <div className="stat">{tasks.length ? Math.round((done / tasks.length) * 100) : 0} %</div>
           <Progress value={tasks.length ? done / tasks.length : 0} />
           <div className="row small muted" style={{ marginTop: 8, gap: 10 }}>
-            {TASK_STATUSES.map((s) => <span key={s}>{STATUS_META[s]!.ico} {counts[s]}</span>)}
+            {TASK_STATUSES.map((s) => <span key={s} className="row" style={{ gap: 5 }}><StatusDot status={s} /> {counts[s]}</span>)}
           </div>
         </div>
         <div className="card"><div className="muted small">Überfällig</div><div className="stat" style={{ color: overdue.length ? 'var(--red)' : undefined }}>{overdue.length}</div></div>
@@ -214,7 +215,7 @@ function Overview({ project, tasks, onOpen }: { project: any; tasks: Task[]; onO
           <div className="card-grid">
             {project.children.map((c: any) => (
               <Link key={c.id} to={`/projects/${c.id}`} className="card click" style={{ color: 'inherit', textDecoration: 'none' }}>
-                <div className="row"><span>{c.icon}</span><b className="mono">{c.number}</b><span>{c.name}</span></div>
+                <div className="row"><EntityIcon value={c.icon} /><b className="mono">{c.number}</b><span>{c.name}</span></div>
               </Link>
             ))}
           </div>

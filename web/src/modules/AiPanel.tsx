@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { post } from '../lib/api';
 import { Field, SlideOver, useAction } from '../components/ui';
+import { Icon } from '../components/Icon';
 
 const MODES: [string, string, string][] = [
-  ['summarize', '📋 Zusammenfassen', 'Fortschritt, Risiken und nächste Schritte'],
-  ['write', '✍️ Schreibhilfe', 'z. B. Statusbericht an den Kunden formulieren'],
-  ['analyze', '🔎 Dokument analysieren', 'Kernaussagen und offene Fragen'],
-  ['free', '💬 Frage stellen', 'Freie Frage zum Projekt'],
+  ['summarize', 'Zusammenfassen', 'Fortschritt, Risiken und nächste Schritte'],
+  ['write', 'Schreibhilfe', 'z. B. Statusbericht an den Kunden formulieren'],
+  ['analyze', 'Dokument analysieren', 'Kernaussagen und offene Fragen'],
+  ['free', 'Frage stellen', 'Freie Frage zum Projekt'],
 ];
 
 /** KI-Assistent: nutzt die in den Einstellungen hinterlegte lokale oder externe KI */
@@ -23,7 +24,7 @@ export function AiPanel({ projectId, fileId, initialText, onClose }: { projectId
     if (r) { setHistory([...history, { role: 'user', content: prompt || MODES.find((m) => m[0] === mode)![1] }, { role: 'assistant', content: r.answer }]); setPrompt(''); }
   };
   return (
-    <SlideOver title={<b>🤖 KI-Assistent</b>} onClose={onClose}>
+    <SlideOver title={<b><Icon name="sparkles" /> KI-Assistent</b>} onClose={onClose}>
       <div className="row wrap" style={{ marginBottom: 12 }}>
         {MODES.filter(([m]) => m !== 'analyze' || fileId).map(([m, l, h]) => <button key={m} className={`btn sm ${mode === m ? 'primary' : ''}`} title={h} onClick={() => setMode(m)}>{l}</button>)}
       </div>

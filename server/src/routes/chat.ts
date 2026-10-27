@@ -48,7 +48,7 @@ export default async function chatRoutes(app: FastifyInstance, ctx: AppContext) 
       and not exists (select 1 from chat_channels c where c.kind = 'team' and c.team_id = t.id)`;
     return sql`select c.id, c.kind, c.project_id as "projectId", c.team_id as "teamId",
         case when c.kind = 'direct' then (select us.display_name from chat_members m2 join users us on us.id = m2.user_id where m2.channel_id = c.id and m2.user_id <> ${u.id} limit 1)
-             when c.kind = 'project' then p.number || ' ' || p.name else t.icon || ' ' || t.name end as name,
+             when c.kind = 'project' then p.number || ' ' || p.name else t.name end as name,
         case when c.kind = 'direct' then (select m2.user_id from chat_members m2 where m2.channel_id = c.id and m2.user_id <> ${u.id} limit 1) end as "otherUserId",
         p.icon as "projectIcon",
         (select count(*)::int from chat_messages msg where msg.channel_id = c.id and msg.deleted_at is null and msg.user_id <> ${u.id}
@@ -123,7 +123,7 @@ export default async function chatRoutes(app: FastifyInstance, ctx: AppContext) 
     const online = ctx.hub.onlineUserIds();
     await notify(ctx, targets.filter((t) => c.kind !== 'direct' || !online.has(t)), {
       kind: 'chat', title: c.kind === 'direct' ? `Nachricht von ${u.displayName}` : `${u.displayName} hat dich im Chat erwähnt`,
-      body: b.body.slice(0, 200) || '📎 Anhang', link: `/chat?channel=${id}`,
+      body: b.body.slice(0, 200) || 'Anhang', link: `/chat?channel=${id}`,
     }, u.id);
     return full;
   });

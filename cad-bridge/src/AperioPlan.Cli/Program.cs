@@ -107,7 +107,7 @@ namespace AperioPlan.Cli
             foreach (Dictionary<string, object> d in api.GetList(q))
             {
                 var i = CadItem.From(d);
-                Console.WriteLine($"{i.Number,-45} {i.Type,-9} {CadItem.StateLabel(i.State),-12} {(i.CheckedOutByName != null ? "🔒 " + i.CheckedOutByName : "")}");
+                Console.WriteLine($"{i.Number,-45} {i.Type,-9} {CadItem.StateLabel(i.State),-12} {(i.CheckedOutByName != null ? "[gesperrt] " + i.CheckedOutByName : "")}");
             }
             return 0;
         }

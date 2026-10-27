@@ -15,8 +15,8 @@ const PW = 'Neu-Sicher-2026!';
 const results = [];
 const step = async (name, fn) => {
   const t = Date.now();
-  try { await fn(); results.push({ name, ok: true, ms: Date.now() - t }); console.log(`✅ ${name}`); }
-  catch (e) { results.push({ name, ok: false, error: e.message }); console.log(`❌ ${name}: ${e.message.split('\n')[0]}`); }
+  try { await fn(); results.push({ name, ok: true, ms: Date.now() - t }); console.log(`[OK]     ${name}`); }
+  catch (e) { results.push({ name, ok: false, error: e.message }); console.log(`[FEHLER] ${name}: ${e.message.split('\n')[0]}`); }
 };
 const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
 
@@ -52,7 +52,7 @@ await step('1.2 Erstzugang admin/admin mit Passwort-Zwang', async () => {
 // ------------------------------------------------------------ 2. Design- & Oberflächen-Test
 let projectId;
 await step('2.1 Teams und Projekt über die Oberfläche anlegen', async () => {
-  await api('POST', '/teams', { name: 'Konstruktion', icon: '⚙️' });
+  await api('POST', '/teams', { name: 'Konstruktion', icon: 'gear' });
   await page.goto(`${BASE}/projects?new=1`);
   await page.fill('input[placeholder="z. B. Verpackungsanlage"]', 'Maschine X');
   await page.click('.modal-foot button.primary');

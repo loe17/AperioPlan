@@ -6,12 +6,12 @@ import { Empty, Pill, Tabs } from '../components/ui';
 import { CadCenter } from '../modules/CadCenter';
 
 export default function CadPage() {
-  useCrumbs([{ label: '📐 CAD-Zentrale' }]);
+  useCrumbs([{ label: 'CAD-Zentrale' }]);
   const [tab, setTab] = useState<'items' | 'exports' | 'setup'>('items');
   return (
     <div className="page wide">
       <div className="page-head"><div><h1>CAD-Zentrale</h1><div className="sub">Baugruppen, Einzelteile und Zeichnungen aller Projekte – mit Sperren, Versionsständen und Freigaben</div></div></div>
-      <Tabs value={tab} onChange={setTab} tabs={[{ id: 'items', label: '📐 Teile & Baugruppen' }, { id: 'exports', label: '🏭 Fertigungsableitungen' }, { id: 'setup', label: '🧩 CAD-Wächter einrichten' }]} />
+      <Tabs value={tab} onChange={setTab} tabs={[{ id: 'items', label: 'Teile & Baugruppen' }, { id: 'exports', label: 'Fertigungsableitungen' }, { id: 'setup', label: 'CAD-Wächter einrichten' }]} />
       {tab === 'items' && <CadCenter />}
       {tab === 'exports' && <Exports />}
       {tab === 'setup' && <Setup />}
@@ -21,7 +21,7 @@ export default function CadPage() {
 
 function Exports() {
   const { data } = useApi<any[]>('/cad/exports');
-  if (!data?.length) return <Empty icon="🏭" title="Noch keine Aufträge">Bei jeder Freigabe entstehen hier Aufträge für PDF, DXF und STEP.</Empty>;
+  if (!data?.length) return <Empty icon="factory" title="Noch keine Aufträge">Bei jeder Freigabe entstehen hier Aufträge für PDF, DXF und STEP.</Empty>;
   return (
     <div className="table-wrap"><table className="table">
       <thead><tr><th>Angefordert</th><th>Nummer</th><th>Benennung</th><th>Format</th><th>Status</th><th>Bearbeitet von</th><th>Hinweis</th></tr></thead>

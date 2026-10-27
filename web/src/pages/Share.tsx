@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { fmtBytes, fmtDate, fmtDateTime } from '../lib/format';
 import { Field, StatusPill } from '../components/ui';
 import { fileIcon } from '../modules/ProjectFiles';
+import { Icon } from '../components/Icon';
 
 /** Öffentliche Seite für Gast-, Teilen- und Anforderungslinks (ohne Anmeldung) */
 export default function SharePage() {
@@ -63,12 +64,12 @@ function PublicFiles({ call, token, pw }: { call: Call; token: string; pw: strin
   const dl = (e: any) => `/api/public/links/${token}/download?${e.id && !e.relPath.includes('/') && !path ? `fileId=${e.id}` : `path=${encodeURIComponent(e.relPath)}`}${pw ? `&pw=${encodeURIComponent(pw)}` : ''}`;
   return (
     <div style={{ marginBottom: 20 }}>
-      <h3 style={{ marginBottom: 8 }}>📁 Dateien {path && <span className="muted">/ {path}</span>}</h3>
+      <h3 style={{ marginBottom: 8 }}><Icon name="folder" /> Dateien {path && <span className="muted">/ {path}</span>}</h3>
       <div className="table-wrap"><table className="table"><tbody>
-        {path && <tr className="click" onClick={() => setPath(path.split('/').slice(0, -1).join('/'))}><td colSpan={3}>⬆️ ..</td></tr>}
+        {path && <tr className="click" onClick={() => setPath(path.split('/').slice(0, -1).join('/'))}><td colSpan={3}><Icon name="upload" /> ..</td></tr>}
         {data?.entries?.map((e: any) => (
           <tr key={e.relPath} className="click" onClick={() => (e.isDir ? setPath(e.relPath) : (location.href = dl(e)))}>
-            <td>{fileIcon(e.name, e.isDir)} {e.name}</td><td className="small muted">{e.isDir ? '' : fmtBytes(e.size)}</td><td className="small muted">{fmtDate(e.modified)}</td>
+            <td><span className="row" style={{ gap: 6 }}><Icon name={fileIcon(e.name, e.isDir)} /> {e.name}</span></td><td className="small muted">{e.isDir ? '' : fmtBytes(e.size)}</td><td className="small muted">{fmtDate(e.modified)}</td>
           </tr>
         ))}
         {data?.entries?.length === 0 && <tr><td className="muted">Keine Dateien</td></tr>}
@@ -82,11 +83,11 @@ function PublicDrawings({ call, token, pw }: { call: Call; token: string; pw: st
   useEffect(() => { call('/drawings').then((r) => r.json()).then(setData); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div style={{ marginBottom: 20 }}>
-      <h3 style={{ marginBottom: 8 }}>📐 Freigegebene Zeichnungen</h3>
+      <h3 style={{ marginBottom: 8 }}><Icon name="cad" /> Freigegebene Zeichnungen</h3>
       {!data.length ? <div className="muted">Noch keine freigegebenen Zeichnungen</div> : (
         <div className="table-wrap"><table className="table"><tbody>
           {data.map((d) => <tr key={d.fileId}><td className="mono">{d.baseNumber}-{d.revision}</td><td>{d.designation}</td><td>{d.format.toUpperCase()}</td>
-            <td><a className="btn sm" href={`/api/public/links/${token}/download?fileId=${d.fileId}${pw ? `&pw=${encodeURIComponent(pw)}` : ''}`}>⬇️ {d.name}</a></td></tr>)}
+            <td><a className="btn sm" href={`/api/public/links/${token}/download?fileId=${d.fileId}${pw ? `&pw=${encodeURIComponent(pw)}` : ''}`}><Icon name="download" /> {d.name}</a></td></tr>)}
         </tbody></table></div>
       )}
     </div>
@@ -98,9 +99,9 @@ function PublicTasks({ call }: { call: Call }) {
   useEffect(() => { call('/tasks').then((r) => r.json()).then(setData); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div>
-      <h3 style={{ marginBottom: 8 }}>📋 Aufgaben & Termine</h3>
+      <h3 style={{ marginBottom: 8 }}><Icon name="list" /> Aufgaben & Termine</h3>
       <div className="table-wrap"><table className="table"><tbody>
-        {data.map((t) => <tr key={t.number}><td className="mono muted">P{t.number}</td><td>{t.milestone && '◆ '}{t.title}</td><td><StatusPill status={t.status} /></td><td>{fmtDate(t.dueDate)}</td></tr>)}
+        {data.map((t) => <tr key={t.number}><td className="mono muted">P{t.number}</td><td>{t.milestone && <Icon name="milestone" className="mr" />}{t.title}</td><td><StatusPill status={t.status} /></td><td>{fmtDate(t.dueDate)}</td></tr>)}
       </tbody></table></div>
     </div>
   );
@@ -129,11 +130,11 @@ function RequestUpload({ call }: { call: Call }) {
       <Field label="Ihr Name / Firma" required><input value={name} onChange={(e) => setName(e.target.value)} /></Field>
       <div className={`dropzone ${over ? 'over' : ''}`} onClick={() => ref.current?.click()} style={{ cursor: 'pointer', padding: 40 }}
         onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={(e) => { e.preventDefault(); setOver(false); void send(e.dataTransfer.files); }}>
-        {busy ? 'Wird hochgeladen …' : '⬆️ Dateien hierher ziehen oder klicken (auch große 3D-Dateien)'}
+        {busy ? 'Wird hochgeladen …' : 'Dateien hierher ziehen oder klicken (auch große 3D-Dateien)'}
       </div>
       <input ref={ref} type="file" multiple hidden onChange={(e) => e.target.files && send(e.target.files)} />
       {err && <div className="error-text" style={{ marginTop: 8 }}>{err}</div>}
-      {done.length > 0 && <div className="card" style={{ marginTop: 12, borderColor: 'var(--green)' }}>✅ Erfolgreich übermittelt: {done.join(', ')}</div>}
+      {done.length > 0 && <div className="card" style={{ marginTop: 12, borderColor: 'var(--green)' }}><Icon name="check-circle" /> Erfolgreich übermittelt: {done.join(', ')}</div>}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { get, post, put, del, invalidate } from '../lib/api';
 import { useApi } from '../lib/hooks';
 import { realtime } from '../lib/realtime';
 import { Confirm, Empty, useAction } from '../components/ui';
+import { Icon } from '../components/Icon';
 
 type Tool = 'select' | 'note' | 'rect' | 'ellipse' | 'arrow' | 'pen' | 'text';
 interface Item {
@@ -35,7 +36,7 @@ export function Whiteboards({ projectId, canEdit }: { projectId: string; canEdit
         }}>＋ Neues Whiteboard</button>}
         {canEdit && active && <button className="btn sm danger right" onClick={() => setConfirm(true)}>Whiteboard löschen</button>}
       </div>
-      {!boards?.length && <Empty icon="🎨" title="Noch kein Whiteboard">Legen Sie eine freie Zeichenfläche für Skizzen, Schaltpläne und Haftnotizen an.</Empty>}
+      {!boards?.length && <Empty icon="whiteboard" title="Noch kein Whiteboard">Legen Sie eine freie Zeichenfläche für Skizzen, Schaltpläne und Haftnotizen an.</Empty>}
       {active && <Board key={active} id={active} projectId={projectId} canEdit={canEdit} />}
       {confirm && active && <Confirm danger text="Whiteboard mit allen Inhalten löschen?" onClose={() => setConfirm(false)} onConfirm={async () => {
         await del(`/whiteboards/${active}`); setActive(null); invalidate(`/projects/${projectId}/whiteboards`);
@@ -166,13 +167,13 @@ function Board({ id, projectId, canEdit }: { id: string; projectId: string; canE
   };
 
   const edited = items.find((i) => i.id === editing);
-  const tools: [Tool, string, string][] = [['select', '🖐️', 'Auswählen / Verschieben'], ['note', '🗒️', 'Haftnotiz'], ['text', '🔤', 'Text'], ['rect', '▭', 'Rechteck'], ['ellipse', '◯', 'Kreis'], ['arrow', '➝', 'Pfeil'], ['pen', '✏️', 'Freihand']];
+  const tools: [Tool, string, string][] = [['select', 'hand', 'Auswählen / Verschieben'], ['note', 'note', 'Haftnotiz'], ['text', 'text', 'Text'], ['rect', 'square', 'Rechteck'], ['ellipse', 'circle', 'Kreis'], ['arrow', 'arrow-right', 'Pfeil'], ['pen', 'edit', 'Freihand']];
 
   return (
     <div className="wb-wrap">
       {canEdit && (
         <div className="wb-tools">
-          {tools.map(([t, ico, label]) => <button key={t} className={`btn sm ${tool === t ? 'active' : ''}`} title={label} onClick={() => setTool(t)}>{ico}</button>)}
+          {tools.map(([t, ico, label]) => <button key={t} className={`btn sm ${tool === t ? 'active' : ''}`} title={label} onClick={() => setTool(t)}><Icon name={ico} /></button>)}
           <span style={{ width: 1, background: 'var(--line)', margin: '0 4px' }} />
           {(tool === 'note' ? NOTE_COLORS : STROKES).map((c) => (
             <button key={c} className="btn sm" title="Farbe" onClick={() => {
@@ -181,7 +182,7 @@ function Board({ id, projectId, canEdit }: { id: string; projectId: string; canE
             }} style={{ width: 24, padding: 0, justifyContent: 'center', background: c, outline: (tool === 'note' ? noteColor : color) === c ? '2px solid var(--accent)' : undefined }}>&nbsp;</button>
           ))}
           <span style={{ width: 1, background: 'var(--line)', margin: '0 4px' }} />
-          <button className="btn sm" disabled={!selected} title="Auswahl löschen (Entf)" onClick={() => commit(items.filter((i) => i.id !== selected))}>🗑️</button>
+          <button className="btn sm" disabled={!selected} title="Auswahl löschen (Entf)" onClick={() => commit(items.filter((i) => i.id !== selected))}><Icon name="trash" /></button>
           <span className="small muted" style={{ alignSelf: 'center', padding: '0 6px' }}>{saved ? 'gespeichert' : 'speichert …'}</span>
         </div>
       )}

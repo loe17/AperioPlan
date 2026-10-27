@@ -6,6 +6,7 @@ import { useSession } from '../session';
 import { useT } from '../i18n';
 import { fmtDateTime, fmtHours } from '../lib/format';
 import { Avatar, Confirm, Field, PRIORITY_META, SlideOver, STATUS_META, useAction, UserSelect } from './ui';
+import { Icon } from './Icon';
 
 export interface Task {
   id: string; projectId: string; number: number; title: string; description: string; status: string; priority: string;
@@ -22,7 +23,7 @@ export function Comments({ type, id }: { type: 'task' | 'cad_item' | 'kvp'; id: 
   const act = useAction();
   return (
     <div>
-      <h3 style={{ margin: '18px 0 10px' }}>💬 {t('Kommentare')}</h3>
+      <h3 style={{ margin: '18px 0 10px' }}><Icon name="chat" /> {t('Kommentare')}</h3>
       {data?.map((c) => (
         <div key={c.id} className="msg">
           <Avatar id={c.userId} name={c.userName} />
@@ -62,7 +63,7 @@ export function TaskPanel({ taskId, onClose, allTasks }: { taskId: string; onClo
     <SlideOver onClose={onClose}
       title={<div className="row"><span className="mono muted">P{task.number}</span><span className="pill">{task.projectNumber}</span></div>}
       actions={<>
-        <button className="btn sm" title="Zeit auf diese Aufgabe stempeln" onClick={() => act(() => post('/time/clock-in', { projectId: task.projectId, taskId: task.id }).then(() => invalidate('/time')), 'Stempeluhr läuft')}>⏱️ {t('Einstempeln')}</button>
+        <button className="btn sm" title="Zeit auf diese Aufgabe stempeln" onClick={() => act(() => post('/time/clock-in', { projectId: task.projectId, taskId: task.id }).then(() => invalidate('/time')), 'Stempeluhr läuft')}><Icon name="timer" /> {t('Einstempeln')}</button>
         <button className="btn sm danger" onClick={() => setConfirmDelete(true)}>{t('Löschen')}</button>
       </>}>
       <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} onBlur={() => draft.title.trim() && draft.title !== task.title && save({ title: draft.title })}
@@ -70,7 +71,7 @@ export function TaskPanel({ taskId, onClose, allTasks }: { taskId: string; onClo
       <div className="grid2" style={{ marginTop: 12 }}>
         <Field label={t('Status')}>
           <select value={task.status} onChange={(e) => save({ status: e.target.value })}>
-            {TASK_STATUSES.map((s) => <option key={s} value={s}>{STATUS_META[s]!.ico} {t(STATUS_META[s]!.label)}</option>)}
+            {TASK_STATUSES.map((s) => <option key={s} value={s}>{t(STATUS_META[s]!.label)}</option>)}
           </select>
         </Field>
         <Field label={t('Priorität')}>
@@ -81,13 +82,13 @@ export function TaskPanel({ taskId, onClose, allTasks }: { taskId: string; onClo
         <Field label={t('Bearbeiter')}><UserSelect users={users} value={task.assigneeId} onChange={(v) => save({ assigneeId: v })} /></Field>
         <Field label={t('Abteilung')}>
           <select value={task.teamId ?? ''} onChange={(e) => save({ teamId: e.target.value || null })}>
-            <option value="">–</option>{teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.icon} {tm.name}</option>)}
+            <option value="">–</option>{teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
           </select>
         </Field>
         <Field label={t('Start')}><input type="date" value={task.startDate ?? ''} onChange={(e) => save({ startDate: e.target.value || null })} /></Field>
         <Field label={t('Fällig')}><input type="date" value={task.dueDate ?? ''} onChange={(e) => save({ dueDate: e.target.value || null })} /></Field>
         <Field label="Geschätzter Aufwand (Std.)"><input type="number" min={0} step={0.5} defaultValue={task.estimateHours ?? ''} onBlur={(e) => save({ estimateHours: e.target.value ? Number(e.target.value) : null })} /></Field>
-        <Field label="Gebucht"><div style={{ padding: '6px 0' }}>⏱️ {fmtHours(task.hoursBooked)}{task.estimateHours ? ` von ${fmtHours(task.estimateHours)}` : ''}</div></Field>
+        <Field label="Gebucht"><div style={{ padding: '6px 0' }}><Icon name="timer" /> {fmtHours(task.hoursBooked)}{task.estimateHours ? ` von ${fmtHours(task.estimateHours)}` : ''}</div></Field>
       </div>
       <label className="row small" style={{ marginBottom: 12 }}><input type="checkbox" checked={task.milestone} onChange={(e) => save({ milestone: e.target.checked })} /> Meilenstein</label>
       <Field label={t('Beschreibung')}>
@@ -107,7 +108,7 @@ export function TaskPanel({ taskId, onClose, allTasks }: { taskId: string; onClo
       <Comments type="task" id={task.id} />
       {history && history.length > 0 && (
         <div>
-          <h3 style={{ margin: '18px 0 8px' }}>📜 Verlauf</h3>
+          <h3 style={{ margin: '18px 0 8px' }}><Icon name="history" /> Verlauf</h3>
           {history.map((h) => <div key={h.id} className="small muted">{fmtDateTime(h.at)} · {h.userName}: {h.summary}</div>)}
         </div>
       )}

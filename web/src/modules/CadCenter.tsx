@@ -7,6 +7,7 @@ import { useSession, type PublicSettings } from '../session';
 import { fmtBytes, fmtDateTime } from '../lib/format';
 import { CAD_STATE_META, Confirm, Empty, Field, Modal, Pill, SlideOver, StatusPill, Tabs, useAction, useToast } from '../components/ui';
 import { Comments } from '../components/TaskPanel';
+import { Icon } from '../components/Icon';
 
 export interface CadItem {
   id: string; projectId: string; projectNumber: string; projectName: string; type: 'part' | 'assembly' | 'drawing';
@@ -17,10 +18,10 @@ export interface CadItem {
 }
 
 export const TYPE_META: Record<string, { label: string; icon: string }> = {
-  part: { label: 'Teil', icon: '⚙️' }, assembly: { label: 'Baugruppe', icon: '🧩' }, drawing: { label: 'Zeichnung', icon: '📐' },
+  part: { label: 'Teil', icon: 'part' }, assembly: { label: 'Baugruppe', icon: 'assembly' }, drawing: { label: 'Zeichnung', icon: 'drawing' },
 };
 const PROC: Record<string, string> = { make: 'Eigenfertigung', buy: 'Kaufteil', standard: 'Normteil' };
-const STATE_ACTION: Record<string, string> = { review: '➡️ Zur Prüfung', released: '✅ Freigeben', in_work: '↩️ Zurück in Arbeit', obsolete: '⛔ Ungültig setzen' };
+const STATE_ACTION: Record<string, string> = { review: 'Zur Prüfung', released: 'Freigeben', in_work: 'Zurück in Arbeit', obsolete: 'Ungültig setzen' };
 
 /** CAD-Zentrale: alle Baugruppen, Teile und Zeichnungen – optional auf ein Projekt beschränkt */
 export function CadCenter({ projectId, canEdit = true }: { projectId?: string; canEdit?: boolean }) {
@@ -53,14 +54,14 @@ export function CadCenter({ projectId, canEdit = true }: { projectId?: string; c
   return (
     <div>
       <div className="toolbar">
-        <input placeholder="🔍 Nummer, Benennung, Werkstoff …" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 260 }} />
-        <select value={type} onChange={(e) => setType(e.target.value)}><option value="">Alle Typen</option>{Object.entries(TYPE_META).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}</select>
+        <input placeholder="Nummer, Benennung, Werkstoff …" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 260 }} />
+        <select value={type} onChange={(e) => setType(e.target.value)}><option value="">Alle Typen</option>{Object.entries(TYPE_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select>
         <select value={state} onChange={(e) => setState(e.target.value)}><option value="">Alle Status</option>{Object.entries(CAD_STATE_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select>
         <label className="row small" style={{ gap: 4 }}><input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} /> von mir ausgecheckt</label>
         <span className="muted small">{items.length} Einträge</span>
         {canEdit && me?.role !== 'guest' && <button className="btn primary right" onClick={() => setCreating(true)}>＋ Neue Nummer</button>}
       </div>
-      {!rows.length ? <Empty icon="📐" title="Noch keine CAD-Daten">Teile und Baugruppen werden beim Speichern in SolidWorks über den CAD-Wächter angelegt – oder hier über „Neue Nummer“.</Empty> : (
+      {!rows.length ? <Empty icon="cad" title="Noch keine CAD-Daten">Teile und Baugruppen werden beim Speichern in SolidWorks über den CAD-Wächter angelegt – oder hier über „Neue Nummer“.</Empty> : (
         <div className="table-wrap"><table className="table">
           <thead><tr><th>Nummer</th><th>Benennung</th><th>Typ</th>{!projectId && <th>Projekt</th>}<th>Status</th><th>Zeichnung</th><th>Werkstoff</th><th>Beschaffung</th><th>Sperre</th><th>Geändert</th></tr></thead>
           <tbody>{rows.map((i) => {
@@ -69,13 +70,13 @@ export function CadCenter({ projectId, canEdit = true }: { projectId?: string; c
               <tr key={i.id} className="click" onClick={() => open(i.id)}>
                 <td className="mono" style={{ whiteSpace: 'nowrap' }}>{i.baseNumber}-<b>{i.revisionLabel}</b></td>
                 <td>{i.designation}</td>
-                <td>{TYPE_META[i.type]!.icon} {TYPE_META[i.type]!.label}</td>
+                <td><span className="row" style={{ gap: 6 }}><Icon name={TYPE_META[i.type]!.icon} /> {TYPE_META[i.type]!.label}</span></td>
                 {!projectId && <td className="mono small">{i.projectNumber}</td>}
                 <td><StatusPill status={i.state} meta={CAD_STATE_META} /></td>
                 <td onClick={(e) => { if (dwg) { e.stopPropagation(); open(dwg.id); } }}>{dwg ? <StatusPill status={dwg.state} meta={CAD_STATE_META} /> : i.type === 'drawing' ? '' : <span className="muted small">–</span>}</td>
                 <td className="small">{i.properties.Werkstoff ?? ''}</td>
                 <td className="small">{PROC[i.procurement]}</td>
-                <td>{i.checkedOutBy ? <Pill tone="amber">🔒 {i.checkedOutByName}</Pill> : ''}</td>
+                <td>{i.checkedOutBy ? <Pill tone="amber"><Icon name="lock" /> {i.checkedOutByName}</Pill> : ''}</td>
                 <td className="small muted">{fmtDateTime(i.updatedAt)}</td>
               </tr>
             );
@@ -130,7 +131,7 @@ function SaveMaskDialog({ projectId, onClose, onCreated }: { projectId?: string;
   }, [d.projectId, d.sub, d.subsub, d.designation]);
   const ext = { part: '.sldprt', assembly: '.sldasm', drawing: '.slddrw' }[d.type];
   return (
-    <Modal size="lg" title="📐 Speichermaske – neue CAD-Nummer" onClose={onClose} footer={<>
+    <Modal size="lg" title="Speichermaske – neue CAD-Nummer" onClose={onClose} footer={<>
       <button className="btn" onClick={onClose}>Abbrechen</button>
       <button className="btn primary" disabled={!d.projectId || !d.designation.trim()} onClick={async () => {
         const r = await act(() => post('/cad/items', {
@@ -146,7 +147,7 @@ function SaveMaskDialog({ projectId, onClose, onCreated }: { projectId?: string;
             <option value="">–</option>{projects?.map((p) => <option key={p.id} value={p.id}>{p.number} {p.name}</option>)}
           </select>
         </Field>
-        <Field label="Dateityp"><select value={d.type} onChange={(e) => setD({ ...d, type: e.target.value })}><option value="part">⚙️ Teil (.sldprt)</option><option value="assembly">🧩 Baugruppe (.sldasm)</option></select></Field>
+        <Field label="Dateityp"><select value={d.type} onChange={(e) => setD({ ...d, type: e.target.value })}><option value="part"><Icon name="settings" /> Teil (.sldprt)</option><option value="assembly"><Icon name="assembly" /> Baugruppe (.sldasm)</option></select></Field>
         <Field label="Beschaffungsart"><select value={d.procurement} onChange={(e) => setD({ ...d, procurement: e.target.value })}>{Object.entries(PROC).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
         <Field label="Unterbaugruppe">
           <select value={d.sub} onChange={(e) => setD({ ...d, sub: e.target.value })}>
@@ -186,19 +187,19 @@ function CadItemPanel({ id, onClose, onOpen, onChanged }: { id: string; onClose:
 
   return (
     <SlideOver wide onClose={onClose}
-      title={<div><div className="row"><span style={{ fontSize: 18 }}>{TYPE_META[item.type]!.icon}</span><b className="mono" style={{ fontSize: 16 }}>{item.number}</b></div>
+      title={<div><div className="row"><Icon name={TYPE_META[item.type]!.icon} size={20} /><b className="mono" style={{ fontSize: 16 }}>{item.number}</b></div>
         <div className="row small muted" style={{ marginTop: 2 }}><StatusPill status={item.state} meta={CAD_STATE_META} /><span>{TYPE_META[item.type]!.label}</span><span>· Projekt {item.projectNumber}</span>
-          {item.checkedOutBy && <Pill tone="amber">🔒 Gesperrt durch {item.checkedOutByName}{item.checkoutHost ? ` (${item.checkoutHost})` : ''}</Pill>}</div></div>}>
+          {item.checkedOutBy && <Pill tone="amber"><Icon name="lock" /> Gesperrt durch {item.checkedOutByName}{item.checkoutHost ? ` (${item.checkoutHost})` : ''}</Pill>}</div></div>}>
       <div className="row wrap" style={{ marginBottom: 16 }}>
-        {item.fileName && <a className="btn" href={`/api/cad/items/${id}/download`}>⬇️ Datei laden</a>}
-        {!item.checkedOutBy && item.state === 'in_work' && <button className="btn" onClick={async () => { await act(() => post(`/cad/items/${id}/checkout`, { host: 'Web' }), 'Ausgecheckt'); refresh(); }}>🔒 Auschecken</button>}
-        {mineLocked && <button className="btn primary" onClick={() => fileRef.current?.click()}>⬆️ Einchecken …</button>}
-        {item.checkedOutBy && (mineLocked || me?.role === 'admin') && <button className="btn" onClick={async () => { await act(() => post(`/cad/items/${id}/undo-checkout`), 'Sperre aufgehoben'); refresh(); }}>🔓 Sperre aufheben</button>}
+        {item.fileName && <a className="btn" href={`/api/cad/items/${id}/download`}><Icon name="download" /> Datei laden</a>}
+        {!item.checkedOutBy && item.state === 'in_work' && <button className="btn" onClick={async () => { await act(() => post(`/cad/items/${id}/checkout`, { host: 'Web' }), 'Ausgecheckt'); refresh(); }}><Icon name="lock" /> Auschecken</button>}
+        {mineLocked && <button className="btn primary" onClick={() => fileRef.current?.click()}><Icon name="upload" /> Einchecken …</button>}
+        {item.checkedOutBy && (mineLocked || me?.role === 'admin') && <button className="btn" onClick={async () => { await act(() => post(`/cad/items/${id}/undo-checkout`), 'Sperre aufgehoben'); refresh(); }}><Icon name="unlock" /> Sperre aufheben</button>}
         {item.transitions.map((t: string) => (t === 'in_work' && item.state === 'released') ? null : <button key={t} className="btn" onClick={() => setStateTo(t)}>{STATE_ACTION[t]}</button>)}
-        {item.state !== 'obsolete' && <button className="btn" onClick={() => setRevise(true)}>🔁 Neuer Versionsstand</button>}
-        {item.drawingId && <button className="btn" onClick={() => onOpen(item.drawingId)}>📐 Zeichnung öffnen</button>}
-        {item.drawingOf && <button className="btn" onClick={() => onOpen(item.drawingOf)}>⚙️ Modell öffnen</button>}
-        {item.state === 'in_work' && <button className="btn ghost danger" onClick={() => setRemove(true)}>🗑️</button>}
+        {item.state !== 'obsolete' && <button className="btn" onClick={() => setRevise(true)}><Icon name="repeat" /> Neuer Versionsstand</button>}
+        {item.drawingId && <button className="btn" onClick={() => onOpen(item.drawingId)}><Icon name="cad" /> Zeichnung öffnen</button>}
+        {item.drawingOf && <button className="btn" onClick={() => onOpen(item.drawingOf)}><Icon name="settings" /> Modell öffnen</button>}
+        {item.state === 'in_work' && <button className="btn ghost danger" onClick={() => setRemove(true)}><Icon name="trash" /></button>}
         <input ref={fileRef} type="file" hidden accept={ext ? `.${ext}` : undefined} onChange={async (e) => {
           const f = e.target.files?.[0];
           e.target.value = '';
@@ -241,17 +242,17 @@ function CadItemPanel({ id, onClose, onOpen, onChanged }: { id: string; onClose:
                 <tr><td className="muted">Angelegt</td><td>{item.createdByName}, {fmtDateTime(item.createdAt)}</td></tr>
               </tbody></table>
               <p className="hint">Diese Eigenschaften schreibt der CAD-Wächter als Custom Properties in die Datei – sie erscheinen ohne Abtippen im Schriftkopf der Zeichnung.</p>
-              {item.state === 'in_work' && <button className="btn" onClick={() => setEditProps({ ...item.properties })}>✏️ Eigenschaften bearbeiten</button>}
+              {item.state === 'in_work' && <button className="btn" onClick={() => setEditProps({ ...item.properties })}><Icon name="edit" /> Eigenschaften bearbeiten</button>}
             </>
           )}
           {item.exports.length > 0 && <>
-            <h3 style={{ margin: '18px 0 8px' }}>🏭 Fertigungsableitungen</h3>
+            <h3 style={{ margin: '18px 0 8px' }}><Icon name="factory" /> Fertigungsableitungen</h3>
             <table className="table"><tbody>{item.exports.map((e: any) => (
               <tr key={e.id}>
                 <td><b>{e.format.toUpperCase()}</b></td><td>Version {String(e.revision).padStart(2, '0')}</td>
                 <td>{e.status === 'done' ? <Pill tone="green">erzeugt</Pill> : e.status === 'failed' ? <Pill tone="red">Fehler</Pill> : e.status === 'running' ? <Pill tone="blue">läuft</Pill> : <Pill tone="amber">wartet auf CAD-Wächter</Pill>}</td>
                 <td className="small muted">{e.error ?? fmtDateTime(e.completedAt ?? e.requestedAt)}</td>
-                <td>{e.fileId && <a className="btn sm" href={`/api/files/${e.fileId}/download`}>⬇️</a>}{e.status === 'failed' && <button className="btn sm" onClick={async () => { await post(`/cad/exports/${e.id}/retry`); refresh(); }}>Erneut</button>}</td>
+                <td>{e.fileId && <a className="btn sm" href={`/api/files/${e.fileId}/download`}><Icon name="download" /></a>}{e.status === 'failed' && <button className="btn sm" onClick={async () => { await post(`/cad/exports/${e.id}/retry`); refresh(); }}>Erneut</button>}</td>
               </tr>
             ))}</tbody></table>
           </>}
@@ -266,7 +267,7 @@ function CadItemPanel({ id, onClose, onOpen, onChanged }: { id: string; onClose:
             <tr key={r.id}>
               <td className="mono"><b>{String(r.revision).padStart(2, '0')}</b></td><td>{r.reason || <span className="muted">–</span>}</td>
               <td className="small muted">{r.createdByName}, {fmtDateTime(r.createdAt)}</td><td className="small muted">{r.fileSize ? fmtBytes(r.fileSize) : ''}</td>
-              <td>{r.filePath && <a className="btn sm" href={`/api/cad/items/${id}/download?revision=${r.revision}`}>⬇️</a>}</td>
+              <td>{r.filePath && <a className="btn sm" href={`/api/cad/items/${id}/download?revision=${r.revision}`}><Icon name="download" /></a>}</td>
             </tr>
           ))}</tbody></table>
           <h3 style={{ margin: '18px 0 8px' }}>Statusverlauf</h3>
@@ -309,14 +310,14 @@ function ReviseDialog({ item, onClose, onDone }: { item: any; onClose: () => voi
   const { data: used } = useApi<any[]>(`/cad/items/${item.id}/where-used`);
   const next = String(item.revision + 1).padStart(2, '0');
   return (
-    <Modal title="🔁 Neuer Versionsstand" onClose={onClose} footer={<>
+    <Modal title="Neuer Versionsstand" onClose={onClose} footer={<>
       <button className="btn" onClick={onClose}>Abbrechen</button>
       <button className="btn primary" disabled={reason.trim().length < 3} onClick={async () => { const r = await act(() => post(`/cad/items/${item.id}/revise`, { reason, host: 'Web' }), `Version ${next} angelegt`); if (r) { onDone(); onClose(); } }}>Version {next} anlegen</button>
     </>}>
       <p><span className="mono">{item.number}</span> → <span className="mono"><b>{item.baseNumber}-{next}</b>_{item.designation}</span></p>
       <Field label="Grund der Änderung" required hint="z. B. Bohrungsdurchmesser auf 12 mm vergrößert wegen stärkerer Welle"><textarea autoFocus value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
       {used && used.length > 0 && <div className="card" style={{ borderColor: 'var(--amber)' }}>
-        <b>⚠️ Verwendet in {used.length} Baugruppe(n):</b>
+        <b><Icon name="alert" /> Verwendet in {used.length} Baugruppe(n):</b>
         {used.slice(0, 10).map((u) => <div key={u.id + u.depth} className="small mono">{'  '.repeat(u.depth - 1)}{u.number} ({u.projectNumber})</div>)}
       </div>}
     </Modal>
@@ -330,15 +331,15 @@ function Bom({ id, onOpen }: { id: string; onOpen: (id: string) => void }) {
     <div>
       <div className="toolbar">
         <label className="row small" style={{ gap: 4 }}><input type="checkbox" checked={flat} onChange={(e) => setFlat(e.target.checked)} /> Mengenübersicht (alle Ebenen zusammengefasst)</label>
-        <a className="btn sm right" href={`/api/cad/items/${id}/bom?format=csv${flat ? '&flat=1' : ''}`}>📊 Als CSV/Excel</a>
+        <a className="btn sm right" href={`/api/cad/items/${id}/bom?format=csv${flat ? '&flat=1' : ''}`}><Icon name="chart" /> Als CSV/Excel</a>
       </div>
-      {!data?.length ? <Empty icon="🧩" title="Keine Positionen" >Die Struktur wird beim Einchecken der Baugruppe vom CAD-Wächter übertragen.</Empty> : (
+      {!data?.length ? <Empty icon="assembly" title="Keine Positionen" >Die Struktur wird beim Einchecken der Baugruppe vom CAD-Wächter übertragen.</Empty> : (
         <table className="table">
           <thead><tr>{!flat && <th>Pos</th>}<th>Nummer</th><th>Benennung</th><th>Menge</th><th>Beschaffung</th><th>Werkstoff</th><th>Status</th></tr></thead>
           <tbody>{data.map((r, i) => (
             <tr key={i} className="click" onClick={() => onOpen(r.id)}>
               {!flat && <td className="mono small" style={{ paddingLeft: 10 + (r.depth - 1) * 16 }}>{r.position}</td>}
-              <td className="mono small">{TYPE_META[r.type]?.icon} {r.number}</td><td>{r.designation}</td>
+              <td className="mono small"><Icon name={TYPE_META[r.type]?.icon ?? 'part'} /> {r.number}</td><td>{r.designation}</td>
               <td><b>{flat ? r.total : r.quantity}</b>{!flat && r.total !== r.quantity && <span className="muted small"> (ges. {r.total})</span>}</td>
               <td className="small">{PROC[r.procurement]}</td><td className="small">{r.properties?.Werkstoff ?? ''}</td>
               <td><StatusPill status={r.state} meta={CAD_STATE_META} /></td>
@@ -352,13 +353,13 @@ function Bom({ id, onOpen }: { id: string; onOpen: (id: string) => void }) {
 
 function WhereUsed({ id, onOpen }: { id: string; onOpen: (id: string) => void }) {
   const { data } = useApi<any[]>(`/cad/items/${id}/where-used`);
-  if (!data?.length) return <Empty icon="✅" title="Nirgends verbaut">Das Teil kann gefahrlos geändert oder gelöscht werden.</Empty>;
+  if (!data?.length) return <Empty icon="check-circle" title="Nirgends verbaut">Das Teil kann gefahrlos geändert oder gelöscht werden.</Empty>;
   return (
     <table className="table">
       <thead><tr><th>Ebene</th><th>Baugruppe</th><th>Benennung</th><th>Menge</th><th>Projekt</th><th>Status</th></tr></thead>
       <tbody>{data.map((r, i) => (
         <tr key={i} className="click" onClick={() => onOpen(r.id)}>
-          <td>{r.depth}</td><td className="mono small" style={{ paddingLeft: 10 + (r.depth - 1) * 16 }}>🧩 {r.number}</td><td>{r.designation}</td><td>{r.quantity}</td>
+          <td>{r.depth}</td><td className="mono small" style={{ paddingLeft: 10 + (r.depth - 1) * 16 }}><Icon name="assembly" /> {r.number}</td><td>{r.designation}</td><td>{r.quantity}</td>
           <td className="small">{r.projectNumber} {r.projectName}</td><td><StatusPill status={r.state} meta={CAD_STATE_META} /></td>
         </tr>
       ))}</tbody>

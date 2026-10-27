@@ -11,7 +11,7 @@ interface Note { id: string; title: string; body: string; updatedAt: string }
 /** Private Notizen – nur für den Besitzer sichtbar */
 export default function NotesPage() {
   const t = useT();
-  useCrumbs([{ label: `🔒 ${t('Private Notizen')}` }]);
+  useCrumbs([{ label: `${t('Private Notizen')}` }]);
   const { data } = useApi<Note[]>('/notes');
   const [sel, setSel] = useState<string | null>(null);
   const [draft, setDraft] = useState<Note | null>(null);
@@ -37,7 +37,7 @@ export default function NotesPage() {
         ))}
       </div>
       <div className="chat-main" style={{ padding: '24px 40px' }}>
-        {!draft ? <Empty icon="🔒" title="Notizen sind nur für Sie sichtbar" /> : (
+        {!draft ? <Empty icon="lock" title="Notizen sind nur für Sie sichtbar" /> : (
           <>
             <div className="row">
               <input value={draft.title} onChange={(e) => change({ ...draft, title: e.target.value })} style={{ fontSize: 24, fontWeight: 650, border: 'none', boxShadow: 'none', padding: 0 }} />

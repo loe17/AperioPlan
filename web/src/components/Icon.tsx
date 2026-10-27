@@ -137,6 +137,7 @@ const P: Record<string, ReactNode> = {
   camera: <><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1" /><circle cx="12" cy="13" r="3.5" /></>,
   pin: <><path d="M12 17v5" /><path d="M8 3h8l-1 6 3 4H6l3-4z" /></>,
   dot: <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none" />,
+  play: <path d="M7 4.5v15l12.5-7.5z" />,
   'circle-dashed': <circle cx="12" cy="12" r="8.5" strokeDasharray="3 3" />,
 };
 
@@ -165,4 +166,31 @@ export function Icon({ name, size = 16, className, style, title, strokeWidth = 1
 export function EntityIcon({ value, size = 16, fallback = 'folder' }: { value?: string | null; size?: number; fallback?: string }) {
   const [name, color] = (value ?? '').split(':');
   return <Icon name={isIconName(name) ? name! : fallback} size={size} style={color ? { color } : undefined} />;
+}
+
+export const PICKABLE_COLORS = ['', '#4f46e5', '#3b82f6', '#0ea5e9', '#14b8a6', '#5a8f6a', '#c98a12', '#ea580c', '#d9534f', '#db2777', '#7c3aed', '#64748b'];
+
+/** Auswahl aus Symbol und Farbe für Projekte und Teams */
+export function IconPicker({ value, onChange }: { value?: string | null; onChange: (v: string) => void }) {
+  const [name0, color0] = (value ?? '').split(':');
+  const name = isIconName(name0) ? name0! : 'folder';
+  const color = color0 ?? '';
+  const emit = (n: string, c: string) => onChange(c ? `${n}:${c}` : n);
+  return (
+    <div className="icon-pick">
+      <div className="icon-pick-grid">
+        {PICKABLE_ICONS.map((n) => (
+          <button type="button" key={n} className={n === name ? 'active' : ''} onClick={() => emit(n, color)} title={n} style={n === name && color ? { color } : undefined}>
+            <Icon name={n} size={18} />
+          </button>
+        ))}
+      </div>
+      <div className="icon-pick-colors">
+        {PICKABLE_COLORS.map((c) => (
+          <button type="button" key={c || 'none'} className={`swatch ${c === color ? 'active' : ''}`} onClick={() => emit(name, c)}
+            style={{ background: c || 'var(--text-3)' }} title={c ? c : 'Standardfarbe'} />
+        ))}
+      </div>
+    </div>
+  );
 }

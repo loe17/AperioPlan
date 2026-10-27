@@ -3,6 +3,7 @@ import { put, invalidate } from '../lib/api';
 import { fmtEuro, fmtHours } from '../lib/format';
 import { Field, useAction } from '../components/ui';
 import type { Task } from '../components/TaskPanel';
+import { Icon } from '../components/Icon';
 
 interface ReportData { goals: string; result: string; costsPlanned: number | null; costsActual: number | null; lessons: string; acceptedBy: string; acceptedAt: string | null; notes: string }
 const EMPTY: ReportData = { goals: '', result: '', costsPlanned: null, costsActual: null, lessons: '', acceptedBy: '', acceptedAt: null, notes: '' };
@@ -40,7 +41,7 @@ export function Report({ project, tasks, canEdit }: { project: any; tasks: Task[
       </fieldset>
       <div className="row">
         {canEdit && <button className="btn primary" onClick={async () => { await act(() => put(`/projects/${project.id}/report`, r), 'Bericht gespeichert'); invalidate(`/projects/${project.id}`); }}>Bericht speichern</button>}
-        <button className="btn" onClick={() => window.print()}>🖨️ Drucken / PDF</button>
+        <button className="btn" onClick={() => window.print()}><Icon name="printer" /> Drucken / PDF</button>
       </div>
     </div>
   );

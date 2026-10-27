@@ -204,7 +204,7 @@ table.table { width: 100%; border-collapse: collapse; }
 .table-wrap .table tr:last-child td { border-bottom: none; }
 
 .empty { text-align: center; padding: 48px 16px; color: var(--text-3); }
-.empty .big { font-size: 32px; margin-bottom: 8px; }
+.empty .big { margin-bottom: 8px; }
 
 /* ---------------------------------------------------------- Overlays */
 .overlay { position: fixed; inset: 0; background: var(--overlay); z-index: 50; animation: fade 0.15s ease; }
@@ -343,9 +343,15 @@ table.table { width: 100%; border-collapse: collapse; }
 .empty .big .icon { color: var(--text-3); }
 .entity-icon { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); flex: none; }
 .entity-icon.lg { width: 44px; height: 44px; border-radius: 12px; }
-.icon-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 6px; }
-.icon-pick button { height: 38px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text-2); cursor: pointer; display: grid; place-items: center; }
-.icon-pick button.sel { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.icon-pick { display: grid; gap: 8px; }
+.icon-pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 6px; }
+.icon-pick-grid button { height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text-2); cursor: pointer; display: grid; place-items: center; }
+.icon-pick-grid button:hover { border-color: var(--text-3); }
+.icon-pick-grid button.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.icon-pick-colors { display: flex; flex-wrap: wrap; gap: 6px; }
+.icon-pick-colors .swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; box-shadow: inset 0 0 0 2px var(--bg); }
+.icon-pick-colors .swatch.active { border-color: var(--text); }
+.entity-big { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: none; }
 
 /* ---------------------------------------------------------- Ressourcen */
 .resource-icon { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; flex: none; }
@@ -356,3 +362,11 @@ table.table { width: 100%; border-collapse: collapse; }
 .booking-bar { position: absolute; top: 8px; height: 32px; border-radius: 6px; color: #fff; font-size: 12px; padding: 0 8px; line-height: 32px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; border: 1px solid rgba(0, 0, 0, 0.1); }
 .booking-bar.pending { border: 2px dashed rgba(255, 255, 255, 0.8); }
 .cal-ev.booking { background: var(--accent-soft); color: var(--accent); }
+.status-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--text-3); flex: none; }
+.status-dot.amber { background: var(--amber); } .status-dot.blue { background: var(--blue); }
+.status-dot.accent { background: var(--accent); } .status-dot.green { background: var(--green); }
+.read-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--text-3); flex: none; }
+.read-dot.unread { background: var(--accent); border-color: var(--accent); }
+.radio-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--text-3); flex: none; margin-right: 2px; }
+.radio-dot.on { border: 4px solid var(--accent); }
+.icon.mr { margin-right: 4px; }

@@ -33,8 +33,8 @@ export function StorageSettings() {
         <div className="card flat" style={{ padding: 8 }}>
           {v.projectFolders.map((f: string, i: number) => (
             <div key={i} className="row" style={{ padding: 2 }}>
-              <span className="mono grow">📁 {f}</span>
-              <button className="btn ghost sm" onClick={() => s.setValue({ ...v, projectFolders: v.projectFolders.filter((_: string, j: number) => j !== i) })}>✕</button>
+              <span className="mono grow"><Icon name="folder" /> {f}</span>
+              <button className="btn ghost sm" onClick={() => s.setValue({ ...v, projectFolders: v.projectFolders.filter((_: string, j: number) => j !== i) })}><Icon name="x" /></button>
             </div>
           ))}
           <div className="row" style={{ marginTop: 6 }}>
@@ -59,7 +59,7 @@ function ScanWizard() {
   const [result, setResult] = useState<any | null>(null);
   return (
     <div style={{ marginTop: 32 }}>
-      <h2 style={{ marginBottom: 6 }}>🔎 Bestandsordner einlesen (Scan-Assistent)</h2>
+      <h2 style={{ marginBottom: 6 }}><Icon name="search" /> Bestandsordner einlesen (Scan-Assistent)</h2>
       <p className="muted">Zeigt vorhandene Ordner der Ablage. Nicht zugeordnete Ordner können als Projekt übernommen und dabei normgerecht umbenannt werden (z. B. „4711 Alte Presse“ → „4711_Alte_Presse“).</p>
       <div className="breadcrumbs" style={{ margin: '8px 0' }}>
         <a style={{ cursor: 'pointer' }} onClick={() => setPath('')}>Ablage</a>
@@ -70,7 +70,7 @@ function ScanWizard() {
         <tbody>
           {data?.entries?.map((e: any) => (
             <tr key={e.path}>
-              <td><a style={{ cursor: 'pointer' }} onClick={() => setPath(e.path)}>📁 {e.name}</a></td>
+              <td><a style={{ cursor: 'pointer' }} onClick={() => setPath(e.path)}><Icon name="folder" /> {e.name}</a></td>
               <td className="small muted">{e.folders} Ordner, {e.files} Dateien</td>
               <td className="small muted">{fmtDate(e.modified)}</td>
               <td>{e.linkedProject ? <Pill tone="green">Projekt {e.linkedProject.number}</Pill> : <Pill tone="amber">nicht zugeordnet</Pill>}</td>
@@ -80,7 +80,7 @@ function ScanWizard() {
           {data?.entries?.length === 0 && <tr><td colSpan={5} className="muted">Keine Unterordner</td></tr>}
         </tbody>
       </table></div>
-      {result && <div className="card" style={{ marginTop: 12, borderColor: 'var(--green)' }}>✅ Projekt {result.number} angelegt ({result.files} Dateien übernommen) – Ordner: <span className="mono">{result.folderPath}</span></div>}
+      {result && <div className="card" style={{ marginTop: 12, borderColor: 'var(--green)' }}><Icon name="check-circle" /> Projekt {result.number} angelegt ({result.files} Dateien übernommen) – Ordner: <span className="mono">{result.folderPath}</span></div>}
       {imp && (
         <Modal title="Bestandsordner übernehmen" onClose={() => setImp(null)} footer={<>
           <button className="btn" onClick={() => setImp(null)}>Abbrechen</button>
@@ -93,7 +93,7 @@ function ScanWizard() {
           <div className="grid2">
             <Field label="Projektname" required><input value={imp.name} onChange={(e) => setImp({ ...imp, name: e.target.value })} /></Field>
             <Field label="Projektnummer" hint="leer = automatisch vergeben"><input className="mono" value={imp.number} onChange={(e) => setImp({ ...imp, number: e.target.value })} /></Field>
-            <Field label="Team"><select value={imp.teamId} onChange={(e) => setImp({ ...imp, teamId: e.target.value })}><option value="">–</option>{teams.map((t) => <option key={t.id} value={t.id}>{t.icon} {t.name}</option>)}</select></Field>
+            <Field label="Team"><select value={imp.teamId} onChange={(e) => setImp({ ...imp, teamId: e.target.value })}><option value="">–</option>{teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
           </div>
           <label className="row"><input type="checkbox" checked={imp.rename} onChange={(e) => setImp({ ...imp, rename: e.target.checked })} /> Ordner normgerecht umbenennen (Nummer_Name)</label>
           <label className="row"><input type="checkbox" checked={imp.createFolders} onChange={(e) => setImp({ ...imp, createFolders: e.target.checked })} /> Fehlende Standardordner anlegen</label>
@@ -141,7 +141,7 @@ export function CadMaskSettings() {
               }} /> {l}</label>
             ))}</td>
             <td><input style={{ minWidth: 90 }} value={f.defaultValue ?? ''} onChange={(e) => setField(i, { ...f, defaultValue: e.target.value || undefined })} /></td>
-            <td><button className="btn ghost sm" onClick={() => s.setValue({ ...v, fields: v.fields.filter((_: any, j: number) => j !== i) })}>✕</button></td>
+            <td><button className="btn ghost sm" onClick={() => s.setValue({ ...v, fields: v.fields.filter((_: any, j: number) => j !== i) })}><Icon name="x" /></button></td>
           </tr>
         ))}</tbody>
       </table></div>
@@ -167,7 +167,7 @@ export function CadMaskSettings() {
           <div key={i} className="row" style={{ marginBottom: 4 }}>
             <input className="mono" style={{ width: 80 }} value={sa.code} maxLength={3} onChange={(e) => s.setValue({ ...v, subassemblies: v.subassemblies.map((x: any, j: number) => (j === i ? { ...x, code: e.target.value.replace(/\D/g, '') } : x)) })} />
             <input value={sa.label} onChange={(e) => s.setValue({ ...v, subassemblies: v.subassemblies.map((x: any, j: number) => (j === i ? { ...x, label: e.target.value } : x)) })} />
-            <button className="btn ghost sm" onClick={() => s.setValue({ ...v, subassemblies: v.subassemblies.filter((_: any, j: number) => j !== i) })}>✕</button>
+            <button className="btn ghost sm" onClick={() => s.setValue({ ...v, subassemblies: v.subassemblies.filter((_: any, j: number) => j !== i) })}><Icon name="x" /></button>
           </div>
         ))}
         <button className="btn sm" onClick={() => s.setValue({ ...v, subassemblies: [...v.subassemblies, { code: '', label: '' }] })}>＋ Bereich</button>
@@ -208,7 +208,7 @@ export function HolidaySettings() {
         <button className="btn" onClick={async () => { await time.save(time.value); await act(() => post('/holidays/generate', { year, state: time.value.holidayState }), 'Gesetzliche Feiertage übernommen'); reload(); }}>Gesetzliche Feiertage übernehmen</button>
       </div>
       <div className="table-wrap"><table className="table"><tbody>
-        {data?.map((h) => <tr key={h.day}><td className="mono">{fmtDate(h.day)}</td><td>{h.name}</td><td style={{ width: 50 }}><button className="btn ghost sm" onClick={() => save(data.filter((x) => x.day !== h.day))}>✕</button></td></tr>)}
+        {data?.map((h) => <tr key={h.day}><td className="mono">{fmtDate(h.day)}</td><td>{h.name}</td><td style={{ width: 50 }}><button className="btn ghost sm" onClick={() => save(data.filter((x) => x.day !== h.day))}><Icon name="x" /></button></td></tr>)}
         {!data?.length && <tr><td className="muted">Keine Feiertage für {year}</td></tr>}
       </tbody></table></div>
       <div className="row" style={{ marginTop: 10 }}>
@@ -252,8 +252,8 @@ export function BackupSettings() {
       </div>
       <div className="row" style={{ marginBottom: 10 }}>
         <h2 className="grow">Vorhandene Sicherungen</h2>
-        <button className="btn primary" disabled={busy} onClick={async () => { setBusy(true); await act(() => post('/backups', {}), 'Sicherung erstellt'); setBusy(false); reload(); }}>{busy ? 'Sichert …' : '💾 Jetzt sichern'}</button>
-        <label className="btn">⬆️ Sicherung hochladen<input type="file" accept=".apb" hidden onChange={async (e) => {
+        <button className="btn primary" disabled={busy} onClick={async () => { setBusy(true); await act(() => post('/backups', {}), 'Sicherung erstellt'); setBusy(false); reload(); }}>{busy ? 'Sichert …' : 'Jetzt sichern'}</button>
+        <label className="btn"><Icon name="upload" /> Sicherung hochladen<input type="file" accept=".apb" hidden onChange={async (e) => {
           const f = e.target.files?.[0]; e.target.value = '';
           if (!f) return;
           const pass = prompt('Passwort der Sicherung (leer = aktuelles Passwort)') ?? '';
@@ -267,9 +267,9 @@ export function BackupSettings() {
           <tr key={b.name}>
             <td className="mono small">{b.name}</td><td className="small">{fmtDateTime(b.createdAt)}</td><td className="small">{fmtBytes(b.size)}</td>
             <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-              <a className="btn sm" href={`/api/backups/${b.name}`}>⬇️</a>{' '}
+              <a className="btn sm" href={`/api/backups/${b.name}`}><Icon name="download" /></a>{' '}
               <button className="btn sm" onClick={async () => { const pass = prompt('Passwort der Sicherung (leer = aktuelles)') ?? ''; setBusy(true); const r = await act(() => post(`/backups/${b.name}/analyze`, { passphrase: pass || undefined })); setBusy(false); if (r) setAnalysis(r); }}>Einspielen …</button>{' '}
-              <button className="btn sm danger" onClick={() => setRemove(b.name)}>🗑️</button>
+              <button className="btn sm danger" onClick={() => setRemove(b.name)}><Icon name="trash" /></button>
             </td>
           </tr>
         ))}
@@ -298,7 +298,7 @@ function ImportDialog({ analysis, onClose }: { analysis: any; onClose: () => voi
       <button className="btn primary" onClick={async () => { const r = await act(() => post(`/backups/import/${analysis.id}/apply`, { strategy, overrides }), 'Eingespielt'); if (r) setResult(r); }}>Einspielen</button>
     </>}>
       {result ? (
-        <div className="card" style={{ borderColor: 'var(--green)' }}>✅ {result.inserted} Einträge neu übernommen, {result.updated} mit dem Stand der Sicherung überschrieben, {result.skipped} unverändert, {result.files} Dateien wiederhergestellt.</div>
+        <div className="card" style={{ borderColor: 'var(--green)' }}><Icon name="check-circle" /> {result.inserted} Einträge neu übernommen, {result.updated} mit dem Stand der Sicherung überschrieben, {result.skipped} unverändert, {result.files} Dateien wiederhergestellt.</div>
       ) : <>
         <p className="muted">Sicherung vom <b>{fmtDateTime(analysis.manifest.createdAt)}</b> (Version {analysis.manifest.version}, {analysis.files.total} Dateien, davon {analysis.files.new} neu).</p>
         <table className="table" style={{ marginBottom: 14 }}>
@@ -348,21 +348,21 @@ export function UpdateSettings() {
       <div className="card" style={{ margin: '14px 0' }}>
         <div className="row"><div className="grow"><div className="muted small">Installiert</div><div className="stat">{APP_VERSION}</div></div>
           <div className="grow"><div className="muted small">Verfügbar</div><div className="stat">{check?.latest ?? '–'}</div></div>
-          <button className="btn" onClick={() => { reload(); reloadStatus(); }}>🔄 Prüfen</button></div>
+          <button className="btn" onClick={() => { reload(); reloadStatus(); }}><Icon name="refresh" /> Prüfen</button></div>
         {check?.error && <div className="error-text">{check.error}</div>}
         {check?.updateAvailable ? (
           <div style={{ marginTop: 12 }}>
             <Pill tone="green">Neue Version verfügbar</Pill>
             {check.notes && <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', background: 'var(--bg-soft)', padding: 10, borderRadius: 8 }}>{check.notes}</pre>}
             <div className="spacer" />
-            <button className="btn primary" disabled={busy || !status?.available} onClick={async () => { setBusy(true); await act(() => post('/system/update', { ref: check.ref, backupFirst: true }), 'Aktualisierung gestartet'); setBusy(false); setTimeout(reloadStatus, 3000); }}>⬆️ Jetzt auf {check.latest} aktualisieren</button>
+            <button className="btn primary" disabled={busy || !status?.available} onClick={async () => { setBusy(true); await act(() => post('/system/update', { ref: check.ref, backupFirst: true }), 'Aktualisierung gestartet'); setBusy(false); setTimeout(reloadStatus, 3000); }}><Icon name="upload" /> Jetzt auf {check.latest} aktualisieren</button>
             {!status?.available && <div className="hint">Der Updater-Dienst ist nur bei der Docker-Installation verfügbar.</div>}
           </div>
-        ) : check && !check.error && <div style={{ marginTop: 10 }}><Pill tone="green">✓ AperioPlan ist aktuell</Pill></div>}
+        ) : check && !check.error && <div style={{ marginTop: 10 }}><Pill tone="green"><Icon name="check" /> AperioPlan ist aktuell</Pill></div>}
       </div>
       {status?.status && (
         <div className="card">
-          <b>Letzte Aktualisierung:</b> {status.status.ref} – {status.status.status === 'running' ? '⏳ läuft' : status.status.status === 'done' ? '✅ erfolgreich' : '❌ fehlgeschlagen'} ({fmtDateTime(status.status.at)})
+          <b>Letzte Aktualisierung:</b> {status.status.ref} – {status.status.status === 'running' ? 'läuft' : status.status.status === 'done' ? 'erfolgreich' : 'fehlgeschlagen'} ({fmtDateTime(status.status.at)})
           {status.log && <pre className="mono small" style={{ maxHeight: 260, overflow: 'auto', background: 'var(--bg-soft)', padding: 10, borderRadius: 8 }}>{status.log}</pre>}
         </div>
       )}
@@ -426,7 +426,7 @@ export function AiSettings() {
       </div>
       <div className="row">
         <button className="btn primary" onClick={async () => { await act(() => s.save(v), 'Gespeichert'); refreshLists(); }}>Speichern</button>
-        <button className="btn" onClick={async () => { const r = await act(() => post('/settings/ai/test', v)); if (r) setResult(`${r.ok ? '✅' : '❌'} ${r.message}`); }}>Verbindung testen</button>
+        <button className="btn" onClick={async () => { const r = await act(() => post('/settings/ai/test', v)); if (r) setResult(`${r.ok ? 'OK' : 'Fehler'}: ${r.message}`); }}>Verbindung testen</button>
       </div>
       {result && <div className="card" style={{ marginTop: 12 }}>{result}</div>}
     </div>
@@ -459,7 +459,7 @@ export function ExtensionSettings() {
             <input className="mono" style={{ flex: 1, minWidth: 160 }} value={h.events.join(',')} placeholder="Ereignisse, z. B. task.*,cad.state" onChange={(e) => hooks.setValue(hooks.value.map((x: any, j: number) => (j === i ? { ...x, events: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) } : x)))} />
             <input className="mono" style={{ width: 160 }} value={h.secret} placeholder="Geheimnis" onChange={(e) => hooks.setValue(hooks.value.map((x: any, j: number) => (j === i ? { ...x, secret: e.target.value } : x)))} />
             <label className="row small"><input type="checkbox" checked={h.active} onChange={(e) => hooks.setValue(hooks.value.map((x: any, j: number) => (j === i ? { ...x, active: e.target.checked } : x)))} /> aktiv</label>
-            <button className="btn ghost sm" onClick={() => hooks.setValue(hooks.value.filter((_: any, j: number) => j !== i))}>✕</button>
+            <button className="btn ghost sm" onClick={() => hooks.setValue(hooks.value.filter((_: any, j: number) => j !== i))}><Icon name="x" /></button>
           </div>
         ))}
         <div className="row">

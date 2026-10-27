@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { post } from '../lib/api';
 import { realtime } from '../lib/realtime';
 import { useSession } from '../session';
+import { Icon } from '../components/Icon';
 
 /**
  * Videoanruf im Browser (WebRTC, ohne Zusatzsoftware) mit Bildschirmfreigabe.
@@ -131,7 +132,7 @@ export function VideoCall({ channelId, title, onClose }: { channelId: string; ti
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, background: '#0b0c0e', zIndex: 70, display: 'flex', flexDirection: 'column' }}>
       <div className="row" style={{ padding: '10px 16px', color: '#e6edf3' }}>
-        <b>📹 {title}</b><span className="small" style={{ opacity: 0.6 }}>{Object.keys(streams).length + 1} Teilnehmer</span>
+        <b><Icon name="video" /> {title}</b><span className="small" style={{ opacity: 0.6 }}>{Object.keys(streams).length + 1} Teilnehmer</span>
         {error && <span style={{ color: '#f0817d' }}>{error}</span>}
       </div>
       <div className="video-grid" style={{ flex: 1, alignContent: 'center' }}>
@@ -140,10 +141,10 @@ export function VideoCall({ channelId, title, onClose }: { channelId: string; ti
         {Object.keys(streams).length === 0 && <div style={{ color: '#7d8590', textAlign: 'center', alignSelf: 'center' }}>Warte auf weitere Teilnehmer …<br />Kollegen sehen eine Einladung im Chat.</div>}
       </div>
       <div className="row" style={{ justifyContent: 'center', padding: 14, gap: 10 }}>
-        <button className="btn" onClick={() => { localRef.current?.getAudioTracks().forEach((t) => (t.enabled = !mic)); setMic(!mic); }}>{mic ? '🎙️ Mikro an' : '🔇 Mikro aus'}</button>
-        <button className="btn" onClick={() => { localRef.current?.getVideoTracks().forEach((t) => (t.enabled = !cam)); setCam(!cam); }}>{cam ? '📷 Kamera an' : '🚫 Kamera aus'}</button>
-        <button className={`btn ${sharing ? 'primary' : ''}`} onClick={toggleShare}>🖥️ {sharing ? 'Freigabe beenden' : 'Bildschirm teilen'}</button>
-        <button className="btn danger solid" onClick={onClose}>📞 Auflegen</button>
+        <button className="btn" onClick={() => { localRef.current?.getAudioTracks().forEach((t) => (t.enabled = !mic)); setMic(!mic); }}>{mic ? 'Mikro an' : 'Mikro aus'}</button>
+        <button className="btn" onClick={() => { localRef.current?.getVideoTracks().forEach((t) => (t.enabled = !cam)); setCam(!cam); }}>{cam ? 'Kamera an' : 'Kamera aus'}</button>
+        <button className={`btn ${sharing ? 'primary' : ''}`} onClick={toggleShare}><Icon name="monitor" /> {sharing ? 'Freigabe beenden' : 'Bildschirm teilen'}</button>
+        <button className="btn danger solid" onClick={onClose}><Icon name="phone" /> Auflegen</button>
       </div>
     </div>,
     document.body,

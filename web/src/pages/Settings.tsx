@@ -12,6 +12,7 @@ import { ChangePasswordPage } from './Auth';
 import { AuditView } from '../modules/AuditView';
 import { MODULE_LABELS } from '../modules/ProjectSettings';
 import { CadMaskSettings, BackupSettings, UpdateSettings, MailSettings, AiSettings, HolidaySettings, StorageSettings, ExtensionSettings, ResourcesSettings } from './SettingsExtra';
+import { EntityIcon, Icon, IconPicker } from '../components/Icon';
 
 const ROLE_LABEL: Record<string, string> = { admin: 'Administrator', teamlead: 'Teamleitung', member: 'Mitarbeiter', guest: 'Gast' };
 
@@ -22,30 +23,30 @@ function SettingsNav({ to, children }: { to: string; children: ReactNode }) {
 export default function SettingsPage() {
   const t = useT();
   const { me } = useSession();
-  useCrumbs([{ label: `⚙️ ${t('Einstellungen')}` }]);
+  useCrumbs([{ label: `${t('Einstellungen')}` }]);
   const admin = me?.role === 'admin';
   return (
     <div className="page wide" style={{ display: 'flex', gap: 28, alignItems: 'flex-start' }}>
       <div style={{ width: 220, flex: 'none', position: 'sticky', top: 0 }}>
         <div className="nav-title">Persönlich</div>
-        <SettingsNav to="/settings/profile">👤 {t('Profil')}</SettingsNav>
-        <SettingsNav to="/settings/tokens">🔑 API-Schlüssel</SettingsNav>
+        <SettingsNav to="/settings/profile"><Icon name="user" /> {t('Profil')}</SettingsNav>
+        <SettingsNav to="/settings/tokens"><Icon name="key" /> API-Schlüssel</SettingsNav>
         {admin && <>
           <div className="nav-title" style={{ marginTop: 14 }}>{t('Administration')}</div>
-          <SettingsNav to="/settings/users">👥 {t('Benutzer')}</SettingsNav>
-          <SettingsNav to="/settings/teams">🏢 {t('Teams')}</SettingsNav>
-          <SettingsNav to="/settings/general">🧭 Allgemein & Nummern</SettingsNav>
-          <SettingsNav to="/settings/storage">💾 Speicherorte</SettingsNav>
-          <SettingsNav to="/settings/cad">📐 {t('Speichermaske')} (CAD)</SettingsNav>
-          <SettingsNav to="/settings/resources">🚗 Ressourcen</SettingsNav>
-          <SettingsNav to="/settings/holidays">🎌 Feiertage</SettingsNav>
-          <SettingsNav to="/settings/ldap">🏛️ {t('Firmen-Login')} (LDAP)</SettingsNav>
-          <SettingsNav to="/settings/mail">✉️ E-Mail-Konto</SettingsNav>
-          <SettingsNav to="/settings/ai">🤖 KI-Anbindung</SettingsNav>
-          <SettingsNav to="/settings/extensions">🧩 Erweiterungen</SettingsNav>
-          <SettingsNav to="/settings/backup">🗄️ {t('Sicherung')}</SettingsNav>
-          <SettingsNav to="/settings/update">⬆️ {t('Aktualisierung')}</SettingsNav>
-          <SettingsNav to="/settings/audit">📜 {t('Änderungsprotokoll')}</SettingsNav>
+          <SettingsNav to="/settings/users"><Icon name="users" /> {t('Benutzer')}</SettingsNav>
+          <SettingsNav to="/settings/teams"><Icon name="building" /> {t('Teams')}</SettingsNav>
+          <SettingsNav to="/settings/general"><Icon name="settings" /> Allgemein & Nummern</SettingsNav>
+          <SettingsNav to="/settings/storage"><Icon name="hdd" /> Speicherorte</SettingsNav>
+          <SettingsNav to="/settings/cad"><Icon name="cad" /> {t('Speichermaske')} (CAD)</SettingsNav>
+          <SettingsNav to="/settings/resources"><Icon name="car" /> Ressourcen</SettingsNav>
+          <SettingsNav to="/settings/holidays"><Icon name="holiday" /> Feiertage</SettingsNav>
+          <SettingsNav to="/settings/ldap"><Icon name="building" /> {t('Firmen-Login')} (LDAP)</SettingsNav>
+          <SettingsNav to="/settings/mail"><Icon name="mail" /> E-Mail-Konto</SettingsNav>
+          <SettingsNav to="/settings/ai"><Icon name="sparkles" /> KI-Anbindung</SettingsNav>
+          <SettingsNav to="/settings/extensions"><Icon name="assembly" /> Erweiterungen</SettingsNav>
+          <SettingsNav to="/settings/backup"><Icon name="archive" /> {t('Sicherung')}</SettingsNav>
+          <SettingsNav to="/settings/update"><Icon name="upload" /> {t('Aktualisierung')}</SettingsNav>
+          <SettingsNav to="/settings/audit"><Icon name="history" /> {t('Änderungsprotokoll')}</SettingsNav>
         </>}
         <div className="small muted" style={{ marginTop: 16, padding: '0 8px' }}>{t('Version')} {APP_VERSION}</div>
       </div>
@@ -126,7 +127,7 @@ function Tokens() {
         <b>Neuer Schlüssel – nur jetzt sichtbar:</b><div className="mono" style={{ wordBreak: 'break-all', margin: '6px 0' }}>{created}</div>
         <button className="btn sm" onClick={() => navigator.clipboard.writeText(created)}>Kopieren</button>
       </div>}
-      {!data?.length ? <Empty icon="🔑" title="Keine Schlüssel" /> : (
+      {!data?.length ? <Empty icon="key" title="Keine Schlüssel" /> : (
         <div className="table-wrap"><table className="table"><thead><tr><th>Name</th><th>Erstellt</th><th>Zuletzt benutzt</th><th /></tr></thead><tbody>
           {data.map((k) => <tr key={k.id}><td>{k.name}</td><td>{fmtDateTime(k.createdAt)}</td><td>{fmtDateTime(k.lastUsedAt)}</td>
             <td><button className="btn sm danger" onClick={async () => { await del(`/me/tokens/${k.id}`); reload(); }}>Widerrufen</button></td></tr>)}
@@ -194,12 +195,12 @@ function Teams() {
   const [delId, setDelId] = useState<string | null>(null);
   return (
     <div>
-      <div className="page-head"><h1>{t('Teams')}</h1><div className="actions"><button className="btn primary" onClick={() => setEdit({ name: '', icon: '👥', description: '', parentId: null, members: [] })}>＋ Team anlegen</button></div></div>
-      {!teams.length && <Empty icon="🏢" title="Noch keine Teams">Legen Sie Abteilungen wie Konstruktion, Elektrotechnik oder Einkauf an.</Empty>}
+      <div className="page-head"><h1>{t('Teams')}</h1><div className="actions"><button className="btn primary" onClick={() => setEdit({ name: '', icon: 'team', description: '', parentId: null, members: [] })}>＋ Team anlegen</button></div></div>
+      {!teams.length && <Empty icon="building" title="Noch keine Teams">Legen Sie Abteilungen wie Konstruktion, Elektrotechnik oder Einkauf an.</Empty>}
       <div className="card-grid">
         {teams.map((tm) => (
           <div key={tm.id} className="card click" onClick={() => setEdit({ ...tm })}>
-            <div className="card-title"><span style={{ fontSize: 20 }}>{tm.icon}</span><h3>{tm.name}</h3></div>
+            <div className="card-title"><EntityIcon value={tm.icon} size={20} fallback="team" /><h3>{tm.name}</h3></div>
             <div className="small muted">{tm.description}</div>
             <div className="row wrap" style={{ marginTop: 8, gap: 4 }}>{tm.members.map((m) => <Avatar key={m.userId} id={m.userId} name={m.displayName} />)}</div>
           </div>
@@ -219,10 +220,10 @@ function Teams() {
         </>}>
           <div className="grid2">
             <Field label="Name" required><input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
-            <Field label="Symbol"><input value={edit.icon} onChange={(e) => setEdit({ ...edit, icon: e.target.value })} maxLength={4} /></Field>
+            <Field label="Symbol"><IconPicker value={edit.icon} onChange={(icon) => setEdit({ ...edit, icon })} /></Field>
           </div>
           <Field label="Beschreibung"><input value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} /></Field>
-          <Field label="Übergeordnetes Team"><select value={edit.parentId ?? ''} onChange={(e) => setEdit({ ...edit, parentId: e.target.value || null })}><option value="">–</option>{teams.filter((x) => x.id !== edit.id).map((x) => <option key={x.id} value={x.id}>{x.icon} {x.name}</option>)}</select></Field>
+          <Field label="Übergeordnetes Team"><select value={edit.parentId ?? ''} onChange={(e) => setEdit({ ...edit, parentId: e.target.value || null })}><option value="">–</option>{teams.filter((x) => x.id !== edit.id).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
           <Field label="Mitglieder">
             <div className="card flat" style={{ padding: 6, maxHeight: 240, overflow: 'auto' }}>
               {users.map((u) => {
@@ -286,7 +287,7 @@ function General() {
         {PROJECT_MODULES.map((m) => (
           <label key={m} className="row" style={{ gap: 4 }}>
             <input type="checkbox" checked={modules.value.includes(m)} onChange={() => modules.setValue(modules.value.includes(m) ? modules.value.filter((x: string) => x !== m) : [...modules.value, m])} />
-            {MODULE_LABELS[m]?.icon} {MODULE_LABELS[m]?.label}
+            <Icon name={MODULE_LABELS[m]?.icon ?? 'square'} /> {MODULE_LABELS[m]?.label}
           </label>
         ))}
       </div>

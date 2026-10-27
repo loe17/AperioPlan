@@ -210,7 +210,7 @@ namespace AperioPlan.SwAddin
             Info("Beispiel: Bohrungsdurchmesser auf 12 mm vergrößert wegen stärkerer Welle");
             if (usedIn.Count > 0)
             {
-                Heading($"⚠ Verwendet in {usedIn.Count} Baugruppe(n):");
+                Heading($"Achtung: verwendet in {usedIn.Count} Baugruppe(n):");
                 var list = new ListBox { Height = 120 };
                 foreach (var u in usedIn) list.Items.Add($"{new string(' ', 2 * (u.Int("depth") - 1))}{u.Str("number")}  ({u.Str("projectNumber")})");
                 Grid.Controls.Add(list);
