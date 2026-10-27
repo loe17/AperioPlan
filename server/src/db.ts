@@ -12,6 +12,8 @@ export function createDb(url = config.databaseUrl): Sql {
     max: 10,
     onnotice: () => {},
     transform: { undefined: null },
+    // Kalenderdaten (date) als "JJJJ-MM-TT" belassen – keine Zeitzonenverschiebung
+    types: { date: { to: 1082, from: [1082], serialize: (x: string) => x, parse: (x: string) => x } },
   });
 }
 
@@ -37,3 +39,6 @@ export async function migrate(sql: Sql, log: (m: string) => void = () => {}): Pr
     log(`Migration ausgeführt: ${f}`);
   }
 }
+
+/** Verbindung oder laufende Transaktion */
+export type Db = Sql | postgres.TransactionSql<{}>;

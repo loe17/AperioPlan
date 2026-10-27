@@ -11,6 +11,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.2.0',
+    date: '2026-10-27',
+    title: 'Web-Oberfläche, Projekte & Aufgaben',
+    changes: [
+      { type: 'neu', text: 'Oberfläche im Notion-/Kaneo-Stil mit einklappbarer Seitenleiste, Brotkrumen-Pfad und Hell-/Dunkelmodus' },
+      { type: 'neu', text: 'Globale Blitzsuche mit Strg + K' },
+      { type: 'neu', text: 'Projekte mit automatischer Nummer, Teilprojekten, Dokumentnummern und Ordnerstruktur' },
+      { type: 'neu', text: 'Kanban-Board, Aufgabenliste, Gantt-Diagramm mit Abhängigkeiten, Whiteboard und Abschlussbericht' },
+      { type: 'neu', text: 'Detail-Fenster von rechts mit Kommentaren, @Erwähnungen und Verlauf' },
+      { type: 'neu', text: 'Benachrichtigungen in Echtzeit, Favoriten, private Notizen, Deutsch/Englisch' },
+      { type: 'neu', text: 'Verwaltung von Benutzern, Teams, Nummernkreisen und Firmen-Login (LDAP)' },
+    ],
+  },
+  {
     version: '0.1.0',
     date: '2026-10-27',
     title: 'Grundgerüst',
