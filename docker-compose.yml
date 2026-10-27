@@ -1,0 +1,115 @@
+# Ein-Befehl-Start:  docker compose up -d
+# (vorher einmalig ./install.sh ausführen oder .env aus .env.example anlegen)
+name: aperioplan
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aperio
+      POSTGRES_USER: aperio
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD fehlt in .env}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aperio -d aperio"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    labels: [autoheal=true]
+
+  app:
+    build: .
+    image: aperioplan:latest
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgres://aperio:${DB_PASSWORD}@db:5432/aperio
+      PUBLIC_URL: https://${DOMAIN:-localhost}
+      SECURE_COOKIES: "true"
+      BACKUP_KEY: ${BACKUP_KEY:-}
+      OFFICE_URL: ${OFFICE_URL:-}
+      TURN_URLS: ${TURN_URLS:-}
+      UPDATE_TRIGGER_FILE: /update/request
+      UPDATE_REPO: ${UPDATE_REPO:-loe17/AperioPlan}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      # Projektdateien: lokal oder Netzlaufwerk (NAS/SMB), siehe FILES_PATH in .env
+      - ${FILES_PATH:-./data/files}:/data/files
+      # Nacht-Tresor: separate Festplatte oder NAS, siehe BACKUP_PATH in .env
+      - ${BACKUP_PATH:-./data/backups}:/backups
+      - update:/update
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    labels: [autoheal=true]
+
+  # Digitaler Pförtner: automatisches HTTPS (Let's Encrypt oder firmeninternes Zertifikat)
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      TLS_MODE: ${TLS_MODE:-}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # Wächterdienst: startet Dienste neu, deren Gesundheitsprüfung fehlschlägt
+  autoheal:
+    image: willfarrell/autoheal:1.2.0
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_INTERVAL: 15
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # Ein-Klick-Aktualisierung: holt den neuen Stand von GitHub und baut nur das Programm neu.
+  # Datenbank, Dateien und Sicherungen liegen in eigenen Volumes und bleiben unberührt.
+  updater:
+    image: docker:27-cli
+    restart: unless-stopped
+    working_dir: /repo
+    entrypoint: ["/bin/sh", "/repo/deploy/updater.sh"]
+    environment:
+      COMPOSE_PROJECT_NAME: aperioplan
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/repo
+      - update:/update
+
+  # Optional: Büro-Dokumente im Browser (Collabora Online) – starten mit: docker compose --profile office up -d
+  office:
+    image: collabora/code:latest
+    profiles: [office]
+    restart: unless-stopped
+    environment:
+      aliasgroup1: https://${DOMAIN:-localhost}:443
+      extra_params: --o:ssl.enable=false --o:ssl.termination=true
+    cap_add: [MKNOD]
+
+  # Optional: TURN-Server für Videoanrufe über Netzgrenzen – docker compose --profile video up -d
+  turn:
+    image: coturn/coturn:latest
+    profiles: [video]
+    restart: unless-stopped
+    network_mode: host
+    command: ["-n", "--lt-cred-mech", "--user=aperio:${TURN_PASSWORD:-aperio}", "--realm=${DOMAIN:-localhost}", "--listening-port=3478"]
+
+volumes:
+  db:
+  update:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,82 @@
+import Fastify, { type FastifyInstance } from 'fastify';
+import cookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
+import rateLimit from '@fastify/rate-limit';
+import websocket from '@fastify/websocket';
+import fastifyStatic from '@fastify/static';
+import { existsSync } from 'node:fs';
+import { ZodError } from 'zod';
+import { config as defaultConfig, type Config } from './config';
+import { createDb, migrate, type Sql } from './db';
+import { Hub } from './lib/hub';
+import { HttpError } from './lib/errors';
+import { resolveUser } from './lib/auth';
+import { SettingsService } from './services/settings';
+import { Storage } from './services/storage';
+import { bootstrap } from './services/bootstrap';
+import type { AppContext } from './context';
+import { routes } from './routes';
+
+export interface BuildOptions {
+  sql?: Sql;
+  config?: Partial<Config>;
+  logger?: boolean;
+}
+
+export async function buildApp(opts: BuildOptions = {}): Promise<{ app: FastifyInstance; ctx: AppContext }> {
+  const config = { ...defaultConfig, ...opts.config };
+  const sql = opts.sql ?? createDb(config.databaseUrl);
+  const app = Fastify({
+    logger: opts.logger === false ? false : { level: config.logLevel },
+    bodyLimit: 20 * 1024 * 1024,
+    trustProxy: true,
+  });
+
+  await migrate(sql, (m) => app.log.info(m));
+  const ctx: AppContext = {
+    sql,
+    hub: new Hub(),
+    settings: new SettingsService(sql),
+    config,
+    storage: new Storage(config.storageRoot),
+  };
+  await bootstrap(ctx, app.log);
+
+  await app.register(cookie);
+  await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 * 1024, files: 50 } });
+  await app.register(rateLimit, { global: false });
+  await app.register(websocket);
+
+  app.decorateRequest('user', null);
+  app.addHook('onRequest', async (req) => {
+    if (req.url.startsWith('/api/')) req.user = await resolveUser(sql, req);
+  });
+
+  app.setErrorHandler((err, req, reply) => {
+    if (err instanceof HttpError) return reply.status(err.statusCode).send({ error: err.message, code: err.code });
+    if (err instanceof ZodError) return reply.status(400).send({ error: err.message, code: 'validation' });
+    const e = err as { statusCode?: number; message: string; code?: string };
+    if (e.statusCode && e.statusCode < 500) return reply.status(e.statusCode).send({ error: e.message, code: e.code });
+    if (e.code === '23505') return reply.status(409).send({ error: 'Eintrag existiert bereits', code: 'conflict' });
+    req.log.error(err);
+    return reply.status(500).send({ error: 'Interner Fehler', code: 'internal' });
+  });
+
+  await app.register(async (api) => routes(api, ctx), { prefix: '/api' });
+
+  // Web-Oberfläche ausliefern (Single-Page-App)
+  if (existsSync(config.webDist)) {
+    await app.register(fastifyStatic, { root: config.webDist, wildcard: false });
+    app.setNotFoundHandler((req, reply) => {
+      if (req.url.startsWith('/api/')) return reply.status(404).send({ error: 'Nicht gefunden' });
+      return reply.type('text/html').sendFile('index.html');
+    });
+  }
+
+  app.addHook('onClose', async () => {
+    if (!opts.sql) await sql.end({ timeout: 5 });
+  });
+
+  return { app, ctx };
+}
+

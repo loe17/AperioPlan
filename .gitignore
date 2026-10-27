@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.log
+.env
+data/
+backups/
+coverage/
+cad-bridge/**/bin/
+cad-bridge/**/obj/
+cad-bridge/**/.vs/

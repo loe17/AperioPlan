@@ -1,0 +1,30 @@
+# Digitaler Pförtner: leitet alles verschlüsselt (HTTPS) an AperioPlan weiter.
+# Öffentliche Domain  -> automatisches Let's-Encrypt-Zertifikat
+# Firmen-Intranet     -> TLS_MODE=internal in .env (eigene Firmen-CA von Caddy)
+{
+	servers {
+		timeouts {
+			read_body 0
+		}
+	}
+}
+
+{$DOMAIN} {
+	{$TLS_MODE}
+	encode zstd gzip
+	request_body {
+		max_size 10GB
+	}
+	@office path /browser/* /hosting/* /cool/* /lool/*
+	handle @office {
+		reverse_proxy office:9980
+	}
+	handle {
+		reverse_proxy app:3000
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
