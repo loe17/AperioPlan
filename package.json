@@ -1,6 +1,6 @@
 {
   "name": "aperioplan",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "AperioPlan – modulare Web-Projektverwaltung, CAD-Zentrale & Firmen-Plattform",
   "scripts": {

@@ -16,8 +16,10 @@ Dieses Handbuch erklärt Schritt für Schritt, wie AperioPlan auf einem Server e
 ## 2. Installation mit einem Befehl
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/loe17/AperioPlan/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/loe17/AperioPlan/main/install.sh | bash
 ```
+
+(als root; als normaler Benutzer `… | sudo bash`)
 
 oder, wenn der Ordner schon heruntergeladen ist:
 
@@ -277,17 +279,29 @@ Siehe `docs/ENTWICKLER.md`.
 
 ## 16. AperioPlan vollständig entfernen
 
+AperioPlan lässt sich mit einem Befehl vollständig und **ohne Rückfragen** entfernen:
+
 ```sh
-cd /opt/aperioplan        # bzw. der Programmordner
-sudo ./uninstall.sh
+curl -fsSL https://raw.githubusercontent.com/loe17/AperioPlan/main/uninstall.sh | bash
 ```
+
+(Als normaler Benutzer statt als root: `… | sudo bash`.)
 
 Das Skript
 
-1. bietet eine **Abschlusssicherung** an (Datenbank, Projektdateien, vorhandene Sicherungen und `.env`) – sie landet im Benutzerordner unter `aperioplan-abschluss-<Datum>`,
-2. fragt zur Sicherheit nach der Eingabe **LÖSCHEN**,
-3. entfernt alle AperioPlan-Dienste, die Datenbank, Zertifikate, Programmabbilder, den Dienst für `aperioplan.local` und den Programmordner,
-4. fragt **gesondert**, ob Ordner außerhalb des Programmordners (z. B. ein NAS für Projektdateien oder Sicherungen) gelöscht werden sollen – Standard ist Nein,
-5. fragt zum Schluss, ob auch Docker selbst entfernt werden soll – Standard ist Nein, weil oft andere Programme Docker nutzen.
+1. **findet die Installation selbst** – auch wenn sie in einem anderen Ordner liegt,
+2. **legt automatisch eine Abschlusssicherung an** – Datenbank, Projektdateien, Sicherungen und Einstellungen im Ordner `aperioplan-abschluss-<Datum>` im Benutzerordner,
+3. wartet 10 Sekunden (Abbrechen mit Strg + C),
+4. **entfernt** alle AperioPlan-Dienste, die Datenbank, die Zertifikate, die Programmabbilder, den Dienst für `aperioplan.local` und den Programmordner.
 
-Ohne Rückfragen (z. B. für Testsysteme): `sudo ./uninstall.sh --ja` – dann wird die Abschlusssicherung angelegt, Ordner außerhalb des Programmordners und Docker bleiben erhalten.
+Daten auf Netzlaufwerken und Docker selbst bleiben erhalten. Wer auch das entfernen möchte, hängt Schalter an:
+
+| Schalter | Wirkung |
+|---|---|
+| `--ohne-sicherung` | keine Abschlusssicherung |
+| `--mit-daten` | auch Projektdateien und Sicherungen auf Netzlaufwerken löschen |
+| `--mit-docker` | Docker selbst ebenfalls deinstallieren |
+| `--sofort` | ohne die 10 Sekunden Bedenkzeit |
+
+Beispiel: `curl -fsSL https://raw.githubusercontent.com/loe17/AperioPlan/main/uninstall.sh | bash -s -- --mit-docker --sofort`
+

@@ -11,6 +11,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.1.1',
+    date: '2026-10-27',
+    title: 'Installation und Deinstallation zuverlässiger',
+    changes: [
+      { type: 'behoben', text: 'Installation über "curl … | bash" brach beim Warten auf AperioPlan ohne Meldung ab' },
+      { type: 'verbessert', text: 'Installationsskript prüft am Ende, ob die https-Adresse wirklich antwortet, und zeigt sonst die Meldungen des Webservers' },
+      { type: 'verbessert', text: 'Deinstallation läuft vollautomatisch: findet die Installation selbst und legt vorher eine Abschlusssicherung an' },
+    ],
+  },
+  {
     version: '1.1.0',
     date: '2026-10-27',
     title: 'Ressourcen, neues Erscheinungsbild und sichere Installation',

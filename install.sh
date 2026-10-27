@@ -16,6 +16,11 @@
 # =====================================================================
 set -o pipefail
 
+# Das ganze Skript steht in einem Block: Bash liest es so vollständig ein, bevor es startet.
+# Sonst könnten Befehle wie "docker compose exec" bei "curl ... | bash" den Rest des
+# Skripts als Eingabe verschlucken – die Installation bräche dann ohne Meldung ab.
+{
+
 REPO_URL="${APERIO_REPO_URL:-https://github.com/loe17/AperioPlan.git}"
 DEFAULT_DIR="/opt/aperioplan"
 
@@ -130,6 +135,7 @@ if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ] && ! id -nG "$SUDO_USER
   usermod -aG docker "$SUDO_USER" && info "Benutzer '$SUDO_USER' darf Docker jetzt ohne sudo nutzen (nach erneuter Anmeldung)."
 fi
 if docker compose version >/dev/null 2>&1; then COMPOSE=(docker compose); else COMPOSE=(docker-compose); fi
+dc() { "${COMPOSE[@]}" "$@" </dev/null; }
 
 # ---------------------------------------------------------------- Programmordner
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
@@ -190,7 +196,7 @@ ok "Zugangsschlüssel sind gesetzt."
 port_busy() { # belegt durch ein anderes Programm als AperioPlan?
   local p="$1"
   ss -ltnH "sport = :$p" 2>/dev/null | grep -q . || return 1
-  "${COMPOSE[@]}" ps caddy 2>/dev/null | grep -q "0.0.0.0:$p->" && return 1
+  dc ps caddy 2>/dev/null | grep -q "0.0.0.0:$p->" && return 1
   return 0
 }
 HTTP_PORT=80; HTTPS_PORT=443
@@ -433,28 +439,47 @@ title "Start"
 info "AperioPlan wird gebaut und gestartet. Beim ersten Mal dauert das einige Minuten ..."
 COMPOSE_FILE="$(get_env COMPOSE_FILE)"
 if [ -n "$COMPOSE_FILE" ]; then export COMPOSE_FILE; else unset COMPOSE_FILE; fi
-if ! "${COMPOSE[@]}" up -d --build; then
+if ! dc up -d --build; then
   fail "Start fehlgeschlagen. Details: ${COMPOSE[*]} logs"
 fi
-"${COMPOSE[@]}" restart caddy >/dev/null 2>&1 || true
+dc restart caddy >/dev/null 2>&1 || true
+if ! CADDY_CHECK="$(dc exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile 2>&1)"; then
+  warn "Die Webserver-Konfiguration ./deploy/Caddyfile ist fehlerhaft:"
+  echo "$CADDY_CHECK" | tail -5
+fi
 
 info "Warte auf AperioPlan ..."
 HEALTHY=false
 for _ in $(seq 1 60); do
-  if "${COMPOSE[@]}" exec -T app wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1; then HEALTHY=true; break; fi
+  if dc exec -T app wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1; then HEALTHY=true; break; fi
   sleep 3
 done
-"${COMPOSE[@]}" ps
+dc ps
 if [ "$HEALTHY" != true ]; then
   warn "AperioPlan antwortet noch nicht. Bitte in einer Minute erneut prüfen: ${COMPOSE[*]} logs -f app"
 else
   ok "AperioPlan läuft."
 fi
 
+# Selbsttest: antwortet AperioPlan wirklich über https – so, wie der Browser es aufruft?
+https_ok() { curl -sk --max-time 5 --resolve "$1:${HTTPS_PORT}:127.0.0.1" "https://$1:${HTTPS_PORT}/api/health" 2>/dev/null | grep -q '"ok"'; }
+WEB_OK=false
+for _ in $(seq 1 20); do
+  if https_ok "$PRIMARY"; then WEB_OK=true; break; fi
+  sleep 3
+done
+if [ "$WEB_OK" = true ]; then
+  ok "https://${PRIMARY}${URL_PORT} antwortet."
+else
+  warn "https://${PRIMARY}${URL_PORT} antwortet auf diesem Server noch nicht. Letzte Meldungen des Webservers:"
+  dc logs --tail 25 caddy
+  warn "Bitte diese Ausgabe und '${COMPOSE[*]} logs --tail 50 app' an den Support senden."
+fi
+
 CERT_FILE=""
 if [ "$TLS_KIND" = internal ]; then
   sleep 3
-  if "${COMPOSE[@]}" cp caddy:/data/caddy/pki/authorities/local/root.crt ./data/AperioPlan-Zertifikat.crt >/dev/null 2>&1; then
+  if dc cp caddy:/data/caddy/pki/authorities/local/root.crt ./data/AperioPlan-Zertifikat.crt >/dev/null 2>&1; then
     CERT_FILE="$APERIO_DIR/data/AperioPlan-Zertifikat.crt"
     ok "Stammzertifikat gespeichert: $CERT_FILE"
   fi
@@ -462,7 +487,7 @@ else
   info "Zertifikat wird bei Let's Encrypt angefordert ..."
   CERT_OK=false
   for _ in $(seq 1 40); do
-    if "${COMPOSE[@]}" logs caddy 2>/dev/null | grep -qi "certificate obtained successfully\|skipping certificate"; then CERT_OK=true; break; fi
+    if dc logs caddy 2>/dev/null | grep -qi "certificate obtained successfully\|skipping certificate"; then CERT_OK=true; break; fi
     sleep 3
   done
   if [ "$CERT_OK" = true ]; then ok "Let's-Encrypt-Zertifikat erhalten."
@@ -534,3 +559,5 @@ Nützliche Befehle zur Verwaltung (im Ordner $APERIO_DIR):
 - Vollständig entfernen:   sudo ./uninstall.sh
 ${C_OK}====================================================================${C_0}
 EOF
+exit 0
+}
