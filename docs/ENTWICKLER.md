@@ -25,8 +25,11 @@ createdb aperio && createdb aperio_test        # PostgreSQL 14+
 pnpm dev                                        # Server :3000, Oberfläche :5173 (mit Proxy)
 pnpm test                                       # TEST_DATABASE_URL=postgres://… optional
 pnpm typecheck && pnpm build
-BASE_URL=http://localhost:3000 node e2e/testplan.mjs   # auf frischer Instanz
+BASE_URL=http://localhost:3000 node e2e/testplan.mjs      # auf frischer Instanz
+BASE_URL=http://localhost:3000 node e2e/screenshots.mjs   # Bildschirmfotos für README/Handbücher, ebenfalls frische Instanz
 ```
+
+`e2e/screenshots.mjs` legt erfundene Beispieldaten an und schreibt die Bilder nach `docs/screenshots/` (hell und dunkel). Nach Änderungen an der Oberfläche einfach neu ausführen und die Bilder mit hochladen.
 
 Umgebungsvariablen des Servers stehen in `server/src/config.ts`.
 
@@ -65,12 +68,13 @@ Wichtige Endpunkte (Auswahl):
 | Urlaub | `GET /absences/balance`, `POST /absences`, `POST /absences/:id/decide`, `GET /calendar/team` |
 | Chat | `GET /chat/channels`, `GET/POST /chat/channels/:id/messages`, `POST /chat/direct` |
 | KVP | `GET/POST /kvp`, `PATCH /kvp/:id`, `POST /kvp/:id/photos` |
+| Ressourcen | `GET /resources`, `POST/PATCH/DELETE /resources/:id` (Administrator), `GET /resources/bookings?from=&to=&resourceId=&mine=`, `POST /resources/availability`, `POST /resources/bookings` (mit `repeatWeeklyUntil`), `PATCH /resources/bookings/:id`, `POST /resources/bookings/:id/cancel|decide`, `GET /resources/bookings/review` |
 | KI | `POST /ai/chat` |
 | Suche | `GET /search?q=` |
 | Protokoll | `GET /audit?projectId=` |
 | System | `GET /health`, `GET /version`, `GET /changelog` |
 
-Fehler kommen als `{ "error": "Meldung", "code": "…" }` mit passendem HTTP-Status zurück.
+Fehler kommen als `{ "error": "Meldung", "code": "…", "details": … }` mit passendem HTTP-Status zurück. Eine belegte Ressource liefert `409` mit `details.clashes` (Überschneidungen) und `details.alternatives` (freie Ressourcen gleicher Art).
 
 ### Echtzeit
 
@@ -80,7 +84,32 @@ WebSocket `wss://…/api/ws` (Cookie-Anmeldung). Nachrichten an den Server:
 { "type": "subscribe", "channel": "project:<id>" }
 ```
 
-Kanäle: `user:<id>` (automatisch), `project:<id>`, `chat:<id>`, `call:<id>`, `global`. Ereignisse z. B. `task.changed`, `cad.changed`, `files.changed`, `message.created`, `notification`, `presence`.
+Kanäle: `user:<id>` (automatisch), `project:<id>`, `chat:<id>`, `call:<id>`, `global`. Ereignisse z. B. `task.changed`, `cad.changed`, `files.changed`, `message.created`, `notification`, `presence`, `resources.changed` (Kanal `global`).
+
+## Symbole
+
+Die Oberfläche verwendet ausschließlich den eigenen SVG-Symbolsatz in `web/src/components/Icon.tsx` – keine Emojis. Ein automatischer Test (`server/test/no-emoji.test.ts`) schlägt fehl, sobald irgendwo im Quelltext ein Emoji steht.
+
+```tsx
+import { Icon, EntityIcon } from '../components/Icon';
+<Icon name="calendar" />                       // einzelnes Symbol, übernimmt die Textfarbe
+<EntityIcon value="factory:#4f46e5" size={20} /> // Projekt-/Team-Symbol mit Farbe
+```
+
+* Neues Symbol: im Objekt `P` in `Icon.tsx` einen Eintrag mit SVG-Pfaden (24 × 24, Strichstärke über `currentColor`) ergänzen.
+* Projekte und Teams speichern ihr Symbol als `name` oder `name:#farbe`. Auswählbar sind die Namen in `PICKABLE_ICONS`.
+* Die Datenbank-Migration `008_icons.sql` hat alte Emoji-Symbole in Namen übersetzt.
+
+## Logo
+
+Die Dateien liegen in `docs/brand/` (Bildmarke, Schriftzug hell/dunkel, PNG 512 px) und `web/public/` (Favicon, App-Symbol). Die Bildmarke zeigt einen Bogen – lateinisch *aperio*, „ich öffne“ – mit zwei versetzten Planungsbalken.
+
+## Installation und Pförtner
+
+* `install.sh` erzeugt `.env` und `deploy/Caddyfile` (beide nicht im Repository). Vorlage für alte Installationen: `deploy/Caddyfile.example`.
+* Let's Encrypt über DNS: `deploy/compose.dns.yml` baut Caddy mit der Erweiterung `github.com/caddy-dns/<anbieter>` (`deploy/caddy/Dockerfile`); eingebunden über `COMPOSE_FILE` in `.env`.
+* `uninstall.sh` entfernt alles, was `install.sh` angelegt hat.
+* Ändern am Skript: `shellcheck install.sh uninstall.sh` muss ohne Warnung durchlaufen.
 
 ## Plugins (zusätzliche Werkzeuge)
 
@@ -92,12 +121,13 @@ Ein Plugin ist ein Ordner im Plugin-Verzeichnis (`data/plugins/<id>/`, im Docker
   "name": "Stückzahlen-Planung",
   "version": "1.0.0",
   "description": "…",
-  "projectTab": { "label": "Stückzahlen", "icon": "🔢", "entry": "index.html" },
-  "page": { "label": "Stückzahlen", "icon": "🔢", "entry": "seite.html" }
+  "projectTab": { "label": "Stückzahlen", "icon": "chart", "entry": "index.html" },
+  "page": { "label": "Stückzahlen", "icon": "chart", "entry": "seite.html" }
 }
 ```
 
 * `id` muss dem Ordnernamen entsprechen.
+* `icon` ist der Name eines Symbols aus dem AperioPlan-Symbolsatz (siehe „Symbole“).
 * Der Administrator aktiviert Plugins unter **Einstellungen → Erweiterungen**.
 * `projectTab` fügt jedem Projekt einen Reiter hinzu; die Seite wird mit `?projectId=…&projectNumber=…` aufgerufen.
 * Plugins laufen unter derselben Adresse und nutzen die REST-API mit der Sitzung des angemeldeten Benutzers – sie sehen also genau das, was der Benutzer sehen darf.

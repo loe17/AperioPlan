@@ -198,6 +198,32 @@ await step('6.2 Update-Prüfung', async () => {
   expect(r.current, 'keine aktuelle Version');
 });
 
+// ------------------------------------------------------------ 7. Ressourcen & Erscheinungsbild (Version 1.1)
+await step('7.1 Ressource buchen, Doppelbuchung wird abgelehnt', async () => {
+  const room = await api('POST', '/resources', { name: 'Testraum', kind: 'room', capacity: 6 });
+  await page.goto(`${BASE}/calendar/resources`);
+  await page.click('button:has-text("Buchen")');
+  await page.selectOption('.modal select >> nth=0', { label: 'Testraum' });
+  await page.fill('.modal input[placeholder*="Kundentermin"]', 'Testplan-Besprechung');
+  await page.waitForSelector('.modal >> text=frei', { timeout: 5000 });
+  await page.click('.modal-foot button.primary');
+  await page.waitForSelector('.booking-chip', { timeout: 5000 });
+  const [b] = await api('GET', `/resources/bookings?resourceId=${room.id}&mine=1&from=${new Date(Date.now() - 864e5).toISOString()}&to=${new Date(Date.now() + 60 * 864e5).toISOString()}`);
+  expect(b?.title === 'Testplan-Besprechung', 'Buchung nicht gespeichert');
+  let clash = false;
+  try { await api('POST', '/resources/bookings', { resourceId: room.id, startsAt: b.startsAt, endsAt: b.endsAt }); }
+  catch (e) { clash = /409/.test(e.message); }
+  expect(clash, 'Doppelbuchung wurde nicht abgelehnt');
+});
+await step('7.2 Oberfläche ohne Emojis', async () => {
+  for (const url of ['/', '/calendar/resources', `/projects/${projectId}?tab=files`, '/settings/teams']) {
+    await page.goto(BASE + url);
+    await page.waitForTimeout(600);
+    const text = await page.evaluate(() => document.body.innerText);
+    expect(!/\p{Extended_Pictographic}/u.test(text.replace(/[©®™↔↕]/gu, '')), `Emoji auf ${url}`);
+  }
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);

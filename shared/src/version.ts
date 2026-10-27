@@ -11,6 +11,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.1.0',
+    date: '2026-10-27',
+    title: 'Ressourcen, neues Erscheinungsbild und sichere Installation',
+    changes: [
+      { type: 'neu', text: 'Räume, Fahrzeuge und Geräte im Kalender buchen – ohne Doppelbuchungen, mit Genehmigung und Serienterminen' },
+      { type: 'neu', text: 'Ressourcen werden vom Administrator angelegt, gesperrt oder auf Teams beschränkt' },
+      { type: 'neu', text: 'Eigener Symbolsatz statt Emojis; Projekte und Teams erhalten Symbol und Farbe' },
+      { type: 'neu', text: 'Neues Logo' },
+      { type: 'neu', text: 'Installationsskript richtet immer HTTPS ein – Let\'s Encrypt auch im lokalen Netz über den DNS-Anbieter' },
+      { type: 'neu', text: 'Deinstallations-Skript mit optionaler Abschlusssicherung' },
+      { type: 'behoben', text: 'Anmeldung über http://Server-IP schien nichts zu tun' },
+      { type: 'behoben', text: 'Nach einer Ein-Klick-Aktualisierung konnten Projektdateien leer erscheinen' },
+    ],
+  },
+  {
     version: '1.0.0',
     date: '2026-10-27',
     title: 'Erste vollständige Version',

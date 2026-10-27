@@ -6,7 +6,9 @@ Willkommen bei AperioPlan! Diese Anleitung zeigt Schritt für Schritt, wie Sie i
 
 ## 1. Anmelden und erste Schritte
 
-1. Im Browser die Adresse Ihrer Firma öffnen (z. B. `https://plan.firma.de`).
+![Anmeldung](screenshots/01-anmeldung.png)
+
+1. Im Browser die Adresse Ihrer Firma öffnen (z. B. `https://plan.firma.de` oder `https://aperioplan.local`). Warnt der Browser vor dem Zertifikat, hat Ihr Rechner das AperioPlan-Zertifikat noch nicht – Ihre IT richtet das einmalig ein (Administrator-Handbuch, Abschnitt 4).
 2. Mit Benutzername und Passwort anmelden – bei eingerichtetem Firmen-Login mit Ihren gewohnten Windows-Zugangsdaten.
 3. Beim ersten Mal vergeben Sie ein eigenes Passwort (mindestens 8 Zeichen).
 
@@ -16,16 +18,16 @@ Unter **Einstellungen → Profil** stellen Sie Sprache (Deutsch/Englisch) und Fa
 
 ```
 ┌────────────────────┬──────────────────────────────────────────────────────┐
-│ Seitenleiste       │ Brotkrumen-Pfad        🔍 Blitzsuche   🔔  👤        │
+│ Seitenleiste       │ Brotkrumen-Pfad        Blitzsuche   Glocke   Profil  │
 │  Mein Schreibtisch ├──────────────────────────────────────────────────────┤
 │  Meine Teams       │                                                      │
 │  Werkzeuge         │                 Arbeitsbereich                       │
 │                    │                                                      │
-│ v1.0.0 ● Verbunden │                                                      │
+│ v1.1.0 ● Verbunden │                                                      │
 └────────────────────┴──────────────────────────────────────────────────────┘
 ```
 
-* **Seitenleiste:** Schnellzugriff auf Ihren Schreibtisch, Ihre Teams mit Projekten und die Werkzeuge. Mit `«` oder **Strg + \\** einklappen, mit `☰` wieder öffnen.
+* **Seitenleiste:** Schnellzugriff auf Ihren Schreibtisch, Ihre Teams mit Projekten und die Werkzeuge. Mit `«` oder **Strg + \\** einklappen, mit dem Menü-Symbol wieder öffnen.
 * **Brotkrumen-Pfad:** zeigt immer, wo Sie gerade sind – jeder Teil ist anklickbar.
 * **Blitzsuche – Strg + K:** zwei Buchstaben genügen, um zu einem Projekt, einer Baugruppe, einer Aufgabe, Datei oder einem Kollegen zu springen. Mit Pfeiltasten auswählen, Enter öffnet.
 * **Glocke:** neue Aufgaben, Erwähnungen, Freigaben und Genehmigungen.
@@ -34,12 +36,14 @@ Unter **Einstellungen → Profil** stellen Sie Sprache (Deutsch/Englisch) und Fa
 
 ## 3. Mein Schreibtisch
 
+![Mein Schreibtisch](screenshots/02-schreibtisch.png)
+
 * **Übersicht:** Begrüßung, Stempeluhr, Ihre offenen Aufgaben, Favoriten.
 * **Posteingang:** alle Benachrichtigungen.
 * **Mein Kalender:** Fristen Ihrer Aufgaben, eigene Abwesenheiten, Feiertage.
 * **Stempeluhr, Urlaubskonto, Private Notizen** (nur für Sie sichtbar).
 
-Projekte markieren Sie mit dem ☆ neben dem Namen als Favorit.
+Projekte markieren Sie mit dem Stern neben dem Namen als Favorit.
 
 ## 4. Projekte
 
@@ -50,6 +54,9 @@ Projekte markieren Sie mit dem ☆ neben dem Namen als Favorit.
 * Die **Projektnummer** wird automatisch vergeben (z. B. `0100`).
 * Als **Teilprojekt** eines Hauptprojekts erhält es einen Buchstaben (`0100-A`).
 * Der Projektordner mit `01_CAD`, `02_Zeichnungen`, `03_Doku`, `04_Fertigung` wird automatisch angelegt.
+* Unter **Symbol** wählen Sie ein Bild und eine Farbe für das Projekt – so finden Sie es in Listen und der Seitenleiste schneller wieder. Teams erhalten ihr Symbol unter **Einstellungen → Teams**.
+
+![Kanban-Board](screenshots/03-kanban.png)
 
 ### Werkzeuge im Projekt (Reiter)
 
@@ -75,28 +82,32 @@ Welche Reiter ein Projekt hat, legen Projektverantwortliche unter **Einstellunge
 * **Neue Aufgabe** oben rechts oder `＋` in einer Kanban-Spalte.
 * Im Detail-Fenster: Status, Priorität, Bearbeiter, Abteilung, Start/Fällig, geschätzter Aufwand, Meilenstein, Beschreibung, Abhängigkeiten.
 * **Kommentare:** Mit `@benutzername` erwähnen Sie Kollegen – sie werden benachrichtigt. Strg + Enter sendet.
-* **⏱️ Einstempeln** im Detail-Fenster bucht Ihre Zeit direkt auf diese Aufgabe.
+* **Einstempeln** im Detail-Fenster bucht Ihre Zeit direkt auf diese Aufgabe.
 
 ## 5. Dateien
 
+![Dateien eines Projekts](screenshots/06-dateien.png)
+
 * **Hochladen:** Dateien einfach in das Fenster ziehen oder „Hochladen“ wählen. Gleichnamige Dateien werden nicht überschrieben, sondern als neue **Version** gespeichert (v2, v3 …) – ältere Stände bleiben abrufbar.
 * **Vorschau:** PDFs, Bilder und Videos öffnen sich direkt im Browser.
-* **🔒 Sperren:** verhindert, dass Kollegen eine Datei gleichzeitig bearbeiten.
-* **📝 Office:** Word-, Excel- und PowerPoint-Dateien im Browser bearbeiten (falls eingerichtet).
+* **Sperren (Schloss):** verhindert, dass Kollegen eine Datei gleichzeitig bearbeiten.
+* **Office (Bearbeiten-Knopf):** Word-, Excel- und PowerPoint-Dateien im Browser bearbeiten (falls eingerichtet).
 * Gelöschte Dateien landen im Papierkorb des Projekts.
 * Der Pfad für den **Windows-Explorer** steht oberhalb der Liste.
 
-### Freigaben für Externe (🔗 Freigaben)
+### Freigaben für Externe (Knopf „Freigaben“)
 
 | Art | Wofür |
 |---|---|
-| 📤 Daten teilen | Kunden/Lieferanten laden Dateien eines Ordners herunter |
-| 📥 Daten anfordern | Lieferanten laden große 3D-Dateien oder Datenblätter **ohne Benutzerkonto** direkt in einen Projektordner hoch |
-| 👤 Gastzugang | Kunden, Statiker oder Partner sehen nur die freigegebenen Bereiche (Dateien, freigegebene Zeichnungen, Termine) |
+| Daten teilen | Kunden/Lieferanten laden Dateien eines Ordners herunter |
+| Daten anfordern | Lieferanten laden große 3D-Dateien oder Datenblätter **ohne Benutzerkonto** direkt in einen Projektordner hoch |
+| Gastzugang | Kunden, Statiker oder Partner sehen nur die freigegebenen Bereiche (Dateien, freigegebene Zeichnungen, Termine) |
 
 Jeder Link kann ein **Passwort**, ein **Ablaufdatum** und eine **maximale Anzahl Nutzungen** erhalten und jederzeit widerrufen werden. Bei Uploads über einen Anforderungslink werden Sie benachrichtigt.
 
 ## 6. CAD-Zentrale (SolidWorks)
+
+![CAD-Zentrale mit Stückliste](screenshots/08-cad-stueckliste.png)
 
 ### Nummern verstehen
 
@@ -147,6 +158,8 @@ Im Detail-Fenster einer Baugruppe: **Stückliste** – mehrstufig oder als Menge
 
 ## 7. Zeiterfassung
 
+![Zeiterfassung](screenshots/11-zeiterfassung.png)
+
 * **Einstempeln:** Stempeluhr auf dem Schreibtisch, unter **Stempeluhr** oder direkt in einer Aufgabe. Ein erneutes Einstempeln auf ein anderes Projekt **wechselt** automatisch.
 * **Ausstempeln** beendet die Buchung.
 * **Fehlbuchung?** Bei der Buchung **Korrektur …** wählen (oder „Zeit nachtragen“): *Was? Welche Zeit? Warum?* angeben. Die Teamleitung genehmigt mit einem Klick, Sie werden benachrichtigt.
@@ -160,10 +173,30 @@ Im Detail-Fenster einer Baugruppe: **Stückliste** – mehrstufig oder als Menge
 
 **Datenschutz:** Im **Teamkalender** sehen Kollegen nur, *wann* Sie abwesend sind – niemals Urlaub, Krankheit oder Ihre Notiz.
 
+## 8a. Räume, Fahrzeuge und Geräte buchen
+
+![Belegungsplan der Ressourcen](screenshots/09-ressourcen.png)
+
+**Werkzeuge → Ressourcen** zeigt den Belegungsplan aller Räume, Firmenwagen und Geräte – als Woche (alle Ressourcen nebeneinander) oder als Tag mit Uhrzeiten.
+
+1. Auf eine freie Stelle im Plan klicken oder **Buchen** wählen.
+2. Ressource, Beginn und Ende auswählen. AperioPlan zeigt sofort, ob der Zeitraum frei ist. Ist er belegt, schlägt es freie Ressourcen derselben Art vor.
+3. Optional einen Anlass (z. B. „Kundentermin“) und ein Projekt angeben. Für regelmäßige Termine **Wöchentlich wiederholen** ankreuzen.
+4. **Buchen.** Muss die Ressource genehmigt werden (z. B. Firmenwagen), ist die Buchung zunächst gestrichelt umrandet und wird nach der Genehmigung durchgezogen dargestellt. Sie werden benachrichtigt.
+
+![Ressource buchen](screenshots/10-ressource-buchen.png)
+
+* **Meine Buchungen** listet alle eigenen Buchungen; dort lassen sie sich verschieben oder stornieren – bei Serien wahlweise nur ein Termin oder die ganze Serie.
+* **Zu genehmigen** erscheint für Genehmiger und Administratoren.
+* Eigene Buchungen stehen zusätzlich in **Mein Kalender**.
+* **Datenschutz:** Kollegen sehen nur, *wer* eine Ressource belegt – den Anlass sehen nur Sie, der Genehmiger und Administratoren.
+
 ## 9. Kommunikation
 
-* **Chat:** Projekt-, Team- und Direktnachrichten in Echtzeit. Dateien per 📎 oder Einfügen (Strg + V) teilen. Ungelesene Nachrichten zeigt eine rote Zahl.
-* **Videoanruf:** Im Chat **📹 Videoanruf** – Kollegen erhalten eine Einladung. Mit **Bildschirm teilen** besprechen Sie z. B. gemeinsam ein CAD-Modell. Keine Zusatzsoftware nötig.
+![Projekt-Chat](screenshots/13-chat.png)
+
+* **Chat:** Projekt-, Team- und Direktnachrichten in Echtzeit. Dateien per Büroklammer oder Einfügen (Strg + V) teilen. Ungelesene Nachrichten zeigt eine rote Zahl.
+* **Videoanruf:** Im Chat **Videoanruf** – Kollegen erhalten eine Einladung. Mit **Bildschirm teilen** besprechen Sie z. B. gemeinsam ein CAD-Modell. Keine Zusatzsoftware nötig.
 * **E-Mail:** Das Projektpostfach unter **E-Mail**. E-Mails Projekten und Aufgaben zuordnen, beantworten, Anhänge landen im Projektordner. Tipp: Die Projektnummer im Betreff (`[0100]`) sorgt für automatische Zuordnung.
 
 ## 10. KVP-Ideenbox
@@ -172,7 +205,7 @@ Im Detail-Fenster einer Baugruppe: **Stückliste** – mehrstufig oder als Menge
 
 ## 11. KI-Assistent
 
-Falls eingerichtet, erscheint im Projekt der Knopf **🤖 KI**:
+Falls eingerichtet, erscheint im Projekt der Knopf **KI**:
 
 * **Zusammenfassen:** Fortschritt, Risiken, nächste Schritte des Projekts.
 * **Schreibhilfe:** z. B. einen Statusbericht an den Kunden formulieren.

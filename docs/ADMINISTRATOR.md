@@ -8,28 +8,39 @@ Dieses Handbuch erklärt Schritt für Schritt, wie AperioPlan auf einem Server e
 
 | Was | Empfehlung |
 |---|---|
-| Rechner | Linux-Server (Ubuntu 22.04/24.04, Debian 12), ARM-Minicomputer (z. B. Raspberry Pi 5) oder virtuelle Maschine |
+| Rechner | Linux mit `apt` (Ubuntu 22.04/24.04, Debian 12/13, Raspberry Pi OS) – eigener Rechner, Cloud-Server, virtuelle Maschine oder Proxmox-LXC (mit „Nesting“) |
 | Arbeitsspeicher | ab 2 GB (kleine Teams), 4–8 GB für Firmen mit vielen Nutzern |
 | Festplatte | Projektdaten + Platz für Sicherungen; Sicherungen idealerweise auf einer zweiten Platte oder einem NAS |
-| Netzwerk | feste Adresse oder DNS-Name, z. B. `plan.firma.de`; für Internet-Zertifikate Port 80/443 erreichbar |
+| Netzwerk | feste IP-Adresse im lokalen Netz (im Router reservieren) oder ein DNS-Name, z. B. `plan.firma.de` |
 
 ## 2. Installation mit einem Befehl
 
 ```sh
-git clone https://github.com/loe17/AperioPlan.git
-cd AperioPlan
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/loe17/AperioPlan/main/install.sh | sudo bash
 ```
 
-Das Skript
+oder, wenn der Ordner schon heruntergeladen ist:
 
-1. installiert Docker, falls es fehlt,
-2. legt die Datei `.env` mit zufälligen Passwörtern an und fragt nach der Adresse des Servers,
-3. startet alle Bausteine: Programm, Datenbank, HTTPS-Pförtner, Wächterdienst und Updater.
+```sh
+git clone https://github.com/loe17/AperioPlan.git /opt/aperioplan
+cd /opt/aperioplan
+sudo ./install.sh
+```
 
-Danach im Browser `https://<adresse>` öffnen und mit **admin / admin** anmelden. Das Passwort **muss** sofort geändert werden – vorher ist kein Zugriff möglich.
+Das Skript führt Schritt für Schritt durch die Einrichtung:
 
-> **Wichtig:** In der `.env` steht `BACKUP_KEY`. Ohne diesen Schlüssel lassen sich Sicherungen nicht wiederherstellen. Bitte ausdrucken oder im Passwort-Tresor ablegen.
+1. **Systemprüfung** – Administratorrechte, Betriebssystem, Art des Rechners. In einem Proxmox-LXC-Container erinnert es daran, „Nesting“ einzuschalten.
+2. **Fehlende Programme** – `curl`, `git`, `ca-certificates` und Docker werden geprüft. Fehlt etwas, fragt das Skript, ob es installiert werden soll (`[J/n]`, Eingabetaste = Ja).
+3. **Zugangsschlüssel** – Datenbank-Passwort und Sicherungsschlüssel (`BACKUP_KEY`) werden zufällig erzeugt und in `.env` gespeichert. Gibt es schon eine `.env`, bleibt sie auf Wunsch erhalten; Passwort und Schlüssel werden in jedem Fall übernommen, damit vorhandene Daten lesbar bleiben.
+4. **Erreichbarkeit** – Auswahl, wie AperioPlan erreichbar sein soll (siehe Abschnitt 4). Die Verbindung ist **immer verschlüsselt**.
+5. **Start** – alle Bausteine werden gebaut und gestartet, danach prüft das Skript, ob AperioPlan antwortet und das Zertifikat da ist.
+6. **Übersicht** – am Ende stehen alle Adressen, der Erstzugang und der `BACKUP_KEY` in einem Kasten.
+
+Danach im Browser die angezeigte Adresse öffnen und mit **admin / admin** anmelden. Das Passwort **muss** sofort geändert werden – vorher ist kein Zugriff möglich.
+
+> **Wichtig:** Der `BACKUP_KEY` steht auch in `.env`. Ohne diesen Schlüssel lassen sich Sicherungen nicht wiederherstellen. Bitte ausdrucken oder im Passwort-Tresor ablegen.
+
+Das Skript kann jederzeit erneut ausgeführt werden, z. B. um die Adresse zu ändern: `sudo ./install.sh`.
 
 ### Später wieder starten / stoppen
 
@@ -53,11 +64,44 @@ docker compose logs -f app
 
 Alle Dienste laufen getrennt voneinander und beeinflussen keine anderen Programme auf dem Server.
 
-## 4. HTTPS-Zertifikat
+## 4. Erreichbarkeit und HTTPS-Zertifikat
 
-* **Öffentlich erreichbarer Server:** `DOMAIN=plan.firma.de` in der `.env` – Caddy holt automatisch ein kostenloses Let's-Encrypt-Zertifikat und erneuert es selbstständig.
-* **Nur im Firmennetz:** zusätzlich `TLS_MODE=tls internal`. Caddy erzeugt dann ein firmeneigenes Zertifikat. Damit Browser nicht warnen, das Stammzertifikat einmalig auf den Arbeitsplätzen hinterlegen:
-  `docker compose exec caddy cat /data/caddy/pki/authorities/local/root.crt > firmen-ca.crt` und per Gruppenrichtlinie verteilen.
+AperioPlan wird immer über `https://` aufgerufen – im Internet genauso wie im lokalen Netz. `install.sh` bietet drei Wege an:
+
+| Auswahl | Adresse | Zertifikat | Voraussetzung |
+|---|---|---|---|
+| **1 – Lokales Netzwerk** | `https://aperioplan.local` und `https://<Server-IP>` | eigenes AperioPlan-Zertifikat | keine |
+| **2 – Lokales Netz mit eigener Domain** | z. B. `https://firma.duckdns.org` | echtes Let's-Encrypt-Zertifikat | Konto bei einem DNS-Anbieter (DuckDNS kostenlos, Cloudflare, Hetzner, IONOS) |
+| **3 – Domain im Internet** | z. B. `https://plan.firma.de` | echtes Let's-Encrypt-Zertifikat | Port 80 und 443 aus dem Internet erreichbar |
+
+**Warum nicht immer Let's Encrypt?** Let's Encrypt stellt Zertifikate nur für Namen aus, die im Internet eindeutig sind. Für `aperioplan.local` oder eine IP-Adresse wie `192.168.1.20` ist das technisch nicht möglich. Deshalb gibt es Weg 2: Eine eigene (auch kostenlose) Domain zeigt auf die interne Adresse, und Let's Encrypt prüft die Domain über den DNS-Anbieter statt über das Internet. Der Server muss dafür nicht aus dem Internet erreichbar sein.
+
+### Weg 1: eigenes AperioPlan-Zertifikat
+
+Der Pförtner (Caddy) erzeugt eine eigene kleine Zertifizierungsstelle. Damit der Browser nicht warnt, wird ihr Stammzertifikat **einmal pro Rechner** als vertrauenswürdig hinterlegt:
+
+1. `http://aperioplan.local/zertifikat.crt` (oder `http://<Server-IP>/zertifikat.crt`) öffnen – die Datei wird heruntergeladen. Sie liegt außerdem unter `data/AperioPlan-Zertifikat.crt` im Programmordner.
+2. **Windows:** Datei doppelklicken → „Zertifikat installieren“ → „Lokaler Computer“ → „Alle Zertifikate in folgendem Speicher speichern“ → „Vertrauenswürdige Stammzertifizierungsstellen“.
+   **macOS:** Datei öffnen → Schlüsselbund „System“ → Zertifikat doppelklicken → „Immer vertrauen“.
+   **Firmen:** per Gruppenrichtlinie an alle Arbeitsplätze verteilen.
+3. Browser neu starten.
+
+`aperioplan.local` wird über Bonjour/mDNS im Netz bekanntgegeben (Dienst `aperioplan-mdns`). Windows 10/11, macOS, iOS und Android verstehen das ohne Zusatzprogramme. Ändert sich die IP-Adresse des Servers, `sudo ./install.sh` erneut ausführen – am besten die IP im Router fest vergeben.
+
+### Weg 2: Let's Encrypt im lokalen Netz
+
+* **DuckDNS (kostenlos):** Auf duckdns.org anmelden, einen Namen anlegen (z. B. `musterfirma`) und den angezeigten Token kopieren. `install.sh` trägt die interne IP des Servers automatisch bei DuckDNS ein.
+* **Cloudflare, Hetzner, IONOS:** Beim Anbieter einen API-Token mit Recht „DNS bearbeiten“ erstellen und einen A-Eintrag `plan.firma.de → <interne Server-IP>` anlegen.
+
+Für diesen Weg baut das Skript einmalig einen Pförtner mit passender Erweiterung (`deploy/caddy/Dockerfile`, eingebunden über `COMPOSE_FILE` in `.env`). Manche Router blockieren Domains, die auf interne Adressen zeigen („DNS-Rebind-Schutz“). Bei der FRITZ!Box die Domain unter *Heimnetz → Netzwerk → Netzwerkeinstellungen → DNS-Rebind-Schutz* als Ausnahme eintragen.
+
+### Weg 3: Domain im Internet
+
+Beim Domain-Anbieter einen A-Eintrag auf die öffentliche IP setzen und im Router Port 80 und 443 an den Server weiterleiten (oder einen vorhandenen Reverse Proxy auf den Server zeigen lassen). Das Zertifikat wird automatisch geholt und vor Ablauf erneuert.
+
+### Technischer Hintergrund
+
+Die Datei `deploy/Caddyfile` wird von `install.sh` erzeugt und nicht mit hochgeladen. Wer sie von Hand ändert, startet danach den Pförtner neu: `docker compose restart caddy`. Sind Port 80/443 schon belegt, fragt das Skript nach anderen Ports (`HTTP_PORT`, `HTTPS_PORT` in `.env`).
 
 ## 5. Speicherorte: lokal oder Netzlaufwerk (NAS)
 
@@ -135,6 +179,17 @@ Die Installation des CAD-Wächters auf den Konstruktions-PCs ist in `cad-bridge/
 * Urlaubsanspruch je Mitarbeiter unter **Benutzer**; dort lassen sich auch Resturlaub aus dem Vorjahr oder Sonderurlaub buchen („Urlaubskonto korrigieren“).
 * **Datenschutz:** Im Teamkalender sehen Kollegen ausschließlich, *wer wann abwesend* ist – nie die Art der Abwesenheit oder Notizen. Diese sehen nur der Mitarbeiter selbst und seine Teamleitung.
 
+## 9a. Ressourcen (Räume, Fahrzeuge, Geräte)
+
+**Einstellungen → Ressourcen → Ressource anlegen.** Für jede Ressource lassen sich festlegen:
+
+* Name, Art (Raum, Fahrzeug, Gerät, Sonstiges), Ort, Plätze und Farbe,
+* **Genehmigung nötig** – Buchungen gelten erst, wenn der Genehmiger (oder ein Administrator) zustimmt,
+* **nur für bestimmte Teams** buchbar,
+* **gesperrt**, z. B. während einer Reparatur – bestehende Buchungen bleiben sichtbar, neue sind nicht möglich.
+
+Doppelbuchungen schließt die Datenbank selbst aus – auch wenn zwei Personen im selben Moment buchen. Kollegen sehen nur, *wer* eine Ressource belegt; den Anlass sehen nur die buchende Person, der Genehmiger und Administratoren. Eine Ressource mit zukünftigen Buchungen kann nicht gelöscht, aber gesperrt werden.
+
 ## 10. Nacht-Tresor (Sicherung) und Wiederherstellung
 
 **Einstellungen → Sicherung**
@@ -160,6 +215,8 @@ Datenbank, Dateien, Sicherungen und Einstellungen bleiben unberührt. Die Versio
 
 Manuell geht es auch: `git pull && docker compose up -d --build app`.
 
+> **Von Version 1.0 auf 1.1:** Die Datei `deploy/Caddyfile` wird jetzt vom Installationsskript erzeugt. Nach der Aktualisierung bitte einmal `sudo ./install.sh` ausführen (vorhandene `.env` behalten) – dabei wird auch die verschlüsselte Verbindung neu eingerichtet.
+
 ## 12. Ausfallsicherheit
 
 * Alle Dienste starten nach einem Absturz oder Neustart des Servers selbstständig (`restart: unless-stopped`).
@@ -176,7 +233,7 @@ OFFICE_URL=https://plan.firma.de
 docker compose --profile office up -d
 ```
 
-Danach erscheint bei Word-, Excel- und PowerPoint-Dateien ein 📝-Knopf zum gemeinsamen Bearbeiten im Browser.
+Danach erscheint bei Word-, Excel- und PowerPoint-Dateien ein Bearbeiten-Knopf zum gemeinsamen Bearbeiten im Browser.
 
 ### Videoanrufe über das Internet
 
@@ -210,7 +267,27 @@ Siehe `docs/ENTWICKLER.md`.
 | Problem | Lösung |
 |---|---|
 | Seite nicht erreichbar | `docker compose ps` – laufen alle Dienste? `docker compose logs caddy` |
-| Zertifikatswarnung | Bei Intranet: Firmen-Stammzertifikat verteilen (Abschnitt 4) |
+| Zertifikatswarnung | Bei Weg 1: AperioPlan-Zertifikat auf dem Rechner hinterlegen (Abschnitt 4) |
+| Let's Encrypt klappt nicht | `docker compose logs caddy` – Domain zeigt auf den Server? Port 80 weitergeleitet (Weg 3)? Token richtig (Weg 2)? |
+| `aperioplan.local` nicht gefunden | `systemctl status aperioplan-mdns`; im Gast-WLAN ist mDNS oft gesperrt – dann die IP-Adresse verwenden |
+| Anmeldung mit richtigem Passwort „tut nichts“ | AperioPlan über `https://` aufrufen; die Anmeldeseite zeigt in diesem Fall einen Hinweis |
 | „Bitte anmelden“ in Schleife | Uhrzeit des Servers prüfen; Browser-Cookies löschen |
 | Admin-Passwort vergessen | `docker compose exec app node dist/index.js reset-admin` – danach wieder admin/admin mit Passwortzwang |
 | Sicherung lässt sich nicht einspielen | Passwort prüfen (`BACKUP_KEY` in `.env` hat Vorrang vor dem Passwort in den Einstellungen) |
+
+## 16. AperioPlan vollständig entfernen
+
+```sh
+cd /opt/aperioplan        # bzw. der Programmordner
+sudo ./uninstall.sh
+```
+
+Das Skript
+
+1. bietet eine **Abschlusssicherung** an (Datenbank, Projektdateien, vorhandene Sicherungen und `.env`) – sie landet im Benutzerordner unter `aperioplan-abschluss-<Datum>`,
+2. fragt zur Sicherheit nach der Eingabe **LÖSCHEN**,
+3. entfernt alle AperioPlan-Dienste, die Datenbank, Zertifikate, Programmabbilder, den Dienst für `aperioplan.local` und den Programmordner,
+4. fragt **gesondert**, ob Ordner außerhalb des Programmordners (z. B. ein NAS für Projektdateien oder Sicherungen) gelöscht werden sollen – Standard ist Nein,
+5. fragt zum Schluss, ob auch Docker selbst entfernt werden soll – Standard ist Nein, weil oft andere Programme Docker nutzen.
+
+Ohne Rückfragen (z. B. für Testsysteme): `sudo ./uninstall.sh --ja` – dann wird die Abschlusssicherung angelegt, Ordner außerhalb des Programmordners und Docker bleiben erhalten.
