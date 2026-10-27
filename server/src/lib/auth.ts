@@ -30,9 +30,15 @@ export async function createSession(sql: Sql, userId: string, req: FastifyReques
   return token;
 }
 
+/**
+ * Das Sitzungs-Cookie wird nur dann als „nur über HTTPS“ markiert, wenn die Anfrage auch wirklich
+ * verschlüsselt ankam (direkt oder über Caddy, X-Forwarded-Proto). Sonst würde der Browser das Cookie
+ * bei einem Aufruf über http://IP stillschweigend verwerfen – die Anmeldung schiene „nichts zu tun“.
+ */
 export function setSessionCookie(reply: FastifyReply, token: string) {
+  const https = reply.request.protocol === 'https';
   reply.setCookie(SESSION_COOKIE, token, {
-    path: '/', httpOnly: true, sameSite: 'lax', secure: config.secureCookies, maxAge: config.sessionDays * 86400,
+    path: '/', httpOnly: true, sameSite: 'lax', secure: https, maxAge: config.sessionDays * 86400,
   });
 }
 

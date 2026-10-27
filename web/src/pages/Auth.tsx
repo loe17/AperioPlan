@@ -19,7 +19,14 @@ export function LoginPage() {
       <form className="auth-card" onSubmit={async (e) => {
         e.preventDefault();
         setBusy(true); setError('');
-        try { await post('/auth/login', { username, password }); await refresh(); }
+        try {
+          await post('/auth/login', { username, password });
+          if (!(await refresh())) {
+            setError(location.protocol === 'http:'
+              ? 'Die Zugangsdaten stimmen, aber der Browser hat die Anmeldung nicht gespeichert. Bitte AperioPlan über https:// aufrufen.'
+              : 'Die Zugangsdaten stimmen, aber der Browser hat die Anmeldung nicht gespeichert. Bitte Cookies für diese Seite erlauben.');
+          }
+        }
         catch (err) { setError((err as Error).message); }
         finally { setBusy(false); }
       }}>

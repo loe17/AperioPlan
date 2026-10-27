@@ -43,7 +43,8 @@ interface SessionValue {
   settings: PublicSettings | null;
   users: UserLite[];
   teams: TeamLite[];
-  refresh: () => Promise<void>;
+  /** lädt den angemeldeten Benutzer neu; true = angemeldet */
+  refresh: () => Promise<boolean>;
   refreshLists: () => Promise<void>;
   setTheme: (t: 'system' | 'light' | 'dark') => void;
   theme: 'system' | 'light' | 'dark';
@@ -83,9 +84,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         await refreshLists();
         realtime.start();
       }
+      return true;
     } catch {
       setMe(null);
       realtime.stop();
+      return false;
     } finally {
       setLoading(false);
     }
