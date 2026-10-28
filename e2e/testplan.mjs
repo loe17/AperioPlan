@@ -491,6 +491,26 @@ await step('14.4 Schwarzes Brett: Mitteilung mit Lesebestätigung, Marktplatz-An
   await page.waitForSelector('.market-card:has-text("Bürostuhl") >> text=zu verschenken');
 });
 
+await step('14.5 3D-Viewer: Baugruppe öffnen, Teile im Baum, Messen', async () => {
+  await api('POST', '/apps/viewer3d/install', {});
+  const boxes = [['Grundplatte', [0, 0, 0, 100, 60, 10]], ['Halter', [10, 10, 10, 30, 50, 60]]];
+  let obj = '', o = 0;
+  for (const [name, [x0, y0, z0, x1, y1, z1]] of boxes) {
+    obj += `o ${name}\n`;
+    for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) obj += `v ${x} ${y} ${z}\n`;
+    for (const f of [[1, 2, 4, 3], [5, 7, 8, 6], [1, 5, 6, 2], [3, 4, 8, 7], [1, 3, 7, 5], [2, 6, 8, 4]]) obj += `f ${f.map((i) => i + o).join(' ')}\n`;
+    o += 8;
+  }
+  await page.goto(`${BASE}/viewer3d`);
+  await page.setInputFiles('input[type=file]', { name: 'baugruppe.obj', mimeType: 'text/plain', buffer: Buffer.from(obj) });
+  await page.waitForSelector('.v3d-info:has-text("100 mm × 60 mm × 60 mm")', { timeout: 20000 });
+  await page.waitForSelector('.v3d-tree >> text=Halter');
+  await page.click('.v3d-row:has-text("Halter") .v3d-eye');
+  await page.waitForSelector('.v3d-row.hidden:has-text("Halter")');
+  await page.click('button:has-text("Messen")');
+  await page.waitForSelector('text=Zwei Punkte auf dem Modell anklicken');
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);

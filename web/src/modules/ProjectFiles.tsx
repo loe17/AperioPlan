@@ -1,3 +1,4 @@
+import { LazyViewer3D, useCan3D } from './View3D';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useApi } from '../lib/hooks';
@@ -55,7 +56,8 @@ export function ProjectFiles({ projectId, project, canEdit }: { projectId: strin
 
   const crumbs = path ? path.split('/') : [];
   const dl = (e: Entry, inline = false) => `/api/projects/${projectId}/files/download?path=${encodeURIComponent(e.relPath)}${inline ? '&inline=1' : ''}`;
-  const canPreview = (n: string) => /\.(pdf|png|jpe?g|gif|svg|webp|txt|mp4)$/i.test(n);
+  const can3d = useCan3D();
+  const canPreview = (n: string) => /\.(pdf|png|jpe?g|gif|svg|webp|txt|mp4)$/i.test(n) || can3d(n);
 
   return (
     <div onDragOver={(e) => { if (canEdit && e.dataTransfer.types.includes('Files')) { e.preventDefault(); setOver(true); } }}
@@ -134,7 +136,8 @@ export function ProjectFiles({ projectId, project, canEdit }: { projectId: strin
       {links && <LinksPanel projectId={projectId} path={path} onClose={() => setLinks(false)} />}
       {preview && (
         <SlideOver wide title={<b>{preview.name}</b>} onClose={() => setPreview(null)} actions={<a className="btn sm" href={dl(preview)}><Icon name="download" /> Herunterladen</a>}>
-          {/\.(png|jpe?g|gif|svg|webp)$/i.test(preview.name) ? <img src={dl(preview, true)} style={{ maxWidth: '100%' }} />
+          {can3d(preview.name) ? <LazyViewer3D src={dl(preview, true)} name={preview.name} height="calc(100vh - 120px)" />
+            : /\.(png|jpe?g|gif|svg|webp)$/i.test(preview.name) ? <img src={dl(preview, true)} style={{ maxWidth: '100%' }} />
             : /\.mp4$/i.test(preview.name) ? <video src={dl(preview, true)} controls style={{ width: '100%' }} />
             : <iframe src={dl(preview, true)} style={{ width: '100%', height: 'calc(100vh - 120px)', border: 'none' }} />}
         </SlideOver>

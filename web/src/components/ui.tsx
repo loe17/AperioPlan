@@ -70,7 +70,7 @@ function useEscape(onClose: () => void) {
   }, []);
 }
 
-export function Modal({ title, onClose, children, footer, size }: { title: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; size?: 'lg' }) {
+export function Modal({ title, onClose, children, footer, size }: { title: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; size?: 'lg' | 'full' }) {
   useEscape(onClose);
   return createPortal(
     <>

@@ -18,3 +18,4 @@ INSTALL_SPEZIFIKATION*.md
 
 # beim Bauen aus node_modules kopiert
 web/public/mediapipe/
+web/public/occt/

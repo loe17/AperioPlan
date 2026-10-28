@@ -24,8 +24,21 @@ function mediapipe(): Plugin {
   };
 }
 
+/** 3D-Viewer: STEP/IGES werden im Browser mit OpenCascade (WebAssembly) gelesen – ausgeliefert unter /occt/. */
+function occt(): Plugin {
+  return {
+    name: 'aperio-occt',
+    buildStart() {
+      const pkg = join(dirname(createRequire(import.meta.url).resolve('occt-import-js/package.json')), 'dist');
+      const target = join(__dirname, 'public', 'occt');
+      mkdirSync(target, { recursive: true });
+      for (const f of ['occt-import-js.js', 'occt-import-js.wasm', 'occt-import-js-worker.js', 'license.occt.txt']) cpSync(join(pkg, f), join(target, f));
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), mediapipe()],
+  plugins: [react(), mediapipe(), occt()],
   server: {
     port: 5173,
     proxy: {

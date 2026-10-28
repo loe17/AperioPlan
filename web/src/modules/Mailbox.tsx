@@ -1,3 +1,4 @@
+import { View3DButton } from './View3D';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { del, get, post, put, upload, invalidate } from '../lib/api';
@@ -180,7 +181,7 @@ function ReadingPane({ id, folders, onCompose, onAction, onChanged }: { id: stri
       )}
       {m.attachments.filter((a: any) => !a.cid || !m.html?.includes(a.cid.replace(/[<>]/g, ''))).length > 0 && (
         <div className="row wrap" style={{ margin: '10px 0', gap: 6 }}>
-          {m.attachments.map((a: any) => <a key={a.index} className="card row" style={{ padding: '5px 10px' }} href={`/api/mailbox/messages/${m.id}/attachments/${a.index}`}><Icon name="paperclip" /> {a.name} <span className="small muted">{fmtBytes(a.size)}</span></a>)}
+          {m.attachments.map((a: any) => <span key={a.index} className="row" style={{ gap: 2 }}><a className="card row" style={{ padding: '5px 10px' }} href={`/api/mailbox/messages/${m.id}/attachments/${a.index}`}><Icon name="paperclip" /> {a.name} <span className="small muted">{fmtBytes(a.size)}</span></a><View3DButton url={`/api/mailbox/messages/${m.id}/attachments/${a.index}`} name={a.name} /></span>)}
         </div>
       )}
       <div style={{ marginTop: 10 }}>{m.html ? <MailHtml html={m.html} messageId={m.id} attachments={m.attachments} /> : <pre className="mb-text">{m.text}</pre>}</div>

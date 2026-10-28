@@ -1,3 +1,4 @@
+import { View3DButton } from './View3D';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useApi, useTabState } from '../lib/hooks';
@@ -252,7 +253,7 @@ function CadItemPanel({ id, onClose, onOpen, onChanged }: { id: string; onClose:
                 <td><b>{e.format.toUpperCase()}</b></td><td>Version {String(e.revision).padStart(2, '0')}</td>
                 <td>{e.status === 'done' ? <Pill tone="green">erzeugt</Pill> : e.status === 'failed' ? <Pill tone="red">Fehler</Pill> : e.status === 'running' ? <Pill tone="blue">läuft</Pill> : <Pill tone="amber">wartet auf CAD-Wächter</Pill>}</td>
                 <td className="small muted">{e.error ?? fmtDateTime(e.completedAt ?? e.requestedAt)}</td>
-                <td>{e.fileId && <a className="btn sm" href={`/api/files/${e.fileId}/download`}><Icon name="download" /></a>}{e.status === 'failed' && <button className="btn sm" onClick={async () => { await post(`/cad/exports/${e.id}/retry`); refresh(); }}>Erneut</button>}</td>
+                <td>{e.fileId && e.format === 'step' && <View3DButton url={`/api/files/${e.fileId}/download`} name={`${item.number}.step`} />}{e.fileId && <a className="btn sm" href={`/api/files/${e.fileId}/download`}><Icon name="download" /></a>}{e.status === 'failed' && <button className="btn sm" onClick={async () => { await post(`/cad/exports/${e.id}/retry`); refresh(); }}>Erneut</button>}</td>
               </tr>
             ))}</tbody></table>
           </>}

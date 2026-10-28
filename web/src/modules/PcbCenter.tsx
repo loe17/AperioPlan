@@ -1,3 +1,4 @@
+import { View3DButton } from './View3D';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PCB_EXPORT_LABELS } from '@aperio/shared';
@@ -157,6 +158,7 @@ function BoardPanel({ id, onClose, onChanged }: { id: string; onClose: () => voi
         {b.checkedOutBy && (mine || me?.role === 'admin') && <button className="btn" onClick={async () => { await act(() => post(`/pcb/boards/${id}/undo-checkout`), 'Sperre aufgehoben'); refresh(); }}><Icon name="unlock" /> Sperre aufheben</button>}
         {TRANSITIONS[b.state]!.map((t) => <button key={t} className="btn" onClick={() => setStateTo(t)}>{STATE_ACTION[t]}</button>)}
         {b.state === 'released' && <button className="btn" onClick={() => setRevise(true)}><Icon name="repeat" /> Neuer Versionsstand</button>}
+        {step && <View3DButton url={`/api/pcb/exports/${step.id}/download`} name={`${b.fullNumber ?? b.number}.step`} label="3D ansehen" />}
         {step && !b.stepCadItem && <button className="btn" title="3D-Modell als Kaufteil in die CAD-Bridge übernehmen" onClick={async () => { const r = await act(() => post(`/pcb/boards/${id}/to-cad`, {}), 'Als Kaufteil in die CAD-Bridge übernommen'); if (r) refresh(); }}><Icon name="cube" /> In CAD-Bridge übernehmen</button>}
         {b.stepCadItem && <a className="btn ghost" href={`/cad?item=${b.stepCadItem.id}`}><Icon name="cad" /> CAD {b.stepCadItem.number}</a>}
         {b.state === 'in_work' && <button className="btn ghost danger" onClick={() => setRemove(true)}><Icon name="trash" /></button>}
@@ -202,7 +204,7 @@ function BoardPanel({ id, onClose, onChanged }: { id: string; onClose: () => voi
               <td><b>{PCB_EXPORT_LABELS[e.format as keyof typeof PCB_EXPORT_LABELS] ?? e.format}</b></td><td className="mono small">{String(e.revision).padStart(2, '0')}</td>
               <td>{e.status === 'done' ? <Pill tone="green">erzeugt</Pill> : e.status === 'failed' ? <Pill tone="red">Fehler</Pill> : e.status === 'running' ? <Pill tone="blue">läuft</Pill> : <Pill tone="amber">wartet auf PCB-Wächter</Pill>}</td>
               <td className="small muted">{e.error ?? fmtDateTime(e.completedAt ?? e.requestedAt)}</td>
-              <td>{e.filePath && <a className="btn sm" href={`/api/pcb/exports/${e.id}/download`}><Icon name="download" /></a>}{e.status === 'failed' && <button className="btn sm" onClick={async () => { await post(`/pcb/exports/${e.id}/retry`); refresh(); }}>Erneut</button>}</td>
+              <td>{e.filePath && e.format === 'step' && <View3DButton url={`/api/pcb/exports/${e.id}/download`} name={`${b.fullNumber ?? b.number}.step`} />}{e.filePath && <a className="btn sm" href={`/api/pcb/exports/${e.id}/download`}><Icon name="download" /></a>}{e.status === 'failed' && <button className="btn sm" onClick={async () => { await post(`/pcb/exports/${e.id}/retry`); refresh(); }}>Erneut</button>}</td>
             </tr>
           ))}</tbody></table>
         )
