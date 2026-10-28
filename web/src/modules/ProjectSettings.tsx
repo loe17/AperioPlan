@@ -16,6 +16,8 @@ export const MODULE_LABELS: Record<string, { label: string; icon: string }> = {
   cad: { label: 'CAD-Dateien', icon: 'cad' },
   chat: { label: 'Chat', icon: 'chat' },
   time: { label: 'Zeiterfassung', icon: 'timer' },
+  purchasing: { label: 'Einkauf', icon: 'truck' },
+  calculation: { label: 'Kalkulation', icon: 'euro' },
 };
 
 export const STATUS_OPTIONS = [
@@ -55,6 +57,7 @@ export function ProjectSettings({ project }: { project: any }) {
         <Field label="Kunde" hint="aus dem CRM">{p.customerId || !p.customer ? <CustomerPicker value={p.customerId ? { id: p.customerId, name: p.customer, number: p.customerNumber } : null}
           onChange={(c) => setP({ ...p, customerId: c?.id ?? null, customer: c?.name ?? '', customerNumber: c?.number, customerContactId: null })} />
           : <div className="row"><input value={p.customer} onChange={set('customer')} /><span className="small muted">noch nicht im CRM</span></div>}</Field>
+        <Field label="Budget Einkauf (€)" hint="für die Übersicht im Einkauf"><input type="number" min={0} value={p.budget ?? ''} onChange={(e) => setP({ ...p, budget: e.target.value === '' ? null : Number(e.target.value) })} /></Field>
         <Field label="Start"><input type="date" value={p.startDate ?? ''} onChange={set('startDate')} /></Field>
         <Field label="Ende"><input type="date" value={p.dueDate ?? ''} onChange={set('dueDate')} /></Field>
       </div>
@@ -77,7 +80,7 @@ export function ProjectSettings({ project }: { project: any }) {
       <button className="btn primary" onClick={async () => {
         await act(() => patch(`/projects/${project.id}`, {
           name: p.name, icon: p.icon, status: p.status, teamId: p.teamId || null, visibility: p.visibility, ...(p.customerId !== project.customerId ? { customerId: p.customerId ?? null } : p.customerId ? {} : { customer: p.customer }),
-          startDate: p.startDate || null, dueDate: p.dueDate || null, description: p.description, modules: p.modules,
+          startDate: p.startDate || null, dueDate: p.dueDate || null, description: p.description, modules: p.modules, budget: p.budget ?? null,
         }), 'Projekt gespeichert');
         invalidate('/projects');
       }}>Speichern</button>

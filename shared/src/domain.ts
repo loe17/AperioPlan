@@ -21,7 +21,7 @@ export const CAD_TRANSITIONS: Record<CadState, CadState[]> = {
 };
 
 /** Modulare Projekt-Werkzeuge (Kapitel 8) */
-export const PROJECT_MODULES = ['kanban', 'list', 'gantt', 'whiteboard', 'report', 'files', 'cad', 'chat', 'time'] as const;
+export const PROJECT_MODULES = ['kanban', 'list', 'gantt', 'whiteboard', 'report', 'files', 'cad', 'chat', 'time', 'purchasing', 'calculation'] as const;
 export type ProjectModule = (typeof PROJECT_MODULES)[number];
 export const DEFAULT_PROJECT_MODULES: ProjectModule[] = ['kanban', 'list', 'gantt', 'files', 'cad', 'chat', 'time'];
 

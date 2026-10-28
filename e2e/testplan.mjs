@@ -293,6 +293,37 @@ await step('9.1 Kunde beim Projekt anlegen und im CRM wiederfinden', async () =>
   await page.waitForSelector('.tl-item:has-text("Erstes Gespräch geführt")');
 });
 
+// ------------------------------------------------------------ 10. Einkauf und Kalkulation (1.2)
+await step('10.1 Einkauf: Position anlegen und bestellen', async () => {
+  const pr = await api('GET', `/projects/${projectId}`);
+  await api('PATCH', `/projects/${projectId}`, { modules: [...new Set([...pr.modules, 'purchasing', 'calculation'])] });
+  await api('POST', '/crm/accounts', { name: 'Normteile Muster', kind: 'supplier' });
+  await page.goto(`${BASE}/projects/${projectId}?tab=purchasing`);
+  await page.click('button:has-text("Position")');
+  await page.fill('.modal input >> nth=0', 'Linearführung');
+  await page.click('.modal button:has-text("Speichern")');
+  await page.waitForSelector('td:has-text("Linearführung")');
+  await page.check('tbody input[type=checkbox] >> nth=0');
+  await page.click('button:has-text("Bestellen")');
+  await page.fill('.modal .picker input', 'Normteile');
+  await page.click('.modal .item:has-text("Normteile Muster")');
+  const popup = page.waitForEvent('popup');
+  await page.click('.modal button:has-text("Bestellung anlegen")');
+  await (await popup).close();
+  await page.waitForSelector('.pill:has-text("Bestellt")');
+});
+
+await step('10.2 Kalkulation: Angebotskalkulation rechnet beim Tippen', async () => {
+  await page.goto(`${BASE}/projects/${projectId}?tab=calculation`);
+  await page.click('.toolbar button:has-text("Kalkulation")');
+  await page.fill('.modal input[placeholder*="Roboterzelle"]', 'Testanlage');
+  await page.click('.modal button:has-text("Anlegen")');
+  await page.waitForSelector('.calc-result');
+  await page.fill('.calc-input input[placeholder="Std."] >> nth=0', '10');
+  await page.waitForFunction(() => /950,00/.test(document.querySelector('.calc-result')?.textContent ?? ''));
+  await page.click('button:has-text("Speichern")');
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);

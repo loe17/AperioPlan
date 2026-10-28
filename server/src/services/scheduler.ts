@@ -4,6 +4,7 @@ import type { AppContext } from '../context';
 import { runBackup } from './backup';
 import { syncMail } from './mail';
 import { syncAllCalendars } from './caldav';
+import { deliveryReminders } from '../routes/purchasing';
 import { sendCalendarReminders } from '../routes/calendar';
 
 /** Geplante Hintergrundaufgaben: Nacht-Tresor, Aufräumen abgelaufener Sitzungen und Links. */
@@ -45,6 +46,11 @@ export function startScheduler(ctx: AppContext, log: FastifyBaseLogger) {
   });
   cron.schedule('* * * * *', async () => {
     try { await sendCalendarReminders(ctx); } catch (e) { log.warn(e, 'Termin-Erinnerungen fehlgeschlagen'); }
+  });
+
+  // Liefertermine im Einkauf (morgens)
+  cron.schedule('5 7 * * *', async () => {
+    try { await deliveryReminders(ctx); } catch (e) { log.warn(e, 'Liefertermin-Hinweise fehlgeschlagen'); }
   });
 
   cron.schedule('17 * * * *', async () => {

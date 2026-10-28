@@ -11,6 +11,8 @@ import { fmtDate } from '../lib/format';
 import { Tabs, Avatar, ErrorBox, Loading, Modal, Field, PRIORITY_META, Progress, STATUS_META, StatusDot, StatusPill, useAction, UserSelect } from '../components/ui';
 import { TaskPanel, quickCreateTask, type Task } from '../components/TaskPanel';
 import { Kanban } from '../modules/Kanban';
+import { ProjectPurchasing } from '../modules/Purchasing';
+import { CalculationList } from '../modules/Calculations';
 import { TaskTable } from '../modules/TaskTable';
 import { Gantt } from '../modules/Gantt';
 import { Whiteboards } from '../modules/Whiteboard';
@@ -155,6 +157,8 @@ export default function ProjectPage() {
       {tab === 'cad' && <ProjectCad projectId={project.id} project={project} canEdit={project.canEdit} />}
       {tab === 'chat' && <ProjectChat projectId={project.id} project={project} />}
       {tab === 'time' && <ProjectTime projectId={project.id} project={project} />}
+      {tab === 'purchasing' && <ProjectPurchasing project={project} canEdit={!project.locked && me?.role !== 'guest'} />}
+      {tab === 'calculation' && <CalculationList projectId={project.id} canEdit={!project.locked && me?.role !== 'guest'} />}
       {tab.startsWith('plugin:') && (() => {
         const p = pluginTabs.find((x) => `plugin:${x.id}` === tab);
         return p ? <iframe title={p.name} src={`/plugins/${p.id}/${p.projectTab.entry}?projectId=${project.id}&projectNumber=${encodeURIComponent(project.number)}`} style={{ width: '100%', height: 'calc(100vh - 250px)', border: '1px solid var(--line)', borderRadius: 10 }} /> : null;

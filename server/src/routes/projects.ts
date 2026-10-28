@@ -21,6 +21,7 @@ const projectBody = z.object({
   /** Kunde aus dem CRM (ersetzt das frühere Freitextfeld) */
   customerId: z.string().uuid().nullable().default(null),
   customerContactId: z.string().uuid().nullable().default(null),
+  budget: z.number().min(0).nullable().default(null),
   startDate: z.string().date().nullable().default(null),
   dueDate: z.string().date().nullable().default(null),
   number: z.string().trim().regex(/^[\w-]+$/).optional(),
@@ -28,7 +29,7 @@ const projectBody = z.object({
 
 const projectCols = (sql: AppContext['sql']) => sql`p.id, p.number, p.name, p.description, p.icon, p.parent_id as "parentId",
   p.team_id as "teamId", p.status, p.visibility, p.modules, p.customer, p.customer_id as "customerId",
-  p.customer_contact_id as "customerContactId", (select number from crm_accounts ca where ca.id = p.customer_id) as "customerNumber", p.start_date as "startDate", p.due_date as "dueDate",
+  p.customer_contact_id as "customerContactId", (select number from crm_accounts ca where ca.id = p.customer_id) as "customerNumber", p.budget::float as budget, p.start_date as "startDate", p.due_date as "dueDate",
   p.folder_path as "folderPath", p.created_at as "createdAt", p.updated_at as "updatedAt"`;
 
 export default async function projectRoutes(app: FastifyInstance, ctx: AppContext) {
@@ -128,6 +129,7 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
       modules = ${b.modules ? sql.json(b.modules) : sql`modules`}, customer = coalesce(${b.customer ?? null}, customer),
       customer_id = ${b.customerId === undefined ? sql`customer_id` : b.customerId},
       customer_contact_id = ${b.customerContactId === undefined ? sql`customer_contact_id` : b.customerContactId},
+      budget = ${b.budget === undefined ? sql`budget` : b.budget},
       start_date = ${b.startDate === undefined ? sql`start_date` : b.startDate},
       due_date = ${b.dueDate === undefined ? sql`due_date` : b.dueDate}, updated_at = now()
       where id = ${id}`;

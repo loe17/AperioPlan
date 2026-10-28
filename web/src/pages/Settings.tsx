@@ -6,6 +6,7 @@ import { api, del, get, patch, post, put, invalidate } from '../lib/api';
 import { useCrumbs } from '../components/Layout';
 import { useSession, useCan } from '../session';
 import { CalendarSyncSettings } from './CalendarSync';
+import { CalcRatesSettings } from '../modules/Calculations';
 import { useT, LANGUAGES } from '../i18n';
 import { fmtDateTime } from '../lib/format';
 import { Avatar, Confirm, Empty, Field, Modal, Pill, useAction } from '../components/ui';
@@ -49,6 +50,7 @@ export default function SettingsPage() {
           <SettingsNav to="/settings/templates"><Icon name="file-text" /> Dokumentvorlagen</SettingsNav>
           <SettingsNav to="/settings/cad"><Icon name="cad" /> {t('Speichermaske')} (CAD)</SettingsNav>
           <SettingsNav to="/settings/resources"><Icon name="car" /> Ressourcen</SettingsNav>
+          <SettingsNav to="/settings/calc"><Icon name="euro" /> Kalkulationssätze</SettingsNav>
           <SettingsNav to="/settings/holidays"><Icon name="holiday" /> Feiertage</SettingsNav>
           <SettingsNav to="/settings/ldap"><Icon name="building" /> {t('Firmen-Login')} (LDAP)</SettingsNav>
           <SettingsNav to="/settings/mail"><Icon name="mail" /> E-Mail-Konto</SettingsNav>
@@ -77,6 +79,7 @@ export default function SettingsPage() {
             <Route path="cad" element={<CadMaskSettings />} />
             <Route path="holidays" element={<HolidaySettings />} />
             <Route path="resources" element={<ResourcesSettings />} />
+            <Route path="calc" element={<CalcRatesSettings />} />
             <Route path="ldap" element={<Ldap />} />
             <Route path="mail" element={<MailSettings />} />
             <Route path="ai" element={<AiSettings />} />

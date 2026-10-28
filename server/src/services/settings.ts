@@ -1,6 +1,6 @@
 import type { Sql } from '../db';
 import {
-  DEFAULT_PROJECT_NUMBER_SETTINGS, DEFAULT_PROJECT_MODULES, DEFAULT_PROJECT_FOLDERS,
+  DEFAULT_PROJECT_NUMBER_SETTINGS, DEFAULT_CALC_RATES, type CalcRates, DEFAULT_PROJECT_MODULES, DEFAULT_PROJECT_FOLDERS,
   DEFAULT_MASK_FIELDS, DEFAULT_CATALOGS, type ProjectNumberSettings, type ProjectModule,
   type MaskField, type Catalog,
 } from '@aperio/shared';
@@ -59,6 +59,7 @@ export interface SettingsMap {
   /** Vorlage eigener Kanban-Spalten für neue Projekte */
   kanbanTemplate: { name: string; color: string; baseStatus: 'todo' | 'in_progress' | 'review' | 'done' }[];
   /** Nummernkreise im CRM und Einkauf */
+  calcRates: CalcRates;
   numbers: { customer: string; supplier: string; quote: string; case: string; order: string; calculation: string };
   /** Firmendaten für Angebote und Bestellungen */
   letterhead: { address: string; footer: string; vatRate: number; paymentTerms: string; quoteValidityDays: number; quoteIntro: string; quoteOutro: string };
@@ -80,6 +81,7 @@ export const DEFAULT_SETTINGS: SettingsMap = {
   projectNumbers: DEFAULT_PROJECT_NUMBER_SETTINGS,
   defaultModules: DEFAULT_PROJECT_MODULES,
   kanbanTemplate: [],
+  calcRates: DEFAULT_CALC_RATES,
   numbers: { customer: 'K{NNNN}', supplier: 'L{NNNN}', quote: 'AN-{JJJJ}-{NNNN}', case: 'RK-{JJJJ}-{NNNN}', order: 'B-{JJJJ}-{NNNN}', calculation: 'KA-{JJJJ}-{NNNN}' },
   letterhead: {
     address: '', footer: '', vatRate: 19, paymentTerms: '30 Tage netto', quoteValidityDays: 30,

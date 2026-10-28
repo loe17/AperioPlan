@@ -12,6 +12,7 @@ import { requireUser, type AuthUser } from '../lib/auth';
 import { projectAccess, visibleProjects } from '../lib/access';
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors';
 import { audit } from '../services/audit';
+import { purchasingUsers, syncFromCad, warnRevisedPart } from './purchasing';
 import { notify } from '../services/notify';
 import { storeFile } from '../services/files';
 import {
@@ -422,6 +423,7 @@ export default async function cadRoutes(app: FastifyInstance, ctx: AppContext) {
     }
     await audit(sql, u, { action: 'cad.revise', entityType: 'cad_item', entityId: id, projectId: row.project_id,
       summary: `${fullNumber(row)} → Version ${pad(next.revision, 2)}: ${b.reason}` });
+    await warnRevisedPart(ctx, id, fullNumber(next), b.reason, u.id);
     const users = await sql<{ id: string }[]>`select distinct created_by as id from cad_items c join cad_references r on r.parent_id = c.id where r.child_id = ${id}`;
     await notify(ctx, users.map((x) => x.id), { kind: 'cad.revised', title: `Teil geändert: ${fullNumber(next)}`, body: `${b.reason}\nBitte betroffene Baugruppen prüfen.`, link: `/cad?item=${id}` }, u.id);
     ctx.hub.publish(`project:${row.project_id}`, 'cad.changed', { id });
@@ -460,6 +462,11 @@ export default async function cadRoutes(app: FastifyInstance, ctx: AppContext) {
       for (const f of formats) await sql`insert into cad_exports (item_id, revision, format) values (${id}, ${row.revision}, ${f})
         on conflict (item_id, revision, format) do update set status = 'queued', error = null, requested_at = now()`;
       // Teil und Zeichnung zusammen freigeben, wenn die Zeichnung zuerst freigegeben wurde und das Teil in Prüfung wartet
+      if (row.type === 'assembly') {
+        const r = await syncFromCad(ctx, row.project_id, u.id);
+        if (r.added) await notify(ctx, await purchasingUsers(ctx), { kind: 'purchasing.new', title: `Neue Kaufteile: ${r.added} Positionen`,
+          body: `Baugruppe ${fullNumber(row)} ${row.designation} wurde freigegeben`, link: `/projects/${row.project_id}?tab=purchasing` }, u.id);
+      }
     }
     await audit(sql, u, { action: 'cad.state', entityType: 'cad_item', entityId: id, projectId: row.project_id,
       summary: `${fullNumber(row)}: ${STATE_LABEL[row.state]} → ${STATE_LABEL[b.to]}${b.comment ? ` (${b.comment})` : ''}` });

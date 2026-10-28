@@ -499,3 +499,9 @@ ol.steps { padding-left: 20px; margin: 0; display: grid; gap: 12px; }
 .pos-table input { padding: 4px 6px; }
 .pos-table td { vertical-align: top; }
 .kpi.click { cursor: pointer; } .kpi.click:hover { border-color: var(--line-strong); }
+.calc-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+.calc-result { position: sticky; top: 8px; }
+.calc-line { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; font-size: 13px; }
+.calc-line.indent { padding-left: 14px; color: var(--text-2, var(--text)); }
+.calc-line.bold { font-weight: 650; border-top: 1px solid var(--line); margin-top: 3px; padding-top: 5px; }
+@media (max-width: 1000px) { .calc-layout { grid-template-columns: 1fr; } }

@@ -11,6 +11,7 @@ import { Onboarding } from './components/Onboarding';
 
 const ProjectsPage = lazy(() => import('./pages/Projects'));
 const CrmPage = lazy(() => import('./pages/Crm'));
+const ToolPages = lazy(() => import('./pages/ToolPages'));
 const CrmAccountPage = lazy(() => import('./pages/CrmAccount'));
 const ProjectPage = lazy(() => import('./pages/Project'));
 const TeamPage = lazy(() => import('./pages/Team'));
@@ -57,6 +58,8 @@ export function App() {
             <Route path="/time" element={<TimePage />} />
             <Route path="/absences" element={<AbsencesPage />} />
             <Route path="/crm" element={<CrmPage />} />
+            <Route path="/purchasing" element={<ToolPages tool="purchasing" />} />
+            <Route path="/calculations" element={<ToolPages tool="calculation" />} />
             <Route path="/crm/:id" element={<CrmAccountPage />} />
             <Route path="/calendar" element={<CalendarPage mode="me" />} />
             <Route path="/calendar/team" element={<CalendarPage mode="team" />} />
