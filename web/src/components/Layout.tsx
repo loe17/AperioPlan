@@ -131,7 +131,7 @@ function UserMenu() {
 /** Anwendungen, die unter „Mein Schreibtisch“ stehen */
 const DESK_APPS = ['time', 'absences', 'notes'];
 const NAV_ROUTE: Record<string, string> = { calendar: '/calendar/team', resources: '/calendar/resources' };
-const NAV_LABEL: Record<string, string> = { crm: 'Kunden (CRM)', calendar: 'Teamkalender', kvp: 'KVP-Ideenbox' };
+const NAV_LABEL: Record<string, string> = { crm: 'Kunden (CRM)', calendar: 'Teamkalender', kvp: 'KVP-Ideenbox', chat: 'Chat' };
 
 export function Layout({ children }: { children: ReactNode }) {
   const t = useT();

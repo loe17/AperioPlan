@@ -54,6 +54,26 @@ export default async function dashboardRoutes(app: FastifyInstance, ctx: AppCont
     return { ok: true };
   });
 
+  /** Wer ist heute nicht da? Ohne Grund (Datenschutz) – nur „abwesend“ und bis wann */
+  app.get('/dashboard/absent-today', async (req) => {
+    requireUser(req);
+    return sql`select u.id, u.display_name as "displayName", max(a.end_date)::text as until from absences a join users u on u.id = a.user_id
+      where a.status = 'approved' and current_date between a.start_date and a.end_date and u.active group by u.id, u.display_name order by u.display_name`;
+  });
+
+  /** Kennzahlen für die Kachel „Überblick“ */
+  app.get('/dashboard/stats', async (req) => {
+    const u = requireUser(req);
+    const [r] = await sql`select
+      (select count(*)::int from tasks where assignee_id = ${u.id} and status <> 'done') as "openTasks",
+      (select count(*)::int from tasks where assignee_id = ${u.id} and status <> 'done' and due_date < current_date) as overdue,
+      (select count(*)::int from tasks where assignee_id = ${u.id} and status <> 'done' and due_date between current_date and current_date + 7) as "dueWeek",
+      (select count(*)::int from tasks where assignee_id = ${u.id} and status = 'done' and updated_at > now() - interval '7 days') as "doneWeek",
+      (select count(distinct project_id)::int from project_members where user_id = ${u.id}) as projects,
+      (select count(*)::int from notifications where user_id = ${u.id} and read_at is null) as unread`;
+    return r;
+  });
+
   const fetchJson = async (url: string) => {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000), headers: { 'user-agent': 'AperioPlan' } }).catch(() => null);
     if (!res?.ok) throw new HttpError(502, 'Der Wetterdienst ist gerade nicht erreichbar');

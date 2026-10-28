@@ -31,7 +31,7 @@ export default function AppStorePage() {
     <div className="page wide">
       <div className="page-head">
         <div><h1>App-Store</h1><div className="sub">{isAdmin ? 'Anwendungen für die ganze Firma ein- und ausschalten. Wer sie nutzen darf, legen Sie je Benutzer oder Abteilung fest.' : 'Diese Anwendungen stehen in Ihrer Firma zur Verfügung.'}</div></div>
-        {isAdmin && <div className="row">
+        {isAdmin && <div className="actions">
           <button className="btn" onClick={() => fileRef.current?.click()}><Icon name="upload" /> Plugin hochladen (ZIP)</button>
           <input ref={fileRef} type="file" accept=".zip" hidden onChange={async (e) => {
             const f = e.target.files?.[0]; e.target.value = '';
