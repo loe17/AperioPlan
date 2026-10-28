@@ -119,7 +119,7 @@ describe('Terminbuchung', () => {
       availability: { mon: [['09:00', '12:00']], tue: [['09:00', '12:00']], wed: [['09:00', '12:00']], thu: [['09:00', '12:00']], fri: [['09:00', '12:00']] }, questions: [{ id: 'q1', label: 'Worum geht es?', required: true }] });
     expect(t.slug).toBe('erstberatung');
     // ein Montag in der Zukunft
-    const d = new Date(); d.setDate(d.getDate() + 14); while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
+    const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + 14); while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
     const day = d.toISOString().slice(0, 10);
     const info = JSON.parse((await anon('GET', '/api/pub/book/erstberatung')).body);
     expect(info).toMatchObject({ name: 'Erstberatung', durationMin: 60 });

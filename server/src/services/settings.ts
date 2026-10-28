@@ -105,6 +105,16 @@ export interface SettingsMap {
   payroll: PayrollSettings;
   /** Service-Einsätze: Verrechnungssätze */
   service: { hourlyRate: number; kmRate: number; travelFlat: number; mailText: string };
+  /** Spesen: wer Abrechnungen bearbeitet und auszahlt, Kilometergeld */
+  expenses: { managerIds: string[]; kmRate: number; approverIds: string[] };
+  /** Einsatzplanung: wer Pläne bearbeitet (zusätzlich Administratoren und Teamleiter) */
+  planning: { plannerIds: string[] };
+  /** Personal: wer Personalakten und Bewerbungen sieht */
+  hr: { managerIds: string[]; applicantRetentionMonths: number; documentCategories: string[] };
+  /** Unterweisungen: wer Schulungen anlegt und Teilnahmen bestätigt */
+  training: { managerIds: string[] };
+  /** Fuhrpark: Fuhrparkverantwortliche, Führerscheinkontrolle */
+  fleet: { managerIds: string[]; licenseCheckMonths: number };
   /** Kundenanfragen: Reaktionszeiten (Stunden bis zur ersten Antwort), Kategorien, Formular */
   helpdesk: { sla: Record<'low' | 'normal' | 'high' | 'urgent', number>; categories: string[]; publicForm: boolean; autoReply: string; signature: string; supportEmail: string };
   /** Firmendaten für Angebote und Bestellungen */
@@ -170,7 +180,7 @@ export const DEFAULT_SETTINGS: SettingsMap = {
   timeRules: DEFAULT_TIME_RULES,
   numbers: { customer: 'K{NNNN}', supplier: 'L{NNNN}', quote: 'AN-{JJJJ}-{NNNN}', case: 'RK-{JJJJ}-{NNNN}', order: 'B-{JJJJ}-{NNNN}', calculation: 'KA-{JJJJ}-{NNNN}', article: 'A{NNNNN}', asset: 'INV-{NNNN}', invoice: 'RE-{JJJJ}-{NNNN}',
     maintenance: 'IH-{JJJJ}-{NNNN}', qmPlan: 'PP-{NNNN}', inspection: 'PR-{JJJJ}-{NNNN}', gauge: 'MM-{NNNN}', eightD: '8D-{JJJJ}-{NNN}', mfgOrder: 'FA-{JJJJ}-{NNNN}', change: 'AE-{JJJJ}-{NNN}',
-    service: 'SE-{JJJJ}-{NNNN}', ticket: 'T{JJ}-{NNNNN}', contract: 'V-{NNNN}' },
+    service: 'SE-{JJJJ}-{NNNN}', ticket: 'T{JJ}-{NNNNN}', contract: 'V-{NNNN}', expense: 'SP-{JJ}-{NNNN}' },
   invoicing: {
     legalName: '', street: '', zip: '', city: '', countryCode: 'DE', vatId: '', taxNumber: '', registry: '', managingDirector: '',
     iban: '', bic: '', bankName: '', contactName: '', contactPhone: '', contactEmail: '',
@@ -196,6 +206,11 @@ export const DEFAULT_SETTINGS: SettingsMap = {
       { account: '4950', label: 'Rechts- und Beratungskosten', rate: 19 }, { account: '4970', label: 'Nebenkosten des Geldverkehrs', rate: 0 }, { account: '0420', label: 'Technische Anlagen und Maschinen', rate: 19 },
     ],
   },
+  planning: { plannerIds: [] },
+  expenses: { managerIds: [], kmRate: 0.3, approverIds: [] },
+  hr: { managerIds: [], applicantRetentionMonths: 6, documentCategories: ['Arbeitsvertrag', 'Zeugnis', 'Bescheinigung', 'Abmahnung', 'Weiterbildung', 'Sonstiges'] },
+  training: { managerIds: [] },
+  fleet: { managerIds: [], licenseCheckMonths: 6 },
   service: { hourlyRate: 85, kmRate: 0.6, travelFlat: 0, mailText: 'Guten Tag,\n\nanbei erhalten Sie den Servicebericht zu unserem Einsatz.\n\nMit freundlichen Grüßen' },
   helpdesk: { sla: { low: 72, normal: 24, high: 8, urgent: 4 }, categories: ['Frage', 'Störung', 'Ersatzteil', 'Reklamation'], publicForm: true,
     autoReply: 'vielen Dank für Ihre Anfrage. Wir haben sie unter der Nummer {nummer} aufgenommen und melden uns schnellstmöglich.', signature: '', supportEmail: '' },

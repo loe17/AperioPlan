@@ -14,3 +14,4 @@ export * from './invoice';
 export * from './lohnsteuer';
 export * from './payroll';
 export * from './quality';
+export * from './expenses';

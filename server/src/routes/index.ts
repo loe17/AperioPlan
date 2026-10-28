@@ -56,8 +56,13 @@ import helpdesk from './helpdesk';
 import contracts from './contracts';
 import booking from './booking';
 import events from './events';
+import expenses from './expenses';
+import planning from './planning';
+import hr from './hr';
+import training from './training';
+import fleet from './fleet';
 import board from './board';
 
 export async function routes(app: FastifyInstance, ctx: AppContext) {
-  for (const r of [system, auth, users, teams, settings, me, audit, ws, projects, tasks, whiteboards, search, files, links, cad, time, absences, chat, kvp, mail, ai, backup, update, office, plugins, resources, documents, calendar, crm, purchasing, calculations, storageLocations, mailbox, pcb, bridge, apps, dashboard, meetings, phone, forms, board, mindmaps, knowledge, warehouse, inventory, invoices, finance, payroll, maintenance, quality, manufacturing, plm, service, helpdesk, contracts, booking, events]) await r(app, ctx);
+  for (const r of [system, auth, users, teams, settings, me, audit, ws, projects, tasks, whiteboards, search, files, links, cad, time, absences, chat, kvp, mail, ai, backup, update, office, plugins, resources, documents, calendar, crm, purchasing, calculations, storageLocations, mailbox, pcb, bridge, apps, dashboard, meetings, phone, forms, board, mindmaps, knowledge, warehouse, inventory, invoices, finance, payroll, maintenance, quality, manufacturing, plm, service, helpdesk, contracts, booking, events, expenses, planning, hr, training, fleet]) await r(app, ctx);
 }

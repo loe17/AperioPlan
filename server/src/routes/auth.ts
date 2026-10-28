@@ -98,10 +98,14 @@ export default async function authRoutes(app: FastifyInstance, ctx: AppContext) 
     const teams = await sql`select t.id, t.name, t.icon, tm.is_lead as "isLead" from team_members tm
       join teams t on t.id = tm.team_id where tm.user_id = ${req.user.id} order by t.sort, t.name`;
     // Lohnabrechnung: nur Lohnbuchhalter sehen das Werkzeug; Mitarbeiter mit Personalstammsatz ihre Lohnzettel
-    const installed = (await ctx.settings.get('apps')).installed.includes('payroll');
+    const apps = (await ctx.settings.get('apps')).installed;
+    const installed = apps.includes('payroll');
     const payrollManager = installed && req.user.tools.includes('payroll') && (req.user.role === 'admin' || (await ctx.settings.get('payroll')).managerIds.includes(req.user.id));
     const payslips = installed && (await sql`select 1 from pay_employees where user_id = ${req.user.id}`).length > 0;
-    return { ...req.user, teams, payrollManager, payslips };
+    // Personal: Mitarbeiter sehen „Meine Unterlagen“, sobald etwas für sie freigegeben ist
+    const myHr = apps.includes('hr') && req.user.role !== 'guest' && (await sql`select 1 from hr_documents where user_id = ${req.user.id} and visible_to_employee
+      union all select 1 from hr_reviews where user_id = ${req.user.id} and shared union all select 1 from hr_user_skills where user_id = ${req.user.id} limit 1`).length > 0;
+    return { ...req.user, teams, payrollManager, payslips, myHr };
   });
 
   /** Passwort ändern – beim Erstzugang (admin/admin) erzwungen */

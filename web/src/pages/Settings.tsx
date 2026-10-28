@@ -321,7 +321,7 @@ export function useAdminSettings<K extends string>(key: K) {
 /** Nummernkreise der Anwendungen (Schlüssel, Bezeichnung, Anwendung) */
 const NUMBER_KEYS: [string, string, string][] = [['maintenance', 'Instandhaltungsaufträge', 'maintenance'], ['qmPlan', 'Prüfpläne', 'quality'], ['inspection', 'Prüfungen', 'quality'],
   ['gauge', 'Messmittel', 'quality'], ['eightD', '8D-Reports', 'quality'], ['mfgOrder', 'Fertigungsaufträge', 'manufacturing'], ['change', 'Änderungsanträge', 'plm'],
-  ['service', 'Service-Einsätze', 'service'], ['ticket', 'Tickets', 'helpdesk'], ['contract', 'Verträge', 'contracts']];
+  ['service', 'Service-Einsätze', 'service'], ['ticket', 'Tickets', 'helpdesk'], ['contract', 'Verträge', 'contracts'], ['expense', 'Reisekostenabrechnungen', 'expenses']];
 
 function General() {
   const can = useCan();

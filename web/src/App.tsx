@@ -48,6 +48,13 @@ const PublicEventPage = lazy(() => import('./pages/Events').then((m) => ({ defau
 const MyPayslipsPage = lazy(() => import('./pages/Payroll').then((m) => ({ default: m.MyPayslipsPage })));
 const PublicKbPage = lazy(() => import('./pages/Knowledge').then((m) => ({ default: m.PublicKbPage })));
 const PublicFormPage = lazy(() => import('./pages/Forms').then((m) => ({ default: m.PublicFormPage })));
+const ExpensesPage = lazy(() => import('./pages/Expenses'));
+const PlanningPage = lazy(() => import('./pages/Planning'));
+const HrPage = lazy(() => import('./pages/Hr'));
+const MyHrPage = lazy(() => import('./pages/Hr').then((m) => ({ default: m.MyHrPage })));
+const PublicJobPage = lazy(() => import('./pages/Hr').then((m) => ({ default: m.PublicJobPage })));
+const TrainingPage = lazy(() => import('./pages/Training'));
+const FleetPage = lazy(() => import('./pages/Fleet'));
 const TimePage = lazy(() => import('./pages/Time'));
 const AbsencesPage = lazy(() => import('./pages/Absences'));
 const CalendarPage = lazy(() => import('./pages/Calendar'));
@@ -76,6 +83,7 @@ export function App() {
   if (location.pathname.startsWith('/support')) return <Suspense fallback={<Loading />}><PublicSupportPage /></Suspense>;
   if (location.pathname.startsWith('/book/')) return <Suspense fallback={<Loading />}><PublicBookingPage /></Suspense>;
   if (location.pathname.startsWith('/event/')) return <Suspense fallback={<Loading />}><PublicEventPage /></Suspense>;
+  if (location.pathname.startsWith('/jobs/')) return <Suspense fallback={<Loading />}><PublicJobPage /></Suspense>;
   if (location.pathname.startsWith('/s/')) {
     return <I18nProvider lang={lang}><Suspense fallback={<Loading />}><SharePage /></Suspense></I18nProvider>;
   }
@@ -121,6 +129,12 @@ export function App() {
             <Route path="/contracts" element={<ContractsPage />} />
             <Route path="/booking" element={<BookingPage />} />
             <Route path="/events" element={<EventsPage />} />
+            <Route path="/expenses" element={<ExpensesPage />} />
+            <Route path="/planning" element={<PlanningPage />} />
+            <Route path="/hr" element={<HrPage />} />
+            <Route path="/my-hr" element={<MyHrPage />} />
+            <Route path="/training" element={<TrainingPage />} />
+            <Route path="/fleet" element={<FleetPage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="/knowledge/:id" element={<KnowledgePage />} />
             <Route path="/mindmaps" element={<MindmapsPage />} />

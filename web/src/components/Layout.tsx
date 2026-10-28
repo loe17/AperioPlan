@@ -183,6 +183,7 @@ export function Layout({ children }: { children: ReactNode }) {
             {can('absences') && <NavItem to="/absences" ico="palm" label={t('Urlaubskonto')} />}
             {can('notes') && <NavItem to="/notes" ico="lock" label={t('Private Notizen')} />}
             {me?.payslips && <NavItem to="/payslips" ico="file-text" label={t('Meine Lohnzettel')} />}
+            {me?.myHr && <NavItem to="/my-hr" ico="id-card" label={t('Meine Unterlagen')} />}
 
             {favorites && favorites.length > 0 && (
               <div className="nav-section">

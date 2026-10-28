@@ -828,6 +828,57 @@ await step('14.14 Service, Kundenanfragen, Verträge, Terminbuchung, Messe: Eins
   await page.waitForSelector('.slideover td:has-text("Lea Lead")');
 });
 
+await step('14.15 Spesen, Einsatzplanung, Personal, Unterweisungen, Fuhrpark: Abrechnung, Schicht, Bewerbung, Quiz, Fahrt', async () => {
+  for (const a of ['expenses', 'planning', 'hr', 'training', 'fleet']) await api('POST', `/apps/${a}/install`, {});
+  const me = await api('GET', '/auth/me');
+  // Spesen: Abrechnung anlegen
+  await page.goto(`${BASE}/expenses`);
+  await page.click('.page-head button.primary:has-text("Abrechnung")');
+  await page.locator('.modal input').first().fill('Messebesuch E2E');
+  await page.locator('.modal button.primary:has-text("Anlegen")').click();
+  await page.waitForSelector('text=Messebesuch E2E');
+  // Einsatzplanung: Schicht im Raster anlegen und veröffentlichen
+  await page.goto(`${BASE}/planning`);
+  await page.locator('.plan-cell.click').first().click();
+  await page.locator('.modal input[type=time]').first().fill('06:00');
+  await page.locator('.modal button.primary:has-text("Speichern")').click();
+  await page.waitForSelector('.plan-shift.draft >> text=06:00');
+  await page.click('button:has-text("Veröffentlichen")');
+  await page.waitForSelector('.plan-shift:not(.draft)');
+  // Personal: Stelle ausschreiben, öffentlich bewerben
+  const job = await api('POST', '/hr/jobs', { title: 'Monteur E2E (m/w/d)', location: 'Freiburg', description: 'Wir suchen Verstärkung.' });
+  const jobs = await api('GET', '/hr/jobs');
+  const url = jobs.find((j) => j.id === job.id).publicUrl.replace(/^https?:\/\/[^/]+/, BASE);
+  const ctx3 = await browser.newContext();
+  const p3 = await ctx3.newPage();
+  await p3.goto(url);
+  await p3.waitForSelector('h1:has-text("Monteur E2E")');
+  const ji = p3.locator('form input:not([type=file]):not([type=checkbox])');
+  await ji.nth(0).fill('Bea Bewerber');
+  await ji.nth(1).fill('bea@bewerber.de');
+  await p3.locator('form input[type=checkbox]').check();
+  await p3.click('button:has-text("Bewerbung absenden")');
+  await p3.waitForSelector('text=Vielen Dank');
+  await ctx3.close();
+  await page.goto(`${BASE}/hr?tab=jobs`);
+  await page.click('.tabs button:has-text("Stellen und Bewerbungen")');
+  await page.waitForSelector('.hr-pipeline >> text=Bea Bewerber');
+  // Unterweisung mit Verständnisfrage online abschließen
+  const c = await api('POST', '/training/courses', { title: 'Brandschutz E2E', content: 'Feuerlöscher hängen am Ausgang.', quiz: [{ q: 'Wo hängen Feuerlöscher?', options: ['Im Keller', 'Am Ausgang'], correct: 1 }] });
+  await page.goto(`${BASE}/training?course=${c.id}`);
+  await page.locator('.slideover label:has-text("Am Ausgang") input').check();
+  await page.locator('.slideover label:has-text("gelesen und verstanden") input').check();
+  await page.click('.slideover button:has-text("Teilnahme bestätigen")');
+  await page.waitForSelector('.slideover >> text=Abgeschlossen mit 100 %');
+  // Fuhrpark: Fahrzeug, Fahrt ins Fahrtenbuch
+  const v = await api('POST', '/fleet/vehicles', { plate: 'FR-E 2026', make: 'VW', model: 'Transporter', mileage: 50000, driverId: me.id });
+  await page.goto(`${BASE}/fleet?vehicle=${v.id}`);
+  await page.locator('.slideover input[type=number]').nth(1).fill('50120');
+  await page.locator('.slideover input[placeholder*="Kundentermin"]').fill('Montage beim Kunden');
+  await page.click('.slideover button:has-text("Fahrt eintragen")');
+  await page.waitForSelector('.slideover td:has-text("Montage beim Kunden")');
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);
