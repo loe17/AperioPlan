@@ -6,8 +6,8 @@ import type { Tool } from './tools';
  * oder werden als ZIP-Datei hochgeladen. Wer eine eingeschaltete Anwendung nutzen darf,
  * regelt die Werkzeug-Freigabe je Benutzer bzw. Abteilung.
  */
-export type AppCategory = 'Zusammenarbeit' | 'Kommunikation' | 'Kunden & Verkauf' | 'Technik' | 'Lager & Material' | 'Personal' | 'Finanzen' | 'Wissen & Organisation';
-export const APP_CATEGORIES: AppCategory[] = ['Zusammenarbeit', 'Kommunikation', 'Kunden & Verkauf', 'Technik', 'Lager & Material', 'Personal', 'Finanzen', 'Wissen & Organisation'];
+export type AppCategory = 'Zusammenarbeit' | 'Kommunikation' | 'Kunden & Verkauf' | 'Produktion & Service' | 'Technik' | 'Lager & Material' | 'Personal' | 'Finanzen' | 'Wissen & Organisation';
+export const APP_CATEGORIES: AppCategory[] = ['Zusammenarbeit', 'Kommunikation', 'Kunden & Verkauf', 'Produktion & Service', 'Technik', 'Lager & Material', 'Personal', 'Finanzen', 'Wissen & Organisation'];
 
 export interface AppInfo {
   id: Tool;
@@ -75,6 +75,14 @@ export const APPS: AppInfo[] = [
     summary: 'Lohn und Gehalt abrechnen, Lohnzettel erstellen, Daten an den Steuerberater', features: ['Lohnsteuer nach amtlichem Rechenweg', 'Sozialversicherung', 'Zuschläge aus der Zeiterfassung', 'Lohnzettel als PDF', 'Übergabe an DATEV'] },
   { id: 'finance', name: 'Finanzbuchhaltung', category: 'Finanzen', icon: 'chart', route: '/finance', requires: ['crm'],
     summary: 'Offene Posten, Zahlungen, Mahnungen und Übergabe an den Steuerberater', features: ['Ausgangs- und Eingangsrechnungen', 'Kontoauszug abgleichen', 'Mahnungen', 'Umsatzsteuer-Übersicht', 'DATEV-Export'] },
+  { id: 'maintenance', name: 'Instandhaltung', category: 'Produktion & Service', icon: 'wrench', route: '/maintenance', requires: ['inventory'],
+    summary: 'Wartungspläne für Maschinen und Anlagen, Störmeldungen per QR-Code, Auftragsabwicklung', features: ['Wartungspläne mit Intervall und Checkliste', 'Aufträge entstehen automatisch, wenn eine Wartung fällig wird', 'Störung melden per QR-Code an der Maschine', 'Stillstand, Arbeitszeit und Kosten je Anlage', 'Verlauf und Auswertung je Maschine'] },
+  { id: 'quality', name: 'Qualität', category: 'Produktion & Service', icon: 'check-circle', route: '/quality',
+    summary: 'Prüfpläne, Prüfprotokolle, Messmittelverwaltung und 8D-Reports', features: ['Prüfpläne mit Merkmalen und Toleranzen', 'Wareneingangs-, Fertigungs- und Endprüfung mit Protokoll', 'Messmittel mit Kalibrierfristen und Zertifikaten', '8D-Reports für Reklamationen', 'Protokolle als PDF'] },
+  { id: 'manufacturing', name: 'Fertigung', category: 'Produktion & Service', icon: 'factory', route: '/manufacturing',
+    summary: 'Fertigungsaufträge aus der CAD-Stückliste, Arbeitspläne und Rückmeldung an der Maschine', features: ['Auftrag direkt aus Baugruppe der CAD-Bridge', 'Arbeitspläne mit Arbeitsplätzen und Vorgabezeiten', 'Laufkarte mit QR-Code', 'Rückmeldung am Tablet: Start, Stopp, Gut- und Ausschussmenge', 'Materialentnahme aus dem Lager', 'Plantafel nach Arbeitsplatz'] },
+  { id: 'plm', name: 'Änderungsmanagement', category: 'Technik', icon: 'repeat', route: '/plm',
+    summary: 'Änderungsanträge für Teile, Baugruppen und Leiterplatten mit Prüfung und Freigabe', features: ['Antrag mit Grund, Beschreibung und betroffenen Teilen', 'Teile aus CAD- und PCB-Bridge auswählen', 'Auswirkungen auf Lager, Fertigung und Kosten', 'Freigabe durch mehrere Prüfer', 'Verlauf und Verwendungsnachweis'] },
   { id: 'ai', name: 'KI-Assistent', category: 'Wissen & Organisation', icon: 'sparkles', legacy: true,
     summary: 'Zusammenfassen, Schreiben, Dokumente auswerten', features: ['Eigenes Modell oder Online-Anbieter', 'Je Projekt wählbar'] },
 ];

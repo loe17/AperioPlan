@@ -318,7 +318,12 @@ export function useAdminSettings<K extends string>(key: K) {
   return { value, setValue, reload: load, save: (v: any) => put(`/settings/${key}`, v).then(() => { invalidate('/settings'); return load(); }) };
 }
 
+/** Nummernkreise der Anwendungen (Schlüssel, Bezeichnung, Anwendung) */
+const NUMBER_KEYS: [string, string, string][] = [['maintenance', 'Instandhaltungsaufträge', 'maintenance'], ['qmPlan', 'Prüfpläne', 'quality'], ['inspection', 'Prüfungen', 'quality'],
+  ['gauge', 'Messmittel', 'quality'], ['eightD', '8D-Reports', 'quality'], ['mfgOrder', 'Fertigungsaufträge', 'manufacturing'], ['change', 'Änderungsanträge', 'plm']];
+
 function General() {
+  const can = useCan();
   const moduleOk = useModuleOk();
   const act = useAction();
   const { refreshLists } = useSession();
@@ -351,7 +356,7 @@ function General() {
       <h2 style={{ margin: '28px 0 10px' }}>Weitere Nummernkreise</h2>
       <p className="muted">Gleiche Bausteine wie bei Projekten. Mit Jahr ({'{JJJJ}'} oder {'{JJ}'}) beginnt die Zählung jedes Jahr neu.</p>
       <div className="grid2">
-        {([['customer', 'Kunden'], ['supplier', 'Lieferanten'], ['quote', 'Angebote'], ['case', 'Reklamationen'], ['order', 'Bestellungen'], ['calculation', 'Kalkulationen'], ['invoice', 'Rechnungen'], ['article', 'Lagerartikel'], ['asset', 'Inventarnummern']] as const).map(([k, l]) => (
+        {([['customer', 'Kunden'], ['supplier', 'Lieferanten'], ['quote', 'Angebote'], ['case', 'Reklamationen'], ['order', 'Bestellungen'], ['calculation', 'Kalkulationen'], ['invoice', 'Rechnungen'], ['article', 'Lagerartikel'], ['asset', 'Inventarnummern'], ...NUMBER_KEYS.filter(([, , app]) => !app || can(app)).map(([k, l]) => [k, l] as const)] as const).map(([k, l]) => (
           <Field key={k} label={l} hint={validateNumberPattern(nums.value[k] ?? '') ?? `z. B. ${formatNumberPattern(nums.value[k] ?? '', 42, { customer: 'K0042' })}`}>
             <input className="mono" value={nums.value[k] ?? ''} onChange={(e) => nums.setValue({ ...nums.value, [k]: e.target.value })} />
           </Field>

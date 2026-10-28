@@ -33,6 +33,10 @@ const WarehousePage = lazy(() => import('./pages/Warehouse'));
 const InventoryPage = lazy(() => import('./pages/Inventory'));
 const FinancePage = lazy(() => import('./pages/Finance'));
 const PayrollPage = lazy(() => import('./pages/Payroll'));
+const MaintenancePage = lazy(() => import('./pages/Maintenance'));
+const QualityPage = lazy(() => import('./pages/Quality'));
+const ManufacturingPage = lazy(() => import('./pages/Manufacturing'));
+const PlmPage = lazy(() => import('./pages/Plm'));
 const MyPayslipsPage = lazy(() => import('./pages/Payroll').then((m) => ({ default: m.MyPayslipsPage })));
 const PublicKbPage = lazy(() => import('./pages/Knowledge').then((m) => ({ default: m.PublicKbPage })));
 const PublicFormPage = lazy(() => import('./pages/Forms').then((m) => ({ default: m.PublicFormPage })));
@@ -97,6 +101,10 @@ export function App() {
             <Route path="/finance" element={<FinancePage />} />
             <Route path="/payroll" element={<PayrollPage />} />
             <Route path="/payslips" element={<MyPayslipsPage />} />
+            <Route path="/maintenance" element={<MaintenancePage />} />
+            <Route path="/quality" element={<QualityPage />} />
+            <Route path="/manufacturing" element={<ManufacturingPage />} />
+            <Route path="/plm" element={<PlmPage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="/knowledge/:id" element={<KnowledgePage />} />
             <Route path="/mindmaps" element={<MindmapsPage />} />

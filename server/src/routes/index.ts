@@ -47,8 +47,12 @@ import inventory from './inventory';
 import invoices from './invoices';
 import finance from './finance';
 import payroll from './payroll';
+import maintenance from './maintenance';
+import quality from './quality';
+import manufacturing from './manufacturing';
+import plm from './plm';
 import board from './board';
 
 export async function routes(app: FastifyInstance, ctx: AppContext) {
-  for (const r of [system, auth, users, teams, settings, me, audit, ws, projects, tasks, whiteboards, search, files, links, cad, time, absences, chat, kvp, mail, ai, backup, update, office, plugins, resources, documents, calendar, crm, purchasing, calculations, storageLocations, mailbox, pcb, bridge, apps, dashboard, meetings, phone, forms, board, mindmaps, knowledge, warehouse, inventory, invoices, finance, payroll]) await r(app, ctx);
+  for (const r of [system, auth, users, teams, settings, me, audit, ws, projects, tasks, whiteboards, search, files, links, cad, time, absences, chat, kvp, mail, ai, backup, update, office, plugins, resources, documents, calendar, crm, purchasing, calculations, storageLocations, mailbox, pcb, bridge, apps, dashboard, meetings, phone, forms, board, mindmaps, knowledge, warehouse, inventory, invoices, finance, payroll, maintenance, quality, manufacturing, plm]) await r(app, ctx);
 }

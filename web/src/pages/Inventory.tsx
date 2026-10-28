@@ -4,11 +4,12 @@ import { ASSET_STATUS, GWG_LIMIT, INSPECTION_KINDS } from '@aperio/shared';
 import { useCrumbs } from '../components/Layout';
 import { useApi, useTabState } from '../lib/hooks';
 import { del, get, patch, post, upload } from '../lib/api';
-import { useSession } from '../session';
+import { useCan, useSession } from '../session';
 import { fmtBytes, fmtDate, fmtDateTime, fmtEuro2, isoDate } from '../lib/format';
 import { Confirm, Empty, ErrorBox, Field, Loading, Modal, Pill, Tabs, UserSelect, useAction, useToast } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { LabelButton, ScanButton, ScanModal, type Label } from '../modules/Scan';
+import { ReportModal } from './Maintenance';
 
 const STATUS_TONE: Record<string, string> = { active: 'green', repair: 'amber', retired: '', lost: 'red' };
 const today = () => isoDate(new Date());
@@ -183,6 +184,8 @@ function AssetPage({ id }: { id: string }) {
   const [insp, setInsp] = useState<any | null>(null);
   const [log, setLog] = useState<any | null>(null);
   const [handover, setHandover] = useState(false);
+  const [reportFault, setReportFault] = useState(false);
+  const can = useCan();
   useCrumbs([{ label: 'Inventar', to: '/inventory' }, { label: a ? `${a.number} ${a.name}` : '…' }]);
   if (error) return <div className="page"><ErrorBox error={error} /></div>;
   if (!a) return <Loading />;
@@ -207,6 +210,8 @@ function AssetPage({ id }: { id: string }) {
           </div>
         </div>
         <div className="actions">
+          {can('maintenance') && <button className="btn" onClick={() => setReportFault(true)}><Icon name="alert" /> Störung melden</button>}
+          {can('maintenance') && <button className="btn" onClick={() => nav('/maintenance?tab=assets')} title="Wartung und Verlauf"><Icon name="wrench" /></button>}
           <LabelButton labels={() => [assetLabel(a)]} label="Etikett" />
           <button className="btn" onClick={() => setHandover(true)}><Icon name="users" /> Übergeben</button>
           <button className="btn" onClick={() => setEdit(true)}><Icon name="edit" /> Bearbeiten</button>
@@ -214,6 +219,7 @@ function AssetPage({ id }: { id: string }) {
           {me?.role === 'admin' && <button className="btn ghost danger" onClick={() => setRemove(true)}><Icon name="trash" /></button>}
         </div>
       </div>
+      {reportFault && <ReportModal assetId={id} onClose={() => setReportFault(false)} onDone={(oid) => nav(`/maintenance?order=${oid}`)} />}
       {pendingMine && <div className="locked-banner"><Icon name="info" /><span className="grow">Dieser Gegenstand wurde Ihnen am {fmtDate(pendingMine.date)} übergeben.</span>
         <button className="btn sm primary" onClick={async () => { if (await act(() => post(`/inventory/handovers/${pendingMine.id}/confirm`, {}), 'Empfang bestätigt')) reload(); }}>Empfang bestätigen</button></div>}
       <Tabs value={tab} onChange={setTab} tabs={[{ id: 'info', label: 'Übersicht' }, { id: 'inspections', label: `Prüfungen (${a.inspections.length})` }, { id: 'handovers', label: 'Übergaben' }, { id: 'afa', label: 'Abschreibung' }, { id: 'files', label: `Dateien (${a.attachments.length})` }]} />

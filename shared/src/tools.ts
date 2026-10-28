@@ -3,7 +3,7 @@
  * Nicht freigeschaltete Werkzeuge fehlen in der Seitenleiste und sind auch über die Schnittstelle gesperrt.
  */
 export const TOOLS = ['chat', 'mail', 'calendar', 'resources', 'time', 'absences', 'notes', 'kvp', 'cad', 'pcb', 'crm', 'purchasing', 'calculation', 'ai',
-  'meetings', 'phone', 'forms', 'board', 'viewer3d', 'mindmap', 'knowledge', 'inventory', 'warehouse', 'finance', 'payroll'] as const;
+  'meetings', 'phone', 'forms', 'board', 'viewer3d', 'mindmap', 'knowledge', 'inventory', 'warehouse', 'finance', 'payroll', 'maintenance', 'quality', 'manufacturing', 'plm'] as const;
 export type Tool = (typeof TOOLS)[number];
 
 export const TOOL_LABELS: Record<Tool, string> = {
@@ -32,6 +32,10 @@ export const TOOL_LABELS: Record<Tool, string> = {
   warehouse: 'Lager',
   finance: 'Finanzbuchhaltung',
   payroll: 'Lohnabrechnung',
+  plm: 'Änderungsmanagement',
+  manufacturing: 'Fertigung',
+  quality: 'Qualität',
+  maintenance: 'Instandhaltung',
 };
 
 /** Schnittstellen-Bereiche, die zu einem Werkzeug gehören (Präfix nach /api) */
@@ -41,6 +45,7 @@ export const TOOL_ROUTES: [string, Tool][] = [
   ['/cad', 'cad'], ['/pcb', 'pcb'], ['/crm', 'crm'], ['/purchasing', 'purchasing'], ['/calculations', 'calculation'], ['/ai', 'ai'],
   ['/meetings', 'meetings'], ['/phone', 'phone'], ['/forms', 'forms'], ['/board', 'board'], ['/mindmaps', 'mindmap'], ['/knowledge', 'knowledge'],
   ['/inventory', 'inventory'], ['/warehouse', 'warehouse'], ['/finance', 'finance'], ['/payroll', 'payroll'], ['/crm/invoices', 'crm'],
+  ['/maintenance', 'maintenance'],
 ];
 
 /** Anlässe für Benachrichtigungen; jeder Benutzer schaltet sie für AperioPlan und E-Mail einzeln */
@@ -68,6 +73,10 @@ export const NOTIFY_KINDS: { kind: string; label: string; app: boolean; mail: bo
   { kind: 'inventory', label: 'Inventar: Prüftermine und Übergaben', app: true, mail: true },
   { kind: 'warehouse', label: 'Lager: Mindestbestand unterschritten', app: true, mail: false },
   { kind: 'payroll', label: 'Lohnzettel bereitgestellt', app: true, mail: true },
+  { kind: 'plm', label: 'Änderungsanträge zur Prüfung und Entscheidung', app: true, mail: true },
+  { kind: 'manufacturing', label: 'Fertigung: Aufträge und Rückmeldungen', app: true, mail: false },
+  { kind: 'quality', label: 'Qualität: Prüfungen, Messmittel und 8D', app: true, mail: true },
+  { kind: 'maintenance', label: 'Instandhaltung: Aufträge und fällige Wartungen', app: true, mail: true },
   { kind: 'other', label: 'Sonstiges', app: true, mail: false },
 ];
 
@@ -75,6 +84,7 @@ export const NOTIFY_KINDS: { kind: string; label: string; app: boolean; mail: bo
 export function notifyKindOf(kind: string): string {
   if (NOTIFY_KINDS.some((k) => k.kind === kind)) return kind;
   const head = kind.split('.')[0]!;
-  const map: Record<string, string> = { project: 'project.member', absence: 'absence', time: 'time', resource: 'resource', resources: 'resource', cad: 'cad', pcb: 'cad', purchasing: 'purchasing', crm: 'crm', calendar: 'calendar', kvp: 'kvp', link: 'files', upload: 'files', chat: 'chat.message', board: 'board', mindmap: 'shared', kb: 'shared', inventory: 'inventory', warehouse: 'warehouse', payroll: 'payroll' };
+  if (NOTIFY_KINDS.some((k) => k.kind === head)) return head;
+  const map: Record<string, string> = { project: 'project.member', absence: 'absence', time: 'time', resource: 'resource', resources: 'resource', cad: 'cad', pcb: 'cad', purchasing: 'purchasing', crm: 'crm', calendar: 'calendar', kvp: 'kvp', link: 'files', upload: 'files', chat: 'chat.message', board: 'board', mindmap: 'shared', kb: 'shared', inventory: 'inventory', warehouse: 'warehouse', payroll: 'payroll', maintenance: 'maintenance' };
   return map[head] ?? 'other';
 }

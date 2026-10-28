@@ -96,7 +96,7 @@ export interface SettingsMap {
   /** Nummernkreise im CRM und Einkauf */
   calcRates: CalcRates;
   timeRules: TimeRuleSettings;
-  numbers: { customer: string; supplier: string; quote: string; case: string; order: string; calculation: string; article: string; asset: string; invoice: string };
+  numbers: { customer: string; supplier: string; quote: string; case: string; order: string; calculation: string; article: string; asset: string; invoice: string; [key: string]: string };
   /** Rechnungen: Pflichtangaben für Rechnung und E-Rechnung, Übergabe an die Buchhaltung */
   invoicing: InvoicingSettings;
   /** Finanzbuchhaltung: Freigaben, Mahnstufen, Konten */
@@ -164,7 +164,8 @@ export const DEFAULT_SETTINGS: SettingsMap = {
   kanbanTemplate: [],
   calcRates: DEFAULT_CALC_RATES,
   timeRules: DEFAULT_TIME_RULES,
-  numbers: { customer: 'K{NNNN}', supplier: 'L{NNNN}', quote: 'AN-{JJJJ}-{NNNN}', case: 'RK-{JJJJ}-{NNNN}', order: 'B-{JJJJ}-{NNNN}', calculation: 'KA-{JJJJ}-{NNNN}', article: 'A{NNNNN}', asset: 'INV-{NNNN}', invoice: 'RE-{JJJJ}-{NNNN}' },
+  numbers: { customer: 'K{NNNN}', supplier: 'L{NNNN}', quote: 'AN-{JJJJ}-{NNNN}', case: 'RK-{JJJJ}-{NNNN}', order: 'B-{JJJJ}-{NNNN}', calculation: 'KA-{JJJJ}-{NNNN}', article: 'A{NNNNN}', asset: 'INV-{NNNN}', invoice: 'RE-{JJJJ}-{NNNN}',
+    maintenance: 'IH-{JJJJ}-{NNNN}', qmPlan: 'PP-{NNNN}', inspection: 'PR-{JJJJ}-{NNNN}', gauge: 'MM-{NNNN}', eightD: '8D-{JJJJ}-{NNN}', mfgOrder: 'FA-{JJJJ}-{NNNN}', change: 'AE-{JJJJ}-{NNN}' },
   invoicing: {
     legalName: '', street: '', zip: '', city: '', countryCode: 'DE', vatId: '', taxNumber: '', registry: '', managingDirector: '',
     iban: '', bic: '', bankName: '', contactName: '', contactPhone: '', contactEmail: '',

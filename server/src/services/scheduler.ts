@@ -9,6 +9,7 @@ import { deliveryReminders } from '../routes/purchasing';
 import { checkAllRunning } from './timeRules';
 import { syncAllMailboxes } from './mailbox';
 import { sendCalendarReminders } from '../routes/calendar';
+import { runDailyJobs } from './daily';
 
 /** Geplante Hintergrundaufgaben: Nacht-Tresor, Aufräumen abgelaufener Sitzungen und Links. */
 export function startScheduler(ctx: AppContext, log: FastifyBaseLogger) {
@@ -61,6 +62,7 @@ export function startScheduler(ctx: AppContext, log: FastifyBaseLogger) {
   cron.schedule('5 7 * * *', async () => {
     try { await deliveryReminders(ctx); } catch (e) { log.warn(e, 'Liefertermin-Hinweise fehlgeschlagen'); }
     try { await inspectionReminders(ctx); } catch (e) { log.warn(e, 'Prüftermin-Hinweise fehlgeschlagen'); }
+    await runDailyJobs(ctx, log);
   });
 
   cron.schedule('17 * * * *', async () => {
