@@ -841,3 +841,21 @@ ol.steps { padding-left: 20px; margin: 0; display: grid; gap: 12px; }
 .inv-totals { margin: 10px 0 14px auto; width: min(380px, 100%); display: flex; flex-direction: column; gap: 3px; }
 .inv-totals > div { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
 .inv-totals > div.big { border-top: 1px solid var(--line); padding-top: 4px; font-size: 15px; }
+
+/* Finanzbuchhaltung */
+fieldset.plain { border: 0; padding: 0; margin: 0; min-width: 0; }
+.fin-flow { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; align-items: end; height: 150px; margin-bottom: 8px; }
+.fin-flow > div { display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+.fin-flow .bars { flex: 1; width: 100%; display: flex; gap: 2px; align-items: flex-end; justify-content: center; }
+.fin-flow .bars span { width: 40%; border-radius: 3px 3px 0 0; }
+.fin-flow .in, .dot.in { background: var(--green); } .fin-flow .out, .dot.out { background: var(--red); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; vertical-align: middle; }
+.fin-drop { border: 1.5px dashed var(--line-strong); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; color: var(--text-3); font-size: 13px; text-align: center; }
+.fin-drop.over { border-color: var(--accent); background: var(--accent-soft, rgba(80,120,255,.08)); color: var(--text); }
+.fin-bill { display: flex; gap: 16px; align-items: flex-start; }
+.fin-preview { flex: 0 0 46%; position: sticky; top: 0; height: 78vh; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--bg-2, #f4f4f4); }
+.fin-preview iframe, .fin-preview img { width: 100%; height: 100%; border: 0; object-fit: contain; }
+.fin-sugg { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.fin-sugg label { gap: 10px; cursor: pointer; padding: 8px 10px; }
+.fin-sugg label.on { border-color: var(--accent); }
+@media (max-width: 900px) { .fin-bill { flex-direction: column; } .fin-preview { position: static; width: 100%; height: 50vh; flex: none; } }

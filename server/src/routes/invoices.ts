@@ -13,7 +13,8 @@ import { audit } from '../services/audit';
 import { sendMail } from '../services/mail';
 import { addPayment, cancelInvoice, finalizeInvoice, loadInvoice, paymentTermsText, recalcPaid, renderInvoicePdf, toEInvoice } from '../services/invoices';
 import { buildCii } from '../services/einvoice';
-import { datevExtf, type DatevBooking } from '../lib/datev';
+import { datevExtf } from '../lib/datev';
+import { outgoingInvoiceBookings } from '../services/accounting';
 import { writeZip } from '../lib/zip';
 import { writeXlsx } from '../lib/xlsx';
 import { eur } from '../lib/pdf';
@@ -278,28 +279,7 @@ export default async function invoiceRoutes(app: FastifyInstance, ctx: AppContex
   // ------------------------------------------------ Übergabe an die Buchhaltung
   async function exportPackage(from: string, to: string) {
     const s = await ctx.settings.get('invoicing');
-    const rows = await sql<{ id: string; number: string; kind: string; status: string; account_id: string; account_number: string; account_name: string; vat_id: string; invoice_date: string;
-      service_to: string | null; total_net: string; total_tax: string; total_gross: string; tax_mode: string; positions: InvoicePosition[]; vat_rate: string; pdf_path: string | null; xml_path: string | null; project_number: string | null }[]>`
-      select i.id, i.number, i.kind, i.status, i.account_id, a.number as account_number, a.name as account_name, a.vat_id, i.invoice_date::text, i.service_to::text,
-        i.total_net, i.total_tax, i.total_gross, i.tax_mode, i.positions, i.vat_rate, i.pdf_path, i.xml_path, p.number as project_number
-      from crm_invoices i join crm_accounts a on a.id = i.account_id left join projects p on p.id = i.project_id
-      where i.status <> 'draft' and i.invoice_date between ${from} and ${to} order by i.invoice_date, i.number`;
-    // Debitorenkonten vergeben (ab 10000)
-    for (const r of rows) {
-      await sql`update crm_accounts set datev_account = (select greatest(${s.datev.firstDebtor - 1}, coalesce(max(datev_account), 0)) + 1 from crm_accounts) where id = ${r.account_id} and datev_account is null`;
-    }
-    const debtors = new Map((await sql<{ id: string; datev_account: number }[]>`select id, datev_account from crm_accounts where id = any(${rows.map((r) => r.account_id)})`).map((r) => [r.id, String(r.datev_account)]));
-    const revenue = (mode: string, rate: number) => mode === 'intra_eu' ? s.datev.revenueEu : mode === 'export' ? s.datev.revenueExport : mode === 'reverse_charge' ? s.datev.revenueReverse
-      : mode === 'small_business' ? s.datev.revenueSmall : rate === 7 ? s.datev.revenue7 : s.datev.revenue19;
-    const bookings: DatevBooking[] = [];
-    for (const r of rows) {
-      const t = invoiceTotals(r.positions, Number(r.vat_rate), r.tax_mode as never);
-      for (const g of t.groups) {
-        bookings.push({ amount: g.basis + g.tax, side: r.kind === 'credit' ? 'H' : 'S', account: debtors.get(r.account_id)!, contra: revenue(r.tax_mode, g.rate),
-          date: r.invoice_date, docNo: r.number, text: `${r.kind === 'credit' ? 'Storno ' : ''}${r.account_name}`.slice(0, 60), cost1: r.project_number ?? undefined,
-          euVatId: r.tax_mode === 'intra_eu' ? r.vat_id : undefined, serviceDate: r.service_to ?? undefined });
-      }
-    }
+    const { rows, bookings } = await outgoingInvoiceBookings(ctx, from, to);
     const fy = `${from.slice(0, 4)}-01-01`;
     const datev = datevExtf({ consultantNo: s.datev.consultantNo, clientNo: s.datev.clientNo, fiscalYearStart: fy, accountLength: s.datev.accountLength, from, to, title: `Ausgangsrechnungen ${from.slice(0, 7)}`, bookings });
     const journal = writeXlsx([{ name: 'Rechnungsausgang', widths: [14, 12, 16, 30, 12, 12, 12, 12, 12, 10], rows: [

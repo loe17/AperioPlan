@@ -99,6 +99,8 @@ export interface SettingsMap {
   numbers: { customer: string; supplier: string; quote: string; case: string; order: string; calculation: string; article: string; asset: string; invoice: string };
   /** Rechnungen: Pflichtangaben für Rechnung und E-Rechnung, Übergabe an die Buchhaltung */
   invoicing: InvoicingSettings;
+  /** Finanzbuchhaltung: Freigaben, Mahnstufen, Konten */
+  finance: FinanceSettings;
   /** Firmendaten für Angebote und Bestellungen */
   letterhead: { address: string; footer: string; vatRate: number; paymentTerms: string; quoteValidityDays: number; quoteIntro: string; quoteOutro: string };
   storage: StorageSettings;
@@ -130,6 +132,12 @@ export interface InvoicingSettings {
   datev: { consultantNo: string; clientNo: string; chart: 'SKR03' | 'SKR04'; accountLength: number; firstDebtor: number; revenue19: string; revenue7: string; revenueEu: string; revenueExport: string; revenueReverse: string; revenueSmall: string };
 }
 
+export interface FinanceSettings {
+  approvalLimit: number; approverIds: string[]; taxBasis: 'soll' | 'ist'; firstCreditor: number;
+  dunning: { days: number; fee: number; title: string; text: string }[];
+  expenseAccounts: { account: string; label: string; rate: number }[];
+}
+
 export const DEFAULT_SETTINGS: SettingsMap = {
   company: { name: 'AperioPlan', logoText: 'AperioPlan' },
   presence: { idleMinutes: 10 },
@@ -146,6 +154,23 @@ export const DEFAULT_SETTINGS: SettingsMap = {
     mailSubject: 'Rechnung {nummer}', mailText: 'Guten Tag,\n\nanbei erhalten Sie unsere Rechnung {nummer} über {betrag}, zahlbar bis {faellig}.\n\nMit freundlichen Grüßen\n{firma}',
     accountingEmail: '',
     datev: { consultantNo: '', clientNo: '', chart: 'SKR03', accountLength: 4, firstDebtor: 10000, revenue19: '8400', revenue7: '8300', revenueEu: '8125', revenueExport: '8120', revenueReverse: '8337', revenueSmall: '8195' },
+  },
+  finance: {
+    approvalLimit: 1000, approverIds: [], taxBasis: 'soll', firstCreditor: 70000,
+    dunning: [
+      { days: 7, fee: 0, title: 'Zahlungserinnerung', text: 'sicher ist es Ihrer Aufmerksamkeit entgangen: Für die unten genannte Rechnung konnten wir noch keinen Zahlungseingang feststellen. Wir bitten Sie, den offenen Betrag in den nächsten Tagen zu überweisen. Sollten Sie inzwischen gezahlt haben, betrachten Sie dieses Schreiben bitte als gegenstandslos.' },
+      { days: 14, fee: 5, title: '1. Mahnung', text: 'leider ist die unten genannte Rechnung trotz unserer Erinnerung noch nicht beglichen. Bitte überweisen Sie den offenen Betrag einschließlich Mahngebühr innerhalb von 7 Tagen.' },
+      { days: 14, fee: 10, title: '2. Mahnung', text: 'trotz zweimaliger Aufforderung ist die unten genannte Rechnung noch offen. Wir bitten Sie dringend um Zahlung innerhalb von 7 Tagen. Danach behalten wir uns weitere Schritte vor.' },
+    ],
+    expenseAccounts: [
+      { account: '3400', label: 'Wareneingang 19 % (Material)', rate: 19 }, { account: '3300', label: 'Wareneingang 7 %', rate: 7 },
+      { account: '3100', label: 'Fremdleistungen', rate: 19 }, { account: '4210', label: 'Miete', rate: 19 }, { account: '4240', label: 'Strom, Gas, Wasser', rate: 19 },
+      { account: '4360', label: 'Versicherungen', rate: 0 }, { account: '4530', label: 'Kfz-Kosten (laufend)', rate: 19 }, { account: '4600', label: 'Werbung', rate: 19 },
+      { account: '4650', label: 'Bewirtung', rate: 19 }, { account: '4670', label: 'Reisekosten', rate: 19 }, { account: '4806', label: 'Wartung Software und Hardware', rate: 19 },
+      { account: '4855', label: 'Geringwertige Wirtschaftsgüter', rate: 19 }, { account: '4900', label: 'Sonstige betriebliche Aufwendungen', rate: 19 },
+      { account: '4920', label: 'Telefon, Internet', rate: 19 }, { account: '4930', label: 'Bürobedarf', rate: 19 }, { account: '4940', label: 'Zeitschriften, Bücher', rate: 7 },
+      { account: '4950', label: 'Rechts- und Beratungskosten', rate: 19 }, { account: '4970', label: 'Nebenkosten des Geldverkehrs', rate: 0 }, { account: '0420', label: 'Technische Anlagen und Maschinen', rate: 19 },
+    ],
   },
   letterhead: {
     address: '', footer: '', vatRate: 19, paymentTerms: '30 Tage netto', quoteValidityDays: 30,

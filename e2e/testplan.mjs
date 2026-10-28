@@ -658,6 +658,31 @@ await step('14.10 Rechnung: aus Angebot, festschreiben (ZUGFeRD), Zahlung erfass
   void q;
 });
 
+await step('14.11 Finanzen: Eingangsrechnung freigeben, Kontoauszug einlesen, Zahlung zuordnen', async () => {
+  await api('POST', '/apps/finance/install', {});
+  const sup = await api('POST', '/crm/accounts', { name: 'Lieferant Schrauben KG', kind: 'supplier', city: 'Ulm' });
+  const bill = await api('POST', '/finance/bills', { supplierId: sup.id, number: 'LS-4711', billDate: new Date().toISOString().slice(0, 10), lines: [{ text: 'Schrauben', account: '3400', net: 200, rate: 19 }] });
+  await page.goto(`${BASE}/finance?tab=bills&bill=${bill.id}`);
+  await page.click('.slideover button:has-text("Prüfen und einreichen")');
+  await page.waitForSelector('.slideover >> text=freigegeben');
+  await api('POST', '/finance/bank-accounts', { name: 'Testbank', iban: 'DE02120300000000202051', openingBalance: 1000, openingDate: '2020-01-01' });
+  await page.goto(`${BASE}/finance?tab=bank`);
+  const d = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const csv = `Buchungstag;Beguenstigter/Zahlungspflichtiger;IBAN;Verwendungszweck;Betrag\n${d};Lieferant Schrauben KG;DE89370400440532013000;Rechnung LS-4711;-238,00\n${d};Testbank;;Kontofuehrung;-9,90\n`;
+  await page.locator('input[type=file]').setInputFiles({ name: 'auszug.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+  await page.waitForSelector('td:has-text("Kontofuehrung")');
+  if (await page.locator('tr:has-text("LS-4711") button:has-text("Zuordnen")').count()) {
+    await page.click('tr:has-text("LS-4711") button:has-text("Zuordnen")');
+    await page.locator('.modal').last().locator('button.primary:has-text("Zuordnen")').click();
+  }
+  await page.click('tr:has-text("Kontofuehrung") button:has-text("Zuordnen")');
+  await page.locator('.modal').last().locator('button:has-text("Bankgebühren")').click();
+  await page.locator('.modal').last().locator('button.primary:has-text("Buchen")').click();
+  await page.waitForSelector('tr:has-text("LS-4711")', { state: 'detached' });
+  const b = await api('GET', `/finance/bills/${bill.id}`);
+  if (b.status !== 'paid') throw new Error(`Eingangsrechnung nicht bezahlt: ${b.status}`);
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);
