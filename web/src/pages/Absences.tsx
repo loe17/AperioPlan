@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useApi } from '../lib/hooks';
+import { useApi, rememberedTab, rememberTab } from '../lib/hooks';
 import { post, invalidate } from '../lib/api';
 import { useCrumbs } from '../components/Layout';
 import { useT } from '../i18n';
@@ -14,7 +14,7 @@ export default function AbsencesPage() {
   const t = useT();
   useCrumbs([{ label: `${t('Urlaubskonto')}` }]);
   const [params, setParams] = useSearchParams();
-  const tab = (params.get('tab') ?? 'mine') as 'mine' | 'review';
+  const tab = (params.get('tab') ?? rememberedTab('absences') ?? 'mine') as 'mine' | 'review';
   const [year, setYear] = useState(new Date().getFullYear());
   const { data: bal } = useApi<any>(`/absences/balance?year=${year}`);
   const { data: list } = useApi<any[]>(`/absences?year=${year}`);
@@ -38,7 +38,7 @@ export default function AbsencesPage() {
           <div className="card"><div className="muted small">Resturlaub</div><div className="stat" style={{ color: 'var(--green)' }}>{bal.remaining}</div></div>
         </div>
       )}
-      <Tabs value={tab} onChange={(v) => setParams({ tab: v })} tabs={[
+      <Tabs value={tab} onChange={(v) => { rememberTab('absences', v); setParams({ tab: v }); }} tabs={[
         { id: 'mine', label: 'Meine Anträge' },
         ...(review?.length ? [{ id: 'review' as const, label: `Zu genehmigen${pending ? ` (${pending})` : ''}` }] : []),
       ]} />

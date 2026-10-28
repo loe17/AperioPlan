@@ -12,6 +12,7 @@ import { CommandPalette } from './CommandPalette';
 import { ChangelogDialog } from './ChangelogDialog';
 import { IncomingCalls, useChannels } from '../modules/ChatView';
 import { EntityIcon, Icon } from './Icon';
+import { HeaderClock } from './HeaderClock';
 
 // ---------------------------------------------------------------- Brotkrumen
 export interface Crumb { label: string; to?: string }
@@ -215,6 +216,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 </span>
               ))}
             </div>
+            {!isGuest && <HeaderClock />}
             <div className="search-trigger" onClick={() => setPalette(true)}><Icon name="search" /> <span className="label">{t('Blitzsuche')}</span><kbd>Strg + K</kbd></div>
             <button className="icon-btn" title="Hell/Dunkel" onClick={() => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark')}>
               {theme === 'dark' || (theme === 'system' && document.documentElement.dataset.theme === 'dark') ? <Icon name="sun" /> : <Icon name="moon" />}

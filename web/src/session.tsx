@@ -117,8 +117,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (!me) return;
     return realtime.subscribe(`user:${me.id}`, (event) => {
       if (event === 'notification') invalidate('/notifications');
+      // Rolle, Rechte oder Profil wurden geändert (z. B. vom Administrator) – sofort übernehmen
+      if (event === 'session.changed') { void refresh(); invalidate('/'); }
     });
-  }, [me]);
+  }, [me?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setTheme = (t: 'system' | 'light' | 'dark') => {
     setThemeState(t);

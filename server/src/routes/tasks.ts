@@ -31,7 +31,8 @@ export const taskSelect = (sql: AppContext['sql']) => sql`
   (select count(*)::int from comments c where c.entity_type = 'task' and c.entity_id = t.id) as "commentCount",
   (select coalesce(sum(extract(epoch from (coalesce(e.ended_at, now()) - e.started_at)) / 3600), 0)::float
      from time_entries e where e.task_id = t.id) as "hoursBooked",
-  coalesce((select array_agg(d.depends_on_id) from task_dependencies d where d.task_id = t.id), '{}') as "dependsOn"`;
+  coalesce((select array_agg(d.depends_on_id) from task_dependencies d where d.task_id = t.id), '{}') as "dependsOn",
+  coalesce((select array_agg(w.user_id) from task_watchers w where w.task_id = t.id), '{}') as "watchers"`;
 
 const taskFrom = (sql: AppContext['sql']) => sql`tasks t left join users a on a.id = t.assignee_id left join teams tm on tm.id = t.team_id`;
 
@@ -121,10 +122,32 @@ export default async function taskRoutes(app: FastifyInstance, ctx: AppContext) 
     ctx.hub.publish(`project:${t.project_id}`, 'task.changed', full);
     if (b.assigneeId && b.assigneeId !== t.assignee_id)
       await notify(ctx, [b.assigneeId], { kind: 'task.assigned', title: `Aufgabe zugewiesen: ${full!.title}`, body: `${p.number} ${p.name}`, link: `/projects/${t.project_id}?task=${id}` }, u.id);
+    if (b.status && b.status !== t.status) {
+      const watchers = await sql<{ user_id: string }[]>`select user_id from task_watchers where task_id = ${id}`;
+      await notify(ctx, watchers.map((w) => w.user_id), { kind: 'task.status', title: `P${t.number} ${full!.title}: ${STATUS_LABEL[b.status]}`, body: `${p.number} ${p.name}`, link: `/projects/${t.project_id}?task=${id}` }, u.id);
+    }
     if (b.status === 'review' && t.status !== 'review') {
       const leads = await sql<{ user_id: string }[]>`select user_id from project_members where project_id = ${t.project_id} and role = 'owner'`;
       await notify(ctx, leads.map((l) => l.user_id), { kind: 'task.review', title: `Zur Prüfung: ${full!.title}`, body: `${p.number} ${p.name}`, link: `/projects/${t.project_id}?task=${id}` }, u.id);
     }
+    return full;
+  });
+
+  /** Personen, die bei Änderungen und Kommentaren dieser Aufgabe benachrichtigt werden */
+  app.put('/tasks/:id/watchers', async (req) => {
+    const u = requireUser(req);
+    const { id } = parse(idParam, req.params);
+    const { t, p } = await loadTask(u, id, 'edit');
+    const b = parse(z.object({ userIds: z.array(z.string().uuid()).max(200) }), req.body);
+    const before = (await sql<{ user_id: string }[]>`select user_id from task_watchers where task_id = ${id}`).map((r) => r.user_id);
+    await sql.begin(async (tx) => {
+      await tx`delete from task_watchers where task_id = ${id}`;
+      for (const uid of new Set(b.userIds)) await tx`insert into task_watchers (task_id, user_id) values (${id}, ${uid}) on conflict do nothing`;
+    });
+    const added = b.userIds.filter((x) => !before.includes(x));
+    await notify(ctx, added, { kind: 'task.watch', title: `${u.displayName} hält dich zu „${t.title}“ auf dem Laufenden`, body: `${p.number} ${p.name}`, link: `/projects/${t.project_id}?task=${id}` }, u.id);
+    const [full] = await sql`select ${taskSelect(sql)} from ${taskFrom(sql)} where t.id = ${id}`;
+    ctx.hub.publish(`project:${t.project_id}`, 'task.changed', full);
     return full;
   });
 
@@ -192,21 +215,22 @@ export default async function taskRoutes(app: FastifyInstance, ctx: AppContext) 
     const u = requireUser(req);
     const p = parse(z.object({ type: z.enum(['task', 'cad_item', 'kvp']), id: z.string().uuid() }), req.params);
     const projectId = await checkEntity(u, p.type, p.id);
-    const b = parse(z.object({ body: z.string().trim().min(1).max(20000) }), req.body);
+    const b = parse(z.object({ body: z.string().trim().min(1).max(20000), notify: z.array(z.string().uuid()).max(200).default([]) }), req.body);
     const [c] = await sql`insert into comments (entity_type, entity_id, user_id, body) values (${p.type}, ${p.id}, ${u.id}, ${b.body})
       returning id, body, user_id as "userId", created_at as "createdAt"`;
     const out = { ...c, userName: u.displayName };
     if (projectId) ctx.hub.publish(`project:${projectId}`, 'comment.created', { entityType: p.type, entityId: p.id, comment: out });
     // @Erwähnungen benachrichtigen
     const mentions = [...b.body.matchAll(/@([\w.-]+)/g)].map((m) => m[1]!);
-    if (mentions.length) {
-      const users = await sql<{ id: string }[]>`select id from users where lower(username) = any(${mentions.map((m) => m.toLowerCase())})`;
+    if (mentions.length || b.notify.length) {
+      const users = await sql<{ id: string }[]>`select id from users where (lower(username) = any(${mentions.map((m) => m.toLowerCase())}) or id = any(${b.notify})) and active`;
       await notify(ctx, users.map((x) => x.id), { kind: 'mention', title: `${u.displayName} hat dich erwähnt`, body: b.body.slice(0, 200),
         link: p.type === 'task' && projectId ? `/projects/${projectId}?task=${p.id}` : p.type === 'kvp' ? `/kvp?idea=${p.id}` : undefined }, u.id);
     }
     if (p.type === 'task') {
       const [t] = await sql<{ assignee_id: string | null; created_by: string | null; title: string }[]>`select assignee_id, created_by, title from tasks where id = ${p.id}`;
-      await notify(ctx, [t?.assignee_id, t?.created_by], { kind: 'comment', title: `Kommentar zu „${t?.title}“`, body: b.body.slice(0, 200), link: `/projects/${projectId}?task=${p.id}` }, u.id);
+      const watchers = (await sql<{ user_id: string }[]>`select user_id from task_watchers where task_id = ${p.id}`).map((w) => w.user_id);
+      await notify(ctx, [t?.assignee_id, t?.created_by, ...watchers], { kind: 'comment', title: `Kommentar zu „${t?.title}“`, body: b.body.slice(0, 200), link: `/projects/${projectId}?task=${p.id}` }, u.id);
     }
     return out;
   });

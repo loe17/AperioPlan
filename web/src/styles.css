@@ -186,7 +186,15 @@ label.field > span .req { color: var(--red); }
 .avatar { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px; font-weight: 650; color: #fff; flex: none; }
 .avatar.lg { width: 36px; height: 36px; font-size: 14px; }
 
-.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 18px; overflow-x: auto; }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 18px; position: relative; min-width: 0; }
+.tabs-measure { position: absolute; visibility: hidden; pointer-events: none; display: flex; gap: 2px; height: 0; overflow: hidden; white-space: nowrap; }
+.tabs .tab { white-space: nowrap; flex: none; }
+.tabs-more { position: relative; margin-left: auto; }
+.tabs-more .tab { display: inline-flex; align-items: center; gap: 4px; }
+.dropdown-menu { position: absolute; right: 0; top: calc(100% + 4px); background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow-lg); z-index: 60; min-width: 200px; padding: 6px; }
+.dropdown-menu .item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; cursor: pointer; color: var(--text); white-space: nowrap; }
+.dropdown-menu .item:hover, .dropdown-menu .item.active { background: var(--bg-hover); }
+.overlay.transparent { background: transparent; animation: none; z-index: 55; }
 .tab { padding: 8px 12px; color: var(--text-3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; background: none; border-top: none; border-left: none; border-right: none; font: inherit; }
 .tab:hover { color: var(--text); }
 .tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 550; }
@@ -244,6 +252,9 @@ table.table { width: 100%; border-collapse: collapse; }
 .toasts { position: fixed; bottom: 18px; right: 18px; z-index: 80; display: flex; flex-direction: column; gap: 8px; }
 .toast { background: var(--text); color: var(--bg); padding: 10px 14px; border-radius: 8px; box-shadow: var(--shadow-lg); max-width: 380px; animation: pop2 0.2s ease; }
 .toast.error { background: var(--red); color: #fff; }
+.toast { display: flex; align-items: flex-start; gap: 8px; }
+.toast .icon { margin-top: 2px; }
+.toast.ok .icon { color: var(--green); }
 @keyframes pop2 { from { opacity: 0; transform: translateY(8px); } }
 
 /* ---------------------------------------------------------- Kanban */
@@ -370,3 +381,25 @@ table.table { width: 100%; border-collapse: collapse; }
 .radio-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--text-3); flex: none; margin-right: 2px; }
 .radio-dot.on { border: 4px solid var(--accent); }
 .icon.mr { margin-right: 4px; }
+.header-clock { position: relative; }
+.clock-chip { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text-2); cursor: pointer; font: inherit; font-size: 13px; white-space: nowrap; }
+.clock-chip:hover { border-color: var(--text-3); }
+.clock-chip.running { border-color: var(--amber); color: var(--text); }
+.clock-chip.running .icon { color: var(--amber); }
+.clock-chip .clock-time { font-weight: 600; color: var(--amber); }
+.clock-chip .clock-total { color: var(--text-3); border-left: 1px solid var(--line); padding-left: 8px; }
+@media (max-width: 900px) { .clock-chip .clock-total, .clock-chip .clock-where { display: none; } }
+.mention-wrap, .user-picker { position: relative; flex: 1; min-width: 0; }
+.mention-wrap textarea { width: 100%; }
+.mention-list { position: absolute; left: 0; right: 0; top: calc(100% + 4px); background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow-lg); z-index: 70; padding: 4px; max-height: 260px; overflow-y: auto; }
+.mention-list .item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.mention-list .item:hover, .mention-list .item.active { background: var(--bg-hover); }
+.user-picker .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 4px 6px; background: var(--bg); min-height: 36px; }
+.user-picker .chips input { border: none; flex: 1; min-width: 140px; padding: 4px; background: transparent; box-shadow: none; }
+.chip { display: inline-flex; align-items: center; gap: 6px; background: var(--bg-hover); border-radius: 999px; padding: 2px 4px 2px 2px; font-size: 13px; }
+.chip .avatar { width: 20px; height: 20px; font-size: 9px; }
+.chip-x { border: none; background: none; cursor: pointer; color: var(--text-3); display: grid; place-items: center; padding: 2px; border-radius: 50%; }
+.chip-x:hover { background: var(--line); color: var(--text); }
+.select-pill { width: auto; padding: 2px 24px 2px 8px; border-radius: 999px; font-size: 12.5px; height: auto; }
+.select-pill.amber { color: var(--amber); } .select-pill.blue { color: var(--blue); } .select-pill.green { color: var(--green); }
+.nowrap { white-space: nowrap; }

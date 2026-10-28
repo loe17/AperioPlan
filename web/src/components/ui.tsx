@@ -11,16 +11,31 @@ export const useToast = () => useContext(ToastCtx);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const lastToast = useRef(0);
   const push = useCallback((text: string, kind: 'info' | 'error' = 'info') => {
+    lastToast.current = Date.now();
     const id = Date.now() + Math.random();
     setToasts((t) => [...t, { id, text, kind }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), kind === 'error' ? 6000 : 3500);
   }, []);
+  // Jede Speicherung bekommt eine Rückmeldung – außer die Aktion hat schon selbst eine gezeigt
+  useEffect(() => {
+    const h = (e: Event) => {
+      const d = (e as CustomEvent<{ ok: boolean; message?: string; startedAt: number }>).detail;
+      setTimeout(() => {
+        if (lastToast.current >= d.startedAt) return;
+        if (d.ok) push('Gespeichert');
+        else push(`Nicht gespeichert: ${d.message ?? 'unbekannter Fehler'}`, 'error');
+      }, 80);
+    };
+    window.addEventListener('aperio:saved', h);
+    return () => window.removeEventListener('aperio:saved', h);
+  }, [push]);
   return (
     <ToastCtx.Provider value={push}>
       {children}
       <div className="toasts">
-        {toasts.map((t) => <div key={t.id} className={`toast ${t.kind === 'error' ? 'error' : ''}`}>{t.text}</div>)}
+        {toasts.map((t) => <div key={t.id} className={`toast ${t.kind === 'error' ? 'error' : 'ok'}`} role={t.kind === 'error' ? 'alert' : 'status'}><Icon name={t.kind === 'error' ? 'alert' : 'check-circle'} /> <span>{t.text}</span></div>)}
       </div>
     </ToastCtx.Provider>
   );
@@ -187,9 +202,45 @@ export function StatusPill({ status, meta = STATUS_META }: { status: string; met
 }
 
 export function Tabs<T extends string>({ value, onChange, tabs }: { value: T; onChange: (v: T) => void; tabs: { id: T; label: ReactNode }[] }) {
+  // Passen nicht alle Reiter in die Breite, wandern die übrigen in ein Menü „Mehr“ – kein Rollbalken.
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(tabs.length);
+  const [open, setOpen] = useState(false);
+  const key = tabs.map((t) => t.id).join('|');
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const buttons = [...el.querySelectorAll<HTMLElement>('[data-tab-measure]')];
+      const avail = el.clientWidth - 96;
+      let used = 0; let n = 0;
+      for (const b of buttons) { used += b.offsetWidth + 2; if (used > avail && n > 0) break; n++; }
+      const total = buttons.reduce((sum, b) => sum + b.offsetWidth + 2, 0);
+      setVisible(total <= el.clientWidth ? buttons.length : n);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [key]);
+  const shown = tabs.slice(0, visible);
+  const more = tabs.slice(visible);
+  const activeHidden = more.find((t) => t.id === value);
   return (
-    <div className="tabs">
-      {tabs.map((tb) => <button key={tb.id} className={`tab ${value === tb.id ? 'active' : ''}`} onClick={() => onChange(tb.id)}>{tb.label}</button>)}
+    <div className="tabs" ref={ref}>
+      <div className="tabs-measure" aria-hidden>{tabs.map((tb) => <span key={tb.id} data-tab-measure className="tab">{tb.label}</span>)}</div>
+      {shown.map((tb) => <button key={tb.id} className={`tab ${value === tb.id ? 'active' : ''}`} onClick={() => onChange(tb.id)}>{tb.label}</button>)}
+      {more.length > 0 && (
+        <div className="tabs-more">
+          <button className={`tab ${activeHidden ? 'active' : ''}`} onClick={() => setOpen(!open)}>{activeHidden ? activeHidden.label : 'Mehr'} <Icon name="chevron-down" size={14} /></button>
+          {open && <>
+            <div className="overlay transparent" onClick={() => setOpen(false)} />
+            <div className="dropdown-menu">
+              {more.map((tb) => <div key={tb.id} className={`item ${value === tb.id ? 'active' : ''}`} onClick={() => { setOpen(false); onChange(tb.id); }}>{tb.label}</div>)}
+            </div>
+          </>}
+        </div>
+      )}
     </div>
   );
 }

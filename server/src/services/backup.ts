@@ -38,6 +38,8 @@ export const BACKUP_TABLES: { name: string; pk: string[] }[] = [
   { name: 'project_members', pk: ['project_id', 'user_id'] },
   { name: 'tasks', pk: ['id'] },
   { name: 'task_dependencies', pk: ['task_id', 'depends_on_id'] },
+  { name: 'task_watchers', pk: ['task_id', 'user_id'] },
+  { name: 'document_templates', pk: ['id'] },
   { name: 'comments', pk: ['id'] },
   { name: 'whiteboards', pk: ['id'] },
   { name: 'files', pk: ['id'] },

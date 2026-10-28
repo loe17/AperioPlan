@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useApi, useInterval } from '../lib/hooks';
+import { useApi, useInterval, rememberedTab, rememberTab } from '../lib/hooks';
 import { post, invalidate } from '../lib/api';
 import { realtime } from '../lib/realtime';
 import { useCrumbs } from '../components/Layout';
@@ -53,7 +53,7 @@ export default function TimePage() {
   const t = useT();
   useCrumbs([{ label: `${t('Zeiterfassung')}` }]);
   const [params, setParams] = useSearchParams();
-  const tab = (params.get('tab') ?? 'entries') as 'entries' | 'corrections' | 'review';
+  const tab = (params.get('tab') ?? rememberedTab('time') ?? 'entries') as 'entries' | 'corrections' | 'review';
   const { data: review } = useApi<any[]>('/time/corrections?scope=review');
   const pending = review?.filter((r) => r.status === 'pending').length ?? 0;
   return (
@@ -61,7 +61,7 @@ export default function TimePage() {
       <div className="page-head"><div><h1>{t('Zeiterfassung')}</h1><div className="sub">Projektzeiten stempeln, Fehlbuchungen korrigieren lassen</div></div></div>
       <ClockWidget />
       <div className="spacer" />
-      <Tabs value={tab} onChange={(v) => setParams({ tab: v })} tabs={[
+      <Tabs value={tab} onChange={(v) => { rememberTab('time', v); setParams({ tab: v }); }} tabs={[
         { id: 'entries', label: 'Meine Buchungen' },
         { id: 'corrections', label: 'Korrekturanfragen' },
         ...(review && review.length ? [{ id: 'review' as const, label: `Zu prüfen${pending ? ` (${pending})` : ''}` }] : []),

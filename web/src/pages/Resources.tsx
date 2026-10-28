@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useApi } from '../lib/hooks';
+import { useApi, rememberedTab, rememberTab } from '../lib/hooks';
 import { api, post, patch, invalidate } from '../lib/api';
 import { realtime } from '../lib/realtime';
 import { useCrumbs } from '../components/Layout';
@@ -26,14 +26,14 @@ const toLocalInput = (d: Date) => { const x = new Date(d); x.setMinutes(x.getMin
 export default function ResourcesPage() {
   useCrumbs([{ label: 'Ressourcen' }]);
   const [params, setParams] = useSearchParams();
-  const tab = (params.get('tab') ?? 'plan') as 'plan' | 'mine' | 'review';
+  const tab = (params.get('tab') ?? rememberedTab('resources') ?? 'plan') as 'plan' | 'mine' | 'review';
   const { data: review } = useApi<Booking[]>('/resources/bookings/review');
   return (
     <div className="page wide">
       <div className="page-head">
         <div><h1>Ressourcen</h1><div className="sub">Besprechungsräume, Firmenwagen und Geräte reservieren – Doppelbuchungen sind ausgeschlossen.</div></div>
       </div>
-      <Tabs value={tab} onChange={(v) => setParams({ tab: v })} tabs={[
+      <Tabs value={tab} onChange={(v) => { rememberTab('resources', v); setParams({ tab: v }); }} tabs={[
         { id: 'plan', label: <><Icon name="calendar" /> Belegungsplan</> },
         { id: 'mine', label: <><Icon name="user" /> Meine Buchungen</> },
         ...(review?.length ? [{ id: 'review' as const, label: <><Icon name="check-circle" /> Zu genehmigen ({review.length})</> }] : []),

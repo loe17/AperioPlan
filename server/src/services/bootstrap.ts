@@ -3,6 +3,7 @@ import { mkdir } from 'node:fs/promises';
 import type { AppContext } from '../context';
 import { hashPassword } from '../lib/crypto';
 import { germanHolidays } from '@aperio/shared';
+import { BUILTIN_TEMPLATES } from './officeTemplates';
 
 /** Erststart: Administrator admin/admin anlegen (Passwortwechsel wird erzwungen). */
 export async function bootstrap(ctx: AppContext, log: FastifyBaseLogger) {
@@ -14,6 +15,11 @@ export async function bootstrap(ctx: AppContext, log: FastifyBaseLogger) {
     await ctx.sql`insert into users (username, display_name, password_hash, role, must_change_password)
       values ('admin', 'Administrator', ${await hashPassword('admin')}, 'admin', true)`;
     log.warn('Erstzugang angelegt: Benutzer "admin", Passwort "admin" – muss bei der ersten Anmeldung geändert werden');
+  }
+
+  // Mitgelieferte Dokumentvorlagen eintragen
+  for (const t of BUILTIN_TEMPLATES) {
+    await ctx.sql`insert into document_templates (builtin_key, name, kind, ext) values (${t.key}, ${t.name}, ${t.kind}, ${t.ext}) on conflict (builtin_key) do nothing`;
   }
 
   // Feiertage für das laufende und nächste Jahr vorbelegen

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { NavLink, Route, Routes, Navigate } from 'react-router-dom';
+import { NavLink, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { APP_VERSION, PROJECT_MODULES, ROLES } from '@aperio/shared';
-import { useApi } from '../lib/hooks';
+import { useApi, rememberedTab, rememberTab } from '../lib/hooks';
 import { del, get, patch, post, put, invalidate } from '../lib/api';
 import { useCrumbs } from '../components/Layout';
 import { useSession } from '../session';
@@ -13,6 +13,7 @@ import { AuditView } from '../modules/AuditView';
 import { MODULE_LABELS } from '../modules/ProjectSettings';
 import { CadMaskSettings, BackupSettings, UpdateSettings, MailSettings, AiSettings, HolidaySettings, StorageSettings, ExtensionSettings, ResourcesSettings } from './SettingsExtra';
 import { EntityIcon, Icon, IconPicker } from '../components/Icon';
+import { DocumentTemplateSettings } from '../modules/Documents';
 
 const ROLE_LABEL: Record<string, string> = { admin: 'Administrator', teamlead: 'Teamleitung', member: 'Mitarbeiter', guest: 'Gast' };
 
@@ -25,6 +26,9 @@ export default function SettingsPage() {
   const { me } = useSession();
   useCrumbs([{ label: `${t('Einstellungen')}` }]);
   const admin = me?.role === 'admin';
+  const loc = useLocation();
+  useEffect(() => { if (loc.pathname.startsWith('/settings/')) rememberTab('settings', loc.pathname); }, [loc.pathname]);
+  const last = rememberedTab('settings');
   return (
     <div className="page wide" style={{ display: 'flex', gap: 28, alignItems: 'flex-start' }}>
       <div style={{ width: 220, flex: 'none', position: 'sticky', top: 0 }}>
@@ -37,6 +41,7 @@ export default function SettingsPage() {
           <SettingsNav to="/settings/teams"><Icon name="building" /> {t('Teams')}</SettingsNav>
           <SettingsNav to="/settings/general"><Icon name="settings" /> Allgemein & Nummern</SettingsNav>
           <SettingsNav to="/settings/storage"><Icon name="hdd" /> Speicherorte</SettingsNav>
+          <SettingsNav to="/settings/templates"><Icon name="file-text" /> Dokumentvorlagen</SettingsNav>
           <SettingsNav to="/settings/cad"><Icon name="cad" /> {t('Speichermaske')} (CAD)</SettingsNav>
           <SettingsNav to="/settings/resources"><Icon name="car" /> Ressourcen</SettingsNav>
           <SettingsNav to="/settings/holidays"><Icon name="holiday" /> Feiertage</SettingsNav>
@@ -52,11 +57,12 @@ export default function SettingsPage() {
       </div>
       <div className="grow" style={{ maxWidth: 1000 }}>
         <Routes>
-          <Route index element={<Navigate to="/settings/profile" replace />} />
+          <Route index element={<Navigate to={last && last !== '/settings' ? last : '/settings/profile'} replace />} />
           <Route path="profile" element={<Profile />} />
           <Route path="tokens" element={<Tokens />} />
           {admin && <>
             <Route path="users" element={<Users />} />
+            <Route path="templates" element={<DocumentTemplateSettings />} />
             <Route path="teams" element={<Teams />} />
             <Route path="general" element={<General />} />
             <Route path="storage" element={<StorageSettings />} />
@@ -71,6 +77,7 @@ export default function SettingsPage() {
             <Route path="update" element={<UpdateSettings />} />
             <Route path="audit" element={<><h1 style={{ marginBottom: 16 }}>{t('Änderungsprotokoll')}</h1><AuditView /></>} />
           </>}
+          <Route path="*" element={<Navigate to="/settings/profile" replace />} />
         </Routes>
       </div>
     </div>

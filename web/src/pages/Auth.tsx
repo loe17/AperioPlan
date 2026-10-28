@@ -32,7 +32,7 @@ export function LoginPage() {
       }}>
         <div className="row" style={{ marginBottom: 20 }}>
           <img className="logo" src="/logo-mark.svg" alt="" style={{ width: 40, height: 40 }} />
-          <div><h2>{info?.company ?? 'AperioPlan'}</h2><div className="small muted">Projektverwaltung & CAD-Zentrale</div></div>
+          <h2>{info?.company ?? 'AperioPlan'}</h2>
         </div>
         <Field label={t('Benutzername')}><input autoFocus value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" /></Field>
         <Field label={t('Passwort')}><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></Field>

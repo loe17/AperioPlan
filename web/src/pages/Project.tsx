@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { TASK_PRIORITIES, TASK_STATUSES } from '@aperio/shared';
-import { useApi } from '../lib/hooks';
+import { useApi, rememberedTab, rememberTab } from '../lib/hooks';
 import { del, put, invalidate } from '../lib/api';
 import { realtime } from '../lib/realtime';
 import { useCrumbs } from '../components/Layout';
 import { useSession } from '../session';
 import { useT } from '../i18n';
 import { fmtDate } from '../lib/format';
-import { Avatar, ErrorBox, Loading, Modal, Field, PRIORITY_META, Progress, STATUS_META, StatusDot, StatusPill, useAction, UserSelect } from '../components/ui';
+import { Tabs, Avatar, ErrorBox, Loading, Modal, Field, PRIORITY_META, Progress, STATUS_META, StatusDot, StatusPill, useAction, UserSelect } from '../components/ui';
 import { TaskPanel, quickCreateTask, type Task } from '../components/TaskPanel';
 import { Kanban } from '../modules/Kanban';
 import { TaskTable } from '../modules/TaskTable';
@@ -41,9 +41,9 @@ export default function ProjectPage() {
   const [filter, setFilter] = useState({ q: '', assignee: '', team: '', priority: '', status: '' });
   const [newTask, setNewTask] = useState(false);
 
-  const tab = params.get('tab') ?? project?.modules?.[0] ?? 'overview';
+  const tab = params.get('tab') ?? rememberedTab(`project:${id}`) ?? project?.modules?.[0] ?? 'overview';
   const taskId = params.get('task');
-  const setTab = (v: string) => { params.set('tab', v); params.delete('task'); setParams(params, { replace: true }); };
+  const setTab = (v: string) => { rememberTab(`project:${id}`, v); params.set('tab', v); params.delete('task'); setParams(params, { replace: true }); };
   const openTask = (tid: string) => { params.set('task', tid); setParams(params); };
   const closeTask = () => { params.delete('task'); setParams(params); };
 
@@ -108,9 +108,7 @@ export default function ProjectPage() {
         </div>
       </div>
 
-      <div className="tabs">
-        {tabs.map((tb) => <button key={tb.id} className={`tab ${tab === tb.id ? 'active' : ''}`} onClick={() => setTab(tb.id)}>{tb.label}</button>)}
-      </div>
+      <Tabs value={tab} onChange={setTab} tabs={tabs} />
 
       {isTaskView && tab !== 'gantt' && (
         <div className="toolbar">
@@ -147,7 +145,7 @@ export default function ProjectPage() {
         const p = pluginTabs.find((x) => `plugin:${x.id}` === tab);
         return p ? <iframe title={p.name} src={`/plugins/${p.id}/${p.projectTab.entry}?projectId=${project.id}&projectNumber=${encodeURIComponent(project.number)}`} style={{ width: '100%', height: 'calc(100vh - 250px)', border: '1px solid var(--line)', borderRadius: 10 }} /> : null;
       })()}
-      {tab === 'documents' && <Documents projectId={project.id} canEdit={project.canEdit} />}
+      {tab === 'documents' && <Documents projectId={project.id} canEdit={project.canEdit} canManage={project.canManage} />}
       {tab === 'audit' && <AuditView projectId={project.id} />}
       {tab === 'settings' && project.canManage && <ProjectSettings key={project.updatedAt} project={project} />}
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useApi } from '../lib/hooks';
+import { useApi, useTabState } from '../lib/hooks';
 import { del, patch, post, upload, invalidate, get } from '../lib/api';
 import { realtime } from '../lib/realtime';
 import { useSession, type PublicSettings } from '../session';
@@ -171,7 +171,7 @@ function CadItemPanel({ id, onClose, onOpen, onChanged }: { id: string; onClose:
   const { me, settings } = useSession();
   const act = useAction();
   const toast = useToast();
-  const [tab, setTab] = useState<'props' | 'bom' | 'used' | 'history' | 'comments'>('props');
+  const [tab, setTab] = useTabState<'props' | 'bom' | 'used' | 'history' | 'comments'>('cad-item', 'props', 'itemTab');
   const [stateTo, setStateTo] = useState<string | null>(null);
   const [revise, setRevise] = useState(false);
   const [remove, setRemove] = useState(false);

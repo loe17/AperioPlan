@@ -7,20 +7,30 @@ import { useT } from '../i18n';
 import { fmtDateTime, fmtHours } from '../lib/format';
 import { Avatar, Confirm, Field, PRIORITY_META, SlideOver, STATUS_META, useAction, UserSelect } from './ui';
 import { Icon } from './Icon';
+import { MentionInput } from './MentionInput';
+import { UserPicker } from './UserPicker';
 
 export interface Task {
   id: string; projectId: string; number: number; title: string; description: string; status: string; priority: string;
   assigneeId: string | null; assigneeName: string | null; teamId: string | null; teamName: string | null;
   startDate: string | null; dueDate: string | null; estimateHours: number | null; milestone: boolean; sort: number;
-  commentCount: number; hoursBooked: number; dependsOn: string[]; createdAt: string; completedAt: string | null;
+  commentCount: number; hoursBooked: number; dependsOn: string[]; watchers?: string[]; createdAt: string; completedAt: string | null;
   projectNumber?: string; projectName?: string;
 }
 
-export function Comments({ type, id }: { type: 'task' | 'cad_item' | 'kvp'; id: string }) {
+export function Comments({ type, id, preferred = [] }: { type: 'task' | 'cad_item' | 'kvp'; id: string; preferred?: string[] }) {
   const t = useT();
+  const { users } = useSession();
+  const [notifyIds, setNotifyIds] = useState<string[]>([]);
+  const [showNotify, setShowNotify] = useState(false);
   const { data, reload } = useApi<{ id: string; body: string; userId: string; userName: string; createdAt: string }[]>(`/comments/${type}/${id}`);
   const [text, setText] = useState('');
   const act = useAction();
+  const send = async () => {
+    if (!text.trim()) return;
+    const r = await act(() => post(`/comments/${type}/${id}`, { body: text, notify: notifyIds }), notifyIds.length ? 'Kommentar gesendet und Personen benachrichtigt' : 'Kommentar gesendet');
+    if (r) { setText(''); setNotifyIds([]); setShowNotify(false); reload(); }
+  };
   return (
     <div>
       <h3 style={{ margin: '18px 0 10px' }}><Icon name="chat" /> {t('Kommentare')}</h3>
@@ -31,11 +41,13 @@ export function Comments({ type, id }: { type: 'task' | 'cad_item' | 'kvp'; id: 
         </div>
       ))}
       <div className="row" style={{ marginTop: 8, alignItems: 'flex-end' }}>
-        <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={t('Kommentar schreiben …') + ' (@benutzername erwähnt)'} style={{ minHeight: 50 }}
-          onKeyDown={async (e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && text.trim()) { await act(() => post(`/comments/${type}/${id}`, { body: text })); setText(''); reload(); }
-          }} />
-        <button className="btn primary" disabled={!text.trim()} onClick={async () => { await act(() => post(`/comments/${type}/${id}`, { body: text })); setText(''); reload(); }}>Senden</button>
+        <MentionInput value={text} onChange={setText} users={users} placeholder={t('Kommentar schreiben …') + ' (@ erwähnt Kollegen)'} style={{ minHeight: 50 }} onSubmit={send} />
+        <button className="btn primary" disabled={!text.trim()} onClick={send}>Senden</button>
+      </div>
+      <div style={{ marginTop: 6 }}>
+        {showNotify
+          ? <UserPicker users={users} value={notifyIds} onChange={setNotifyIds} preferred={preferred} placeholder="Wer soll diesen Kommentar sicher bekommen?" />
+          : <button className="btn ghost sm" onClick={() => setShowNotify(true)}><Icon name="bell" /> Personen benachrichtigen</button>}
       </div>
     </div>
   );
@@ -46,6 +58,9 @@ export function TaskPanel({ taskId, onClose, allTasks }: { taskId: string; onClo
   const { users, teams } = useSession();
   const act = useAction();
   const { data: task, setData } = useApi<Task>(`/tasks/${taskId}`);
+  const { data: clock } = useApi<{ running: { taskId: string | null } | null }>('/time/current');
+  const { data: project } = useApi<{ members: { userId: string }[] }>(task ? `/projects/${task.projectId}` : null);
+  const memberIds = project?.members.map((m) => m.userId) ?? [];
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [draft, setDraft] = useState<{ title: string; description: string } | null>(null);
   const { data: history } = useApi<any[]>(task ? `/audit?projectId=${task.projectId}&entityType=task&entityId=${taskId}&limit=20` : null);
@@ -63,7 +78,9 @@ export function TaskPanel({ taskId, onClose, allTasks }: { taskId: string; onClo
     <SlideOver onClose={onClose}
       title={<div className="row"><span className="mono muted">P{task.number}</span><span className="pill">{task.projectNumber}</span></div>}
       actions={<>
-        <button className="btn sm" title="Zeit auf diese Aufgabe stempeln" onClick={() => act(() => post('/time/clock-in', { projectId: task.projectId, taskId: task.id }).then(() => invalidate('/time')), 'Stempeluhr läuft')}><Icon name="timer" /> {t('Einstempeln')}</button>
+        {clock?.running?.taskId === task.id
+          ? <button className="btn sm" title="Stempeluhr läuft auf dieser Aufgabe" onClick={() => act(() => post('/time/clock-out').then(() => invalidate('/time')), 'Ausgestempelt')}><Icon name="square" /> {t('Ausstempeln')}</button>
+          : <button className="btn sm" title="Zeit auf diese Aufgabe stempeln" onClick={() => act(() => post('/time/clock-in', { projectId: task.projectId, taskId: task.id }).then(() => invalidate('/time')), 'Stempeluhr läuft auf dieser Aufgabe')}><Icon name="timer" /> {clock?.running ? 'Auf diese Aufgabe wechseln' : t('Einstempeln')}</button>}
         <button className="btn sm danger" onClick={() => setConfirmDelete(true)}>{t('Löschen')}</button>
       </>}>
       <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} onBlur={() => draft.title.trim() && draft.title !== task.title && save({ title: draft.title })}
@@ -105,7 +122,13 @@ export function TaskPanel({ taskId, onClose, allTasks }: { taskId: string; onClo
           </select>
         </Field>
       )}
-      <Comments type="task" id={task.id} />
+      <Field label="Benachrichtigen bei Änderungen und Kommentaren" hint="Diese Personen erhalten jede Statusänderung und jeden Kommentar dieser Aufgabe.">
+        <UserPicker users={users} value={task.watchers ?? []} preferred={memberIds} onChange={async (ids) => {
+          const r = await act(() => put<Task>(`/tasks/${task.id}/watchers`, { userIds: ids }));
+          if (r) setData({ ...task, ...r });
+        }} />
+      </Field>
+      <Comments type="task" id={task.id} preferred={memberIds} />
       {history && history.length > 0 && (
         <div>
           <h3 style={{ margin: '18px 0 8px' }}><Icon name="history" /> Verlauf</h3>

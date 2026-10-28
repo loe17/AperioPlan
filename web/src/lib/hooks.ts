@@ -63,3 +63,29 @@ export function useHotkey(combo: string, fn: (e: KeyboardEvent) => void) {
     return () => window.removeEventListener('keydown', h);
   }, [combo]);
 }
+
+/**
+ * Reiter-Auswahl, die sich merkt, wo man zuletzt war: steht in der Adresszeile (?tab=…)
+ * und zusätzlich im Browser, damit man beim Zurückkehren wieder am selben Reiter landet.
+ */
+export function useTabState<T extends string>(key: string, fallback: T, param = 'tab'): [T, (v: T) => void] {
+  const read = (): T => {
+    const fromUrl = new URLSearchParams(location.search).get(param);
+    if (fromUrl) return fromUrl as T;
+    try { return (localStorage.getItem(`aperio-tab:${key}`) as T) || fallback; } catch { return fallback; }
+  };
+  const [v, setV] = useState<T>(read);
+  useEffect(() => { setV(read()); }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const set = useCallback((nv: T) => {
+    setV(nv);
+    try { localStorage.setItem(`aperio-tab:${key}`, nv); } catch { /* privat */ }
+    const u = new URL(location.href);
+    u.searchParams.set(param, nv);
+    history.replaceState(history.state, '', u.toString());
+  }, [key, param]);
+  return [v, set];
+}
+
+/** Zuletzt gewählter Wert eines Schlüssels (z. B. letzter Projekt-Reiter), ohne Zustand */
+export const rememberedTab = (key: string): string | null => { try { return localStorage.getItem(`aperio-tab:${key}`); } catch { return null; } };
+export const rememberTab = (key: string, v: string) => { try { localStorage.setItem(`aperio-tab:${key}`, v); } catch { /* privat */ } };

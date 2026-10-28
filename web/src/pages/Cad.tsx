@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useCrumbs } from '../components/Layout';
-import { useApi } from '../lib/hooks';
+import { useApi, useTabState } from '../lib/hooks';
 import { fmtDateTime } from '../lib/format';
 import { Empty, Pill, Tabs } from '../components/ui';
 import { CadCenter } from '../modules/CadCenter';
 
 export default function CadPage() {
   useCrumbs([{ label: 'CAD-Zentrale' }]);
-  const [tab, setTab] = useState<'items' | 'exports' | 'setup'>('items');
+  const [tab, setTab] = useTabState<'items' | 'exports' | 'setup'>('cad', 'items');
   return (
     <div className="page wide">
       <div className="page-head"><div><h1>CAD-Zentrale</h1><div className="sub">Baugruppen, Einzelteile und Zeichnungen aller Projekte – mit Sperren, Versionsständen und Freigaben</div></div></div>

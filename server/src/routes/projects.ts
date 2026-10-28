@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { PROJECT_MODULES, formatDocumentNumber } from '@aperio/shared';
+import { PROJECT_MODULES } from '@aperio/shared';
 import type { AppContext } from '../context';
 import { z, parse, idParam, patchSchema } from '../lib/validate';
 import { requireUser, requireRole } from '../lib/auth';
@@ -137,39 +137,4 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
   });
 
   // ------------------------------------------------ Allgemeine Dokumente (0100-DOK-001)
-  app.get('/projects/:id/documents', async (req) => {
-    const u = requireUser(req);
-    const { id } = parse(idParam, req.params);
-    await projectAccess(sql, u, id);
-    return sql`select d.id, d.number, d.title, d.file_id as "fileId", f.name as "fileName", f.path as "filePath",
-      d.created_at as "createdAt", us.display_name as "createdByName"
-      from project_documents d left join files f on f.id = d.file_id left join users us on us.id = d.created_by
-      where d.project_id = ${id} order by d.number`;
-  });
-  app.post('/projects/:id/documents', async (req) => {
-    const u = requireUser(req);
-    const { id } = parse(idParam, req.params);
-    const p = await projectAccess(sql, u, id, 'edit');
-    const b = parse(z.object({ title: z.string().trim().min(1), fileId: z.string().uuid().nullable().default(null) }), req.body);
-    const doc = await sql.begin(async (tx) => {
-      const doc_seq = (await tx<{ doc_seq: number }[]>`update projects set doc_seq = doc_seq + 1 where id = ${id} returning doc_seq`)[0]!.doc_seq;
-      const number = formatDocumentNumber(p.number, doc_seq);
-      const [d] = await tx`insert into project_documents (project_id, number, title, file_id, created_by)
-        values (${id}, ${number}, ${b.title}, ${b.fileId}, ${u.id}) returning id, number`;
-      return d!;
-    });
-    await audit(sql, u, { action: 'document.create', entityType: 'document', entityId: doc.id, projectId: id, summary: `Dokument ${doc.number} „${b.title}“ angelegt` });
-    return doc;
-  });
-  app.patch('/documents/:id', async (req) => {
-    const u = requireUser(req);
-    const { id } = parse(idParam, req.params);
-    const [d] = await sql<{ project_id: string }[]>`select project_id from project_documents where id = ${id}`;
-    if (!d) throw badRequest('Dokument nicht gefunden');
-    await projectAccess(sql, u, d.project_id, 'edit');
-    const b = parse(z.object({ title: z.string().trim().min(1).optional(), fileId: z.string().uuid().nullable().optional() }), req.body);
-    await sql`update project_documents set title = coalesce(${b.title ?? null}, title),
-      file_id = ${b.fileId === undefined ? sql`file_id` : b.fileId}, updated_at = now() where id = ${id}`;
-    return { ok: true };
-  });
 }

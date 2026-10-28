@@ -71,6 +71,7 @@ export default async function userRoutes(app: FastifyInstance, ctx: AppContext) 
       updated_at = now()
       where id = ${id}`;
     if (b.active === false || b.password) await sql`delete from sessions where user_id = ${id}`;
+    ctx.hub.toUser(id, 'session.changed', {});
     await audit(sql, admin, { action: 'user.update', entityType: 'user', entityId: id, summary: `Benutzer ${cur.username} geändert`,
       details: { ...b, password: b.password ? '(zurückgesetzt)' : undefined } });
     return { ok: true };
