@@ -91,9 +91,9 @@ export async function syncMail(ctx: AppContext, limit = 200): Promise<{ fetched:
 /** Für Tests: E-Mails nur sammeln statt senden */
 export const testOutbox: { enabled: boolean; messages: { to: string; cc?: string; subject: string; text: string; attachments: string[] }[] } = { enabled: false, messages: [] };
 
-export async function sendMail(ctx: AppContext, opts: { to: string; cc?: string; subject: string; text: string; inReplyTo?: string; attachments?: { path: string; name: string }[] }) {
+export async function sendMail(ctx: AppContext, opts: { to: string; cc?: string; subject: string; text: string; inReplyTo?: string; attachments?: { path: string; name: string }[]; inline?: { name: string; content: string | Buffer; contentType: string }[] }) {
   if (testOutbox.enabled) {
-    testOutbox.messages.push({ to: opts.to, cc: opts.cc, subject: opts.subject, text: opts.text, attachments: (opts.attachments ?? []).map((a) => a.name) });
+    testOutbox.messages.push({ to: opts.to, cc: opts.cc, subject: opts.subject, text: opts.text, attachments: [...(opts.attachments ?? []).map((a) => a.name), ...(opts.inline ?? []).map((a) => a.name)] });
     return { messageId: `test-${testOutbox.messages.length}`, from: 'test@aperio' };
   }
   const s = await ctx.settings.get('mail');
@@ -101,7 +101,7 @@ export async function sendMail(ctx: AppContext, opts: { to: string; cc?: string;
   const info = await smtpTransport(s).sendMail({
     from: s.from || s.user, to: opts.to, cc: opts.cc, subject: opts.subject, text: opts.text,
     inReplyTo: opts.inReplyTo, references: opts.inReplyTo,
-    attachments: opts.attachments?.map((a) => ({ filename: a.name, path: ctx.storage.abs(a.path) })),
+    attachments: [...(opts.attachments ?? []).map((a) => ({ filename: a.name, path: ctx.storage.abs(a.path) })), ...(opts.inline ?? []).map((a) => ({ filename: a.name, content: a.content, contentType: a.contentType }))],
   }).catch((e: Error) => { throw new HttpError(502, `E-Mail-Versand fehlgeschlagen: ${e.message}`); });
   return { messageId: info.messageId, from: s.from || s.user };
 }

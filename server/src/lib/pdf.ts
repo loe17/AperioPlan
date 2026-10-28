@@ -136,6 +136,20 @@ export class Pdf {
     this.cur.push(`${rgb(color)} RG ${width} w ${x1.toFixed(2)} ${(this.height - y1).toFixed(2)} m ${x2.toFixed(2)} ${(this.height - y2).toFixed(2)} l S`);
   }
 
+  /** Handschriftliche Unterschrift (Striche mit Punkten 0..1) in ein Feld zeichnen */
+  signature(strokes: [number, number][][], x: number, y: number, w: number, h: number, aspect = 3) {
+    // Seitenverhältnis des Zeichenfelds erhalten
+    let bw = w, bh = w / aspect;
+    if (bh > h) { bh = h; bw = h * aspect; }
+    const parts: string[] = [];
+    for (const s of strokes) {
+      if (!s.length) continue;
+      const pt = (p: [number, number]) => `${(x + p[0] * bw).toFixed(2)} ${(this.height - (y + p[1] * bh)).toFixed(2)}`;
+      parts.push(`${pt(s[0]!)} m ${s.length === 1 ? `${pt([s[0]![0] + 0.002, s[0]![1]])} l` : s.slice(1).map((p) => `${pt(p)} l`).join(' ')} S`);
+    }
+    if (parts.length) this.cur.push(`0.06 0.09 0.35 RG 1.2 w 1 J 1 j ${parts.join(' ')}`);
+  }
+
   rect(x: number, y: number, w: number, h: number, fill = '#f3f4f6') {
     this.cur.push(`${rgb(fill)} rg ${x.toFixed(2)} ${(this.height - y - h).toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re f`);
   }

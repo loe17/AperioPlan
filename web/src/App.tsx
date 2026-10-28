@@ -37,6 +37,14 @@ const MaintenancePage = lazy(() => import('./pages/Maintenance'));
 const QualityPage = lazy(() => import('./pages/Quality'));
 const ManufacturingPage = lazy(() => import('./pages/Manufacturing'));
 const PlmPage = lazy(() => import('./pages/Plm'));
+const ServicePage = lazy(() => import('./pages/Service'));
+const HelpdeskPage = lazy(() => import('./pages/Helpdesk'));
+const ContractsPage = lazy(() => import('./pages/Contracts'));
+const BookingPage = lazy(() => import('./pages/Booking'));
+const EventsPage = lazy(() => import('./pages/Events'));
+const PublicSupportPage = lazy(() => import('./pages/Helpdesk').then((m) => ({ default: m.PublicSupportPage })));
+const PublicBookingPage = lazy(() => import('./pages/Booking').then((m) => ({ default: m.PublicBookingPage })));
+const PublicEventPage = lazy(() => import('./pages/Events').then((m) => ({ default: m.PublicEventPage })));
 const MyPayslipsPage = lazy(() => import('./pages/Payroll').then((m) => ({ default: m.MyPayslipsPage })));
 const PublicKbPage = lazy(() => import('./pages/Knowledge').then((m) => ({ default: m.PublicKbPage })));
 const PublicFormPage = lazy(() => import('./pages/Forms').then((m) => ({ default: m.PublicFormPage })));
@@ -65,6 +73,9 @@ export function App() {
   if (location.pathname.startsWith('/kb/')) {
     return <I18nProvider lang={lang}><Suspense fallback={<Loading />}><PublicKbPage /></Suspense></I18nProvider>;
   }
+  if (location.pathname.startsWith('/support')) return <Suspense fallback={<Loading />}><PublicSupportPage /></Suspense>;
+  if (location.pathname.startsWith('/book/')) return <Suspense fallback={<Loading />}><PublicBookingPage /></Suspense>;
+  if (location.pathname.startsWith('/event/')) return <Suspense fallback={<Loading />}><PublicEventPage /></Suspense>;
   if (location.pathname.startsWith('/s/')) {
     return <I18nProvider lang={lang}><Suspense fallback={<Loading />}><SharePage /></Suspense></I18nProvider>;
   }
@@ -105,6 +116,11 @@ export function App() {
             <Route path="/quality" element={<QualityPage />} />
             <Route path="/manufacturing" element={<ManufacturingPage />} />
             <Route path="/plm" element={<PlmPage />} />
+            <Route path="/service" element={<ServicePage />} />
+            <Route path="/helpdesk" element={<HelpdeskPage />} />
+            <Route path="/contracts" element={<ContractsPage />} />
+            <Route path="/booking" element={<BookingPage />} />
+            <Route path="/events" element={<EventsPage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="/knowledge/:id" element={<KnowledgePage />} />
             <Route path="/mindmaps" element={<MindmapsPage />} />

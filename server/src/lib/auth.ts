@@ -69,6 +69,12 @@ export function requireTool(req: FastifyRequest, tool: Tool): AuthUser {
 }
 
 /** Ermittelt den Benutzer aus Sitzungs-Cookie oder API-Token (Authorization: Bearer ...). */
+/** Benutzer für Hintergrundaufgaben laden (z. B. Vertragsrechnungen im Namen des Verantwortlichen) */
+export async function loadUser(sql: Sql, id: string): Promise<AuthUser | null> {
+  const [u] = await sql<AuthUser[]>`select ${userSelect(sql)} from users where active and deleted_at is null and id = ${id}`;
+  return u ?? null;
+}
+
 export async function resolveUser(sql: Sql, req: FastifyRequest): Promise<AuthUser | null> {
   const header = req.headers.authorization;
   if (header?.startsWith('Bearer ')) {

@@ -759,6 +759,75 @@ await step('14.13 Instandhaltung, Qualität, Fertigung, Änderungen: Störung me
   await page.waitForSelector('.slideover >> text=Blech 3 mm');
 });
 
+await step('14.14 Service, Kundenanfragen, Verträge, Terminbuchung, Messe: Einsatz unterschreiben, Formular, Buchung', async () => {
+  for (const a of ['service', 'helpdesk', 'contracts', 'booking', 'events']) await api('POST', `/apps/${a}/install`, {});
+  const acc = await api('POST', '/crm/accounts', { name: 'Servicekunde E2E', street: 'Hauptstr. 1', zip: '79098', city: 'Freiburg' });
+  const job = await api('POST', '/service/jobs', { accountId: acc.id, title: 'Kompressor prüfen' });
+  await page.goto(`${BASE}/service?job=${job.id}`);
+  await page.waitForSelector('.slideover >> text=Hauptstr. 1, 79098 Freiburg');
+  await page.locator('.slideover textarea').first().fill('Filter gewechselt, Druck geprüft.');
+  await page.click('.slideover button:has-text("Arbeitszeit")');
+  await page.click('.slideover button:has-text("Unterschrift Kunde")');
+  const m = page.locator('.modal').last();
+  await m.locator('input').first().fill('Herr Kunde');
+  const box = await m.locator('canvas').boundingBox();
+  await page.mouse.move(box.x + 20, box.y + box.height / 2); await page.mouse.down();
+  for (let i = 1; i <= 12; i++) await page.mouse.move(box.x + 20 + i * 20, box.y + box.height / 2 + (i % 2 ? -15 : 15));
+  await page.mouse.up();
+  await m.locator('button.primary:has-text("Unterschreiben")').click();
+  await page.waitForSelector('.slideover >> text=Unterschrieben von');
+  await page.click('.slideover button:has-text("Abrechnen")');
+  await page.waitForSelector('.slideover >> text=Entwurf');
+  // Kontaktformular ohne Anmeldung
+  const ctx2 = await browser.newContext();
+  const p2 = await ctx2.newPage();
+  await p2.goto(`${BASE}/support`);
+  const inputs = p2.locator('form input');
+  await inputs.nth(0).fill('Paula Probe');
+  await inputs.nth(2).fill('paula@probe.de');
+  await p2.locator('form input').nth(4).fill('Frage zur Wartung');
+  await p2.locator('form textarea').fill('Wann ist der nächste Termin frei?');
+  await p2.click('button:has-text("Absenden")');
+  await p2.waitForSelector('text=Vielen Dank');
+  // Terminbuchung
+  const me = await api('GET', '/auth/me');
+  await api('POST', '/booking/types', { name: 'Beratung E2E', durationMin: 30, hostIds: [me.id], minNoticeHours: 0, availability: { mon: [['08:00', '18:00']], tue: [['08:00', '18:00']], wed: [['08:00', '18:00']], thu: [['08:00', '18:00']], fri: [['08:00', '18:00']], sat: [['08:00', '18:00']], sun: [['08:00', '18:00']] } });
+  await p2.goto(`${BASE}/book/beratung-e2e`);
+  await p2.locator('.bk-slot').nth(3).click();
+  const bf = p2.locator('form input');
+  await bf.nth(0).fill('Bernd Bucher');
+  await bf.nth(2).fill('bernd@bucher.de');
+  await p2.click('button:has-text("Termin buchen")');
+  await p2.waitForSelector('text=Termin bestätigt');
+  await ctx2.close();
+  await page.goto(`${BASE}/helpdesk`);
+  await page.click('tr:has-text("Frage zur Wartung")');
+  await page.locator('.slideover textarea').last().fill('Gern, am Montag um 9 Uhr.');
+  await page.click('.slideover button:has-text("Senden")');
+  await page.waitForSelector('.slideover >> text=Gern, am Montag um 9 Uhr.');
+  await page.goto(`${BASE}/booking`);
+  await page.waitForSelector('text=Bernd Bucher');
+  // Vertrag und Messe
+  await page.goto(`${BASE}/contracts`);
+  await page.click('button.primary:has-text("Vertrag")');
+  const cm = page.locator('.modal').last();
+  await cm.locator('input[placeholder*="suchen"]').first().fill('Servicekunde');
+  await page.locator('text=Servicekunde E2E').last().click();
+  await cm.locator('input[placeholder*="Wartungsvertrag"]').fill('Wartung Kompressor');
+  await cm.locator('table input[type=number]').nth(1).fill('600');
+  await cm.locator('button.primary:has-text("Speichern")').click();
+  await page.waitForSelector('.slideover >> text=Wartung Kompressor');
+  await page.goto(`${BASE}/events`);
+  await page.click('button.primary:has-text("Veranstaltung")');
+  await page.locator('.modal').last().locator('input').first().fill('Fachmesse E2E');
+  await page.locator('.modal').last().locator('button.primary:has-text("Anlegen")').click();
+  await page.waitForSelector('.slideover >> text=Standfläche buchen');
+  await page.click('.slideover .tabs button:has-text("Kontakte")');
+  await page.locator('.slideover input[placeholder="Name"]').fill('Lea Lead');
+  await page.locator('.slideover form.card button:has-text("Speichern")').click();
+  await page.waitForSelector('.slideover td:has-text("Lea Lead")');
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);

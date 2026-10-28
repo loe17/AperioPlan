@@ -3,7 +3,7 @@
  * Nicht freigeschaltete Werkzeuge fehlen in der Seitenleiste und sind auch über die Schnittstelle gesperrt.
  */
 export const TOOLS = ['chat', 'mail', 'calendar', 'resources', 'time', 'absences', 'notes', 'kvp', 'cad', 'pcb', 'crm', 'purchasing', 'calculation', 'ai',
-  'meetings', 'phone', 'forms', 'board', 'viewer3d', 'mindmap', 'knowledge', 'inventory', 'warehouse', 'finance', 'payroll', 'maintenance', 'quality', 'manufacturing', 'plm'] as const;
+  'meetings', 'phone', 'forms', 'board', 'viewer3d', 'mindmap', 'knowledge', 'inventory', 'warehouse', 'finance', 'payroll', 'maintenance', 'quality', 'manufacturing', 'plm', 'service', 'helpdesk', 'contracts', 'booking', 'events'] as const;
 export type Tool = (typeof TOOLS)[number];
 
 export const TOOL_LABELS: Record<Tool, string> = {
@@ -32,6 +32,11 @@ export const TOOL_LABELS: Record<Tool, string> = {
   warehouse: 'Lager',
   finance: 'Finanzbuchhaltung',
   payroll: 'Lohnabrechnung',
+  events: 'Messen und Veranstaltungen',
+  booking: 'Terminbuchung',
+  contracts: 'Wartungsverträge',
+  helpdesk: 'Kundenanfragen',
+  service: 'Service-Einsätze',
   plm: 'Änderungsmanagement',
   manufacturing: 'Fertigung',
   quality: 'Qualität',
@@ -73,6 +78,11 @@ export const NOTIFY_KINDS: { kind: string; label: string; app: boolean; mail: bo
   { kind: 'inventory', label: 'Inventar: Prüftermine und Übergaben', app: true, mail: true },
   { kind: 'warehouse', label: 'Lager: Mindestbestand unterschritten', app: true, mail: false },
   { kind: 'payroll', label: 'Lohnzettel bereitgestellt', app: true, mail: true },
+  { kind: 'events', label: 'Messen und Veranstaltungen', app: true, mail: false },
+  { kind: 'booking', label: 'Terminbuchung: neue und abgesagte Termine', app: true, mail: true },
+  { kind: 'contracts', label: 'Verträge: Rechnungen und Kündigungsfristen', app: true, mail: true },
+  { kind: 'helpdesk', label: 'Kundenanfragen: neue Tickets und Antworten', app: true, mail: true },
+  { kind: 'service', label: 'Service-Einsätze: Planung und Änderungen', app: true, mail: true },
   { kind: 'plm', label: 'Änderungsanträge zur Prüfung und Entscheidung', app: true, mail: true },
   { kind: 'manufacturing', label: 'Fertigung: Aufträge und Rückmeldungen', app: true, mail: false },
   { kind: 'quality', label: 'Qualität: Prüfungen, Messmittel und 8D', app: true, mail: true },

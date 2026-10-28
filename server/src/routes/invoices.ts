@@ -23,7 +23,7 @@ import { Readable } from 'node:stream';
 
 const position = z.object({ text: z.string().max(500), description: z.string().max(5000).optional(), qty: z.number(), unit: z.string().max(20).default('Stk'),
   price: z.number(), discount: z.number().min(0).max(100).optional(), vatRate: z.number().min(0).max(100).optional() });
-const invoiceBody = z.object({
+export const invoiceBody = z.object({
   accountId: z.string().uuid(), contactId: z.string().uuid().nullable().default(null), projectId: z.string().uuid().nullable().default(null),
   quoteId: z.string().uuid().nullable().default(null), kind: z.enum(['invoice', 'partial', 'final']).default('invoice'), title: z.string().max(300).default(''),
   invoiceDate: z.string().date().nullable().default(null), serviceFrom: z.string().date().nullable().default(null), serviceTo: z.string().date().nullable().default(null),
@@ -32,6 +32,9 @@ const invoiceBody = z.object({
   vatRate: z.number().min(0).max(100).optional(), taxMode: z.enum(['standard', 'reverse_charge', 'intra_eu', 'export', 'small_business']).optional(),
   format: z.enum(['zugferd', 'xrechnung', 'pdf']).optional(), partialIds: z.array(z.string().uuid()).max(50).default([]),
 });
+
+/** Für andere Anwendungen (Service, Verträge): Rechnungsentwurf anlegen wie über die Schnittstelle */
+export const invoiceApi: { createDraft?: (u: AuthUser, b: z.input<typeof invoiceBody>) => Promise<{ id: string }>; finalizeAndSend?: (u: AuthUser, id: string) => Promise<{ sentTo: string | null }> } = {};
 
 export default async function invoiceRoutes(app: FastifyInstance, ctx: AppContext) {
   const { sql, storage } = ctx;
@@ -93,6 +96,7 @@ export default async function invoiceRoutes(app: FastifyInstance, ctx: AppContex
     ctx.hub.publish('global', 'invoices.changed', { id: r!.id });
     return r!;
   }
+  invoiceApi.createDraft = (u, b) => createDraft(u, parse(invoiceBody, b));
   async function setPartials(finalId: string, accountId: string, ids: string[]) {
     const ok = await sql<{ id: string }[]>`select id from crm_invoices where id = any(${ids}) and kind = 'partial' and account_id = ${accountId} and status in ('open', 'partial', 'paid')
       and not exists (select 1 from crm_invoice_partials x join crm_invoices f on f.id = x.final_id where x.partial_id = crm_invoices.id and x.final_id <> ${finalId} and f.status <> 'cancelled')`;
@@ -234,6 +238,17 @@ export default async function invoiceRoutes(app: FastifyInstance, ctx: AppContex
     const kind = INVOICE_KIND[l.inv.kind];
     return { l, to: l.account.invoice_email || l.contact?.email || l.account.email, subject: fill(s.mailSubject).replace(/^Rechnung/, kind), text: fill(s.mailText).replace(/unsere Rechnung/, `unsere ${kind}`) };
   }
+  invoiceApi.finalizeAndSend = async (u, id) => {
+    await finalizeInvoice(ctx, u, id);
+    const t = await mailTemplate(id);
+    if (!t.to) return { sentTo: null };
+    const att = [{ path: t.l.inv.pdf_path!, name: `${t.l.inv.number}.pdf` }];
+    if (t.l.inv.format === 'xrechnung' && t.l.inv.xml_path) att.unshift({ path: t.l.inv.xml_path, name: `${t.l.inv.number}.xml` });
+    await sendMail(ctx, { to: t.to, subject: t.subject, text: t.text, attachments: att });
+    await sql`update crm_invoices set sent_at = now(), sent_to = ${t.to} where id = ${id}`;
+    ctx.hub.publish('global', 'invoices.changed', { id });
+    return { sentTo: t.to };
+  };
   app.get('/crm/invoices/:id/mail', async (req) => {
     staff(req);
     const { id } = parse(idParam, req.params);

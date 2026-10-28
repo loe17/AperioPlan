@@ -103,6 +103,10 @@ export interface SettingsMap {
   finance: FinanceSettings;
   /** Lohnabrechnung: Berechtigte, Konten, Zuschläge */
   payroll: PayrollSettings;
+  /** Service-Einsätze: Verrechnungssätze */
+  service: { hourlyRate: number; kmRate: number; travelFlat: number; mailText: string };
+  /** Kundenanfragen: Reaktionszeiten (Stunden bis zur ersten Antwort), Kategorien, Formular */
+  helpdesk: { sla: Record<'low' | 'normal' | 'high' | 'urgent', number>; categories: string[]; publicForm: boolean; autoReply: string; signature: string; supportEmail: string };
   /** Firmendaten für Angebote und Bestellungen */
   letterhead: { address: string; footer: string; vatRate: number; paymentTerms: string; quoteValidityDays: number; quoteIntro: string; quoteOutro: string };
   storage: StorageSettings;
@@ -165,7 +169,8 @@ export const DEFAULT_SETTINGS: SettingsMap = {
   calcRates: DEFAULT_CALC_RATES,
   timeRules: DEFAULT_TIME_RULES,
   numbers: { customer: 'K{NNNN}', supplier: 'L{NNNN}', quote: 'AN-{JJJJ}-{NNNN}', case: 'RK-{JJJJ}-{NNNN}', order: 'B-{JJJJ}-{NNNN}', calculation: 'KA-{JJJJ}-{NNNN}', article: 'A{NNNNN}', asset: 'INV-{NNNN}', invoice: 'RE-{JJJJ}-{NNNN}',
-    maintenance: 'IH-{JJJJ}-{NNNN}', qmPlan: 'PP-{NNNN}', inspection: 'PR-{JJJJ}-{NNNN}', gauge: 'MM-{NNNN}', eightD: '8D-{JJJJ}-{NNN}', mfgOrder: 'FA-{JJJJ}-{NNNN}', change: 'AE-{JJJJ}-{NNN}' },
+    maintenance: 'IH-{JJJJ}-{NNNN}', qmPlan: 'PP-{NNNN}', inspection: 'PR-{JJJJ}-{NNNN}', gauge: 'MM-{NNNN}', eightD: '8D-{JJJJ}-{NNN}', mfgOrder: 'FA-{JJJJ}-{NNNN}', change: 'AE-{JJJJ}-{NNN}',
+    service: 'SE-{JJJJ}-{NNNN}', ticket: 'T{JJ}-{NNNNN}', contract: 'V-{NNNN}' },
   invoicing: {
     legalName: '', street: '', zip: '', city: '', countryCode: 'DE', vatId: '', taxNumber: '', registry: '', managingDirector: '',
     iban: '', bic: '', bankName: '', contactName: '', contactPhone: '', contactEmail: '',
@@ -191,6 +196,9 @@ export const DEFAULT_SETTINGS: SettingsMap = {
       { account: '4950', label: 'Rechts- und Beratungskosten', rate: 19 }, { account: '4970', label: 'Nebenkosten des Geldverkehrs', rate: 0 }, { account: '0420', label: 'Technische Anlagen und Maschinen', rate: 19 },
     ],
   },
+  service: { hourlyRate: 85, kmRate: 0.6, travelFlat: 0, mailText: 'Guten Tag,\n\nanbei erhalten Sie den Servicebericht zu unserem Einsatz.\n\nMit freundlichen Grüßen' },
+  helpdesk: { sla: { low: 72, normal: 24, high: 8, urgent: 4 }, categories: ['Frage', 'Störung', 'Ersatzteil', 'Reklamation'], publicForm: true,
+    autoReply: 'vielen Dank für Ihre Anfrage. Wir haben sie unter der Nummer {nummer} aufgenommen und melden uns schnellstmöglich.', signature: '', supportEmail: '' },
   payroll: {
     managerIds: [], firstPersonnelNo: 1001, companyNo: '', state: 'BW', u1: 1.6, u2: 0.44,
     surcharges: { night: 25, sunday: 50, holiday: 125 }, payDay: 0,
