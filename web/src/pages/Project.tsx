@@ -6,7 +6,7 @@ import { useApi, rememberedTab, rememberTab } from '../lib/hooks';
 import { del, patch, put, invalidate } from '../lib/api';
 import { realtime } from '../lib/realtime';
 import { useCrumbs } from '../components/Layout';
-import { useSession, useCan } from '../session';
+import { useSession, useCan, useModuleOk } from '../session';
 import { useT } from '../i18n';
 import { fmtDate } from '../lib/format';
 import { Tabs, Avatar, ErrorBox, Loading, Modal, Field, PRIORITY_META, Progress, STATUS_META, StatusDot, StatusPill, useAction, UserSelect } from '../components/ui';
@@ -32,6 +32,7 @@ import { EntityIcon, Icon, IconPicker } from '../components/Icon';
 const TASK_VIEWS = ['kanban', 'list', 'gantt'];
 
 export default function ProjectPage() {
+  const moduleOk = useModuleOk();
   const { id } = useParams();
   const t = useT();
   const act = useAction();
@@ -77,7 +78,7 @@ export default function ProjectPage() {
 
   const tabs = [
     { id: 'overview', label: `${t('Übersicht')}` },
-    ...project.modules.map((m: string) => ({ id: m, label: t(MODULE_LABELS[m]?.label ?? m) })),
+    ...project.modules.filter(moduleOk).map((m: string) => ({ id: m, label: t(MODULE_LABELS[m]?.label ?? m) })),
     ...(can('mindmap') ? [{ id: 'mindmaps', label: 'Mindmaps' }] : []),
     ...pluginTabs.map((p) => ({ id: `plugin:${p.id}`, label: p.projectTab.label })),
     { id: 'documents', label: 'Dokumente' },

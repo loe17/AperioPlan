@@ -1,3 +1,4 @@
+import { MODULE_TOOL } from '@aperio/shared';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { get, invalidate, setUnauthorizedHandler } from './lib/api';
 import { setAvatarVersions } from './lib/avatars';
@@ -67,6 +68,16 @@ export const useMe = () => useContext(Ctx).me!;
 export function useCan() {
   const { me } = useContext(Ctx);
   return (tool: string) => Boolean(me) && me!.role !== 'guest' && (me!.tools ?? []).includes(tool);
+}
+
+/** Projektbereich verfügbar? (CAD, PCB, Chat, Zeiten, Einkauf, Kalkulation brauchen ihre Anwendung) */
+export function useModuleOk() {
+  const { me } = useContext(Ctx);
+  return (m: string) => {
+    const tool = MODULE_TOOL[m];
+    if (!tool || !me || me.role === 'guest') return true;
+    return (me.tools ?? []).includes(tool);
+  };
 }
 
 function applyTheme(t: 'system' | 'light' | 'dark') {

@@ -3,7 +3,7 @@ import { PROJECT_MODULES } from '@aperio/shared';
 import { patch, post, put, invalidate } from '../lib/api';
 import { useApi } from '../lib/hooks';
 import { fmtBytes } from '../lib/format';
-import { useSession } from '../session';
+import { useSession, useModuleOk } from '../session';
 import { CustomerPicker } from './CrmShared';
 import { Avatar, Confirm, Field, Pill, useAction } from '../components/ui';
 import { EntityIcon, Icon, IconPicker } from '../components/Icon';
@@ -28,6 +28,7 @@ export const STATUS_OPTIONS = [
 ] as const;
 
 export function ProjectSettings({ project }: { project: any }) {
+  const moduleOk = useModuleOk();
   const { teams, users } = useSession();
   const act = useAction();
   const [p, setP] = useState({ ...project });
@@ -69,7 +70,7 @@ export function ProjectSettings({ project }: { project: any }) {
 
       <h2 style={{ margin: '20px 0 10px' }}>Werkzeuge in diesem Projekt</h2>
       <div className="card flat" style={{ padding: 8 }}>
-        {[...mods, ...PROJECT_MODULES.filter((m) => !mods.includes(m))].map((m) => {
+        {[...mods, ...PROJECT_MODULES.filter((m) => !mods.includes(m))].filter(moduleOk).map((m) => {
           const on = mods.includes(m);
           return (
             <div key={m} className="row" style={{ padding: '4px 6px' }}>

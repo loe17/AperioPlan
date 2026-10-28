@@ -4,7 +4,7 @@ import { PROJECT_MODULES } from '@aperio/shared';
 import { useApi } from '../lib/hooks';
 import { post, invalidate } from '../lib/api';
 import { useCrumbs } from '../components/Layout';
-import { useSession } from '../session';
+import { useSession, useModuleOk } from '../session';
 import { useT } from '../i18n';
 import { fmtDate } from '../lib/format';
 import { Empty, Field, Modal, Progress, useAction } from '../components/ui';
@@ -45,6 +45,7 @@ export function ProjectCards({ projects }: { projects: ProjectRow[] }) {
 }
 
 export function NewProjectDialog({ onClose, parentId, teamId, customer: preset }: { onClose: () => void; parentId?: string; teamId?: string; customer?: { id: string; name: string; number: string } }) {
+  const moduleOk = useModuleOk();
   const t = useT();
   const nav = useNavigate();
   const act = useAction();
@@ -93,7 +94,7 @@ export function NewProjectDialog({ onClose, parentId, teamId, customer: preset }
       )}
       <Field label="Aktive Werkzeuge">
         <div className="row wrap">
-          {PROJECT_MODULES.map((m) => (
+          {PROJECT_MODULES.filter(moduleOk).map((m) => (
             <label key={m} className="row small" style={{ gap: 4 }}>
               <input type="checkbox" checked={d.modules.includes(m)} onChange={() => setD({ ...d, modules: d.modules.includes(m) ? d.modules.filter((x) => x !== m) : [...d.modules, m] })} />
               <Icon name={MODULE_LABELS[m]?.icon ?? 'square'} /> {MODULE_LABELS[m]?.label}

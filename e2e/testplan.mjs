@@ -51,12 +51,19 @@ await step('1.2 Erstzugang admin/admin mit Passwort-Zwang', async () => {
 await step('1.3 Startassistent: Firmenname setzen und beenden', async () => {
   await page.fill('input[placeholder="z. B. Muster Maschinenbau GmbH"]', 'Testplan GmbH');
   await page.click('.onboarding button:has-text("Weiter")');
+  await page.waitForSelector('.onboarding h2:has-text("Anwendungen")');
+  await page.click('.onboarding button:has-text("Weiter")');
   await page.waitForSelector('text=Ihr Profil');
   await page.click('button:has-text("Assistent beenden")');
   await page.waitForSelector('.onboarding', { state: 'detached' });
   let info = {};
   for (let i = 0; i < 20 && info.company !== 'Testplan GmbH'; i++) { info = await (await fetch(`${BASE}/api/public-info`)).json(); await page.waitForTimeout(200); }
   expect(info.company === 'Testplan GmbH', 'Firmenname nicht gespeichert');
+  const me = await api('GET', '/auth/me');
+  expect(me.tools.includes('crm') && me.tools.includes('time') && !me.tools.includes('cad'), `Startauswahl der Anwendungen falsch: ${me.tools}`);
+  // für die weiteren Prüfungen alle bisherigen Werkzeuge einschalten
+  for (const id of ['calendar', 'notes', 'kvp', 'crm', 'calculation', 'purchasing', 'resources', 'cad', 'pcb', 'time', 'absences', 'ai']) await api('POST', `/apps/${id}/install`, {});
+  await page.reload();
 });
 
 // ------------------------------------------------------------ 2. Design- & Oberflächen-Test

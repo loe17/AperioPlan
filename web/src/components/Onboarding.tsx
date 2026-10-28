@@ -1,3 +1,4 @@
+import { APPS, PREINSTALLED_APPS } from '@aperio/shared';
 import { useEffect, useRef, useState } from 'react';
 import { GERMAN_STATES } from '@aperio/shared';
 import { get, patch, post, put, invalidate } from '../lib/api';
@@ -18,7 +19,7 @@ export function Onboarding() {
   const latched = useRef<boolean | null>(null);
   if (latched.current === null && settings) latched.current = me!.role === 'admin' && settings.company.name === 'AperioPlan';
   const firstAdmin = latched.current ?? false;
-  const steps = [...(firstAdmin ? ['firma'] : []), 'profil', 'darstellung', 'kontakt', 'benachrichtigungen', 'sicherheit'] as const;
+  const steps = [...(firstAdmin ? ['firma', 'apps'] : []), 'profil', 'darstellung', 'kontakt', 'benachrichtigungen', 'sicherheit'] as const;
   const [i, setI] = useState(0);
   const step = steps[i]!;
   const [name, setName] = useState(me!.displayName);
@@ -26,6 +27,8 @@ export function Onboarding() {
   const [email, setEmail] = useState(me!.email ?? '');
   const [mailNotes, setMailNotes] = useState(true);
   const [firm, setFirm] = useState({ name: '', state: 'BW', numbers: 'sequential' });
+  // Startauswahl der Anwendungen (nur bei der Erstinstallation)
+  const [pick, setPick] = useState<string[]>(['calendar', 'time', 'absences', 'notes', 'crm', 'knowledge']);
 
   useEffect(() => {
     if (!firstAdmin) return;
@@ -43,6 +46,10 @@ export function Onboarding() {
       await act(() => put('/settings/time', { ...s.time, holidayState: firm.state }));
       await act(() => put('/settings/projectNumbers', { ...s.projectNumbers, format: firm.numbers }));
       invalidate('/settings'); await refreshLists();
+    }
+    if (step === 'apps') {
+      for (const id of pick) await act(() => post(`/apps/${id}/install`, {}));
+      await refresh(); await refreshLists();
     }
     if (step === 'profil' && name.trim() && name !== me!.displayName) await act(() => patch('/me', { displayName: name.trim() }));
     if (step === 'kontakt') await act(() => patch('/me', { phone, ...(me!.authSource === 'local' ? { email: email || null } : {}) }));
@@ -77,6 +84,16 @@ export function Onboarding() {
               <option value="sequential">fortlaufend: 0100, 0200 …</option><option value="year">mit Jahr: PRJ-2026-0001 …</option>
             </select></Field>
           </div>
+        </>}
+        {step === 'apps' && <>
+          <h2>Anwendungen</h2>
+          <p className="muted">Eingeschaltet sind Chat und E-Mail. Wählen Sie, was Ihre Firma außerdem nutzt – alles Weitere jederzeit im App-Store.</p>
+          <div className="onb-apps">{APPS.filter((a) => !PREINSTALLED_APPS.includes(a.id)).map((a) => (
+            <label key={a.id} className={`onb-app ${pick.includes(a.id) ? 'on' : ''}`}>
+              <input type="checkbox" checked={pick.includes(a.id)} onChange={(e) => setPick(e.target.checked ? [...pick, a.id] : pick.filter((x) => x !== a.id))} />
+              <Icon name={a.icon} /><span><b>{a.name}</b><span className="small muted">{a.summary}</span></span>
+            </label>
+          ))}</div>
         </>}
         {step === 'profil' && <>
           <h2>Ihr Profil</h2>

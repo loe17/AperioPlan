@@ -1,3 +1,4 @@
+import { LEGACY_APPS } from '@aperio/shared';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -24,6 +25,8 @@ export async function setup(): Promise<TestEnv> {
     config: { databaseUrl: TEST_DB, storageRoot: join(dir, 'files'), backupDir: join(dir, 'backups'), webDist: join(dir, 'noweb'), isTest: true },
   });
   await app.ready();
+  // Tests gehen vom Stand einer bestehenden Installation aus (alle bis 0.1.3 festen Werkzeuge eingeschaltet)
+  if (process.env.FRESH_APPS !== '1') await ctx.settings.set('apps', { installed: [...LEGACY_APPS] });
   return { app, ctx, close: () => app.close() };
 }
 

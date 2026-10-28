@@ -4,7 +4,7 @@ import { APP_VERSION, PROJECT_MODULES, ROLES, TOOLS, TOOL_LABELS, NUMBER_TOKENS,
 import { useApi, rememberedTab, rememberTab } from '../lib/hooks';
 import { api, del, get, patch, post, put, invalidate } from '../lib/api';
 import { useCrumbs } from '../components/Layout';
-import { useSession, useCan } from '../session';
+import { useSession, useCan, useModuleOk } from '../session';
 import { CalendarSyncSettings } from './CalendarSync';
 import { CalcRatesSettings } from '../modules/Calculations';
 import { TimeRulesSettings } from './SettingsTime';
@@ -315,6 +315,7 @@ export function useAdminSettings<K extends string>(key: K) {
 }
 
 function General() {
+  const moduleOk = useModuleOk();
   const act = useAction();
   const { refreshLists } = useSession();
   const company = useAdminSettings('company');
@@ -368,7 +369,7 @@ function General() {
 
       <h2 style={{ margin: '28px 0 10px' }}>Standard-Werkzeuge für neue Projekte</h2>
       <div className="row wrap">
-        {PROJECT_MODULES.map((m) => (
+        {PROJECT_MODULES.filter(moduleOk).map((m) => (
           <label key={m} className="row" style={{ gap: 4 }}>
             <input type="checkbox" checked={modules.value.includes(m)} onChange={() => modules.setValue(modules.value.includes(m) ? modules.value.filter((x: string) => x !== m) : [...modules.value, m])} />
             <Icon name={MODULE_LABELS[m]?.icon ?? 'square'} /> {MODULE_LABELS[m]?.label}

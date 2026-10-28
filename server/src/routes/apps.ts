@@ -55,17 +55,22 @@ export default async function appRoutes(app: FastifyInstance, ctx: AppContext) {
     const b = parse(z.object({ grantAll: z.boolean().default(true) }), req.body ?? {});
     const info = appInfo(id);
     const { installed } = await settings.get('apps');
-    const missing = (info?.requires ?? []).filter((r) => !installed.includes(r));
-    if (missing.length) throw badRequest(`Bitte zuerst installieren: ${missing.map((m) => appInfo(m)?.name ?? m).join(', ')}`);
-    const kind = await setInstalled(id, true);
-    // Benutzer und Abteilungen mit eigener Werkzeugliste bekommen die neue Anwendung dazu (sonst sähe sie niemand)
-    if (kind === 'builtin' && b.grantAll) {
-      await sql`update users set tools = array_append(tools, ${id}) where tools is not null and not (${id} = any(tools))`;
-      await sql`update teams set default_tools = array_append(default_tools, ${id}) where default_tools is not null and not (${id} = any(default_tools))`;
+    // Vorausgesetzte Anwendungen werden mitinstalliert
+    const deps: string[] = [];
+    const collect = (x: string) => { for (const r of appInfo(x)?.requires ?? []) if (!installed.includes(r) && !deps.includes(r)) { collect(r); deps.push(r); } };
+    collect(id);
+    let kind: Awaited<ReturnType<typeof setInstalled>> = 'builtin';
+    for (const x of [...deps, id]) {
+      kind = await setInstalled(x, true);
+      // Benutzer und Abteilungen mit eigener Werkzeugliste bekommen die neue Anwendung dazu (sonst sähe sie niemand)
+      if (kind === 'builtin' && b.grantAll) {
+        await sql`update users set tools = array_append(tools, ${x}) where tools is not null and not (${x} = any(tools))`;
+        await sql`update teams set default_tools = array_append(default_tools, ${x}) where default_tools is not null and not (${x} = any(default_tools))`;
+      }
     }
     await audit(sql, u, { action: 'app.install', entityType: 'app', entityId: id, summary: `Anwendung „${info?.name ?? id}“ installiert` });
     ctx.hub.publish('global', 'apps.changed', {});
-    return { ok: true };
+    return { ok: true, alsoInstalled: deps };
   });
 
   app.post('/apps/:id/uninstall', async (req) => {
