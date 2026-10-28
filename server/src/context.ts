@@ -3,6 +3,7 @@ import type { Hub } from './lib/hub';
 import type { SettingsService } from './services/settings';
 import type { Config } from './config';
 import type { Storage } from './services/storage';
+import type { Presence } from './services/presence';
 
 export interface AppContext {
   sql: Sql;
@@ -10,4 +11,5 @@ export interface AppContext {
   settings: SettingsService;
   config: Config;
   storage: Storage;
+  presence: Presence;
 }

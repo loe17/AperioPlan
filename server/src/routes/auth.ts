@@ -1,8 +1,10 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { AppContext } from '../context';
 import { z, parse } from '../lib/validate';
 import { createSession, setSessionCookie, SESSION_COOKIE, type AuthUser } from '../lib/auth';
-import { hashPassword, verifyPassword, sha256 } from '../lib/crypto';
+import { hashPassword, verifyPassword, sha256, randomToken } from '../lib/crypto';
+import { verifyTotp } from '../lib/totp';
+import { openSecret } from '../services/secrets';
 import { badRequest, unauthorized } from '../lib/errors';
 import { ldapAuthenticate } from '../lib/ldap';
 import { audit } from '../services/audit';
@@ -20,7 +22,7 @@ export default async function authRoutes(app: FastifyInstance, ctx: AppContext) 
     const body = parse(z.object({ username: z.string().min(1), password: z.string().min(1) }), req.body);
     const username = body.username.trim();
     const [local] = await sql<{ id: string; password_hash: string | null; auth_source: string; active: boolean }[]>`
-      select id, password_hash, auth_source, active from users where lower(username) = lower(${username})`;
+      select id, password_hash, auth_source, active from users where lower(username) = lower(${username}) and deleted_at is null`;
 
     let userId: string | null = null;
     if (local && local.active && local.auth_source === 'local' && (await verifyPassword(body.password, local.password_hash))) {
@@ -49,11 +51,39 @@ export default async function authRoutes(app: FastifyInstance, ctx: AppContext) 
     }
     if (!userId) throw unauthorized('Benutzername oder Passwort falsch');
 
+    // Zwei-Faktor-Anmeldung: erst nach dem Code aus der Authenticator-App gibt es eine Sitzung
+    const [tf] = await sql<{ totp_enabled: boolean }[]>`select totp_enabled from users where id = ${userId}`;
+    if (tf?.totp_enabled) {
+      const ticket = randomToken(24);
+      await sql`delete from login_tickets where expires_at < now()`;
+      await sql`insert into login_tickets (id, user_id, expires_at) values (${sha256(ticket)}, ${userId}, now() + interval '5 minutes')`;
+      return { ok: false, twoFactor: true, ticket };
+    }
+    return finishLogin(userId, req, reply);
+  });
+
+  async function finishLogin(userId: string, req: FastifyRequest, reply: FastifyReply) {
     const token = await createSession(sql, userId, req);
     setSessionCookie(reply, token);
     const [u] = await sql<AuthUser[]>`select id, username, display_name as "displayName", role from users where id = ${userId}`;
     await audit(sql, u!, { action: 'auth.login', entityType: 'user', entityId: userId, summary: 'Anmeldung' });
     return { ok: true };
+  }
+
+  /** Zweiter Schritt: 6-stelliger Code aus der Authenticator-App */
+  app.post('/auth/login/2fa', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const b = parse(z.object({ ticket: z.string().min(10), code: z.string().min(6).max(8) }), req.body);
+    const [t] = await sql<{ user_id: string; attempts: number }[]>`select user_id, attempts from login_tickets where id = ${sha256(b.ticket)} and expires_at > now()`;
+    if (!t) throw unauthorized('Anmeldung abgelaufen – bitte erneut anmelden');
+    if (t.attempts >= 5) { await sql`delete from login_tickets where id = ${sha256(b.ticket)}`; throw unauthorized('Zu viele falsche Codes – bitte erneut anmelden'); }
+    const [u] = await sql<{ totp_secret: string | null }[]>`select totp_secret from users where id = ${t.user_id}`;
+    const secret = await openSecret(ctx, u?.totp_secret);
+    if (!secret || !verifyTotp(secret, b.code)) {
+      await sql`update login_tickets set attempts = attempts + 1 where id = ${sha256(b.ticket)}`;
+      throw unauthorized('Der Code stimmt nicht. Bitte den aktuellen Code aus der App eingeben.');
+    }
+    await sql`delete from login_tickets where id = ${sha256(b.ticket)}`;
+    return finishLogin(t.user_id, req, reply);
   });
 
   app.post('/auth/logout', async (req, reply) => {

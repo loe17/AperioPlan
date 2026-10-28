@@ -11,6 +11,8 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [ticket, setTicket] = useState<string | null>(null);
+  const [code, setCode] = useState('');
   const [info, setInfo] = useState<{ company: string; version: string; ldapEnabled: boolean } | null>(null);
   useEffect(() => { get('/public-info').then(setInfo).catch(() => {}); }, []);
 
@@ -20,25 +22,38 @@ export function LoginPage() {
         e.preventDefault();
         setBusy(true); setError('');
         try {
-          await post('/auth/login', { username, password });
+          if (ticket) await post('/auth/login/2fa', { ticket, code });
+          else {
+            const r = await post<{ ok: boolean; twoFactor?: boolean; ticket?: string }>('/auth/login', { username, password });
+            if (r.twoFactor && r.ticket) { setTicket(r.ticket); return; }
+          }
           if (!(await refresh())) {
             setError(location.protocol === 'http:'
               ? 'Die Zugangsdaten stimmen, aber der Browser hat die Anmeldung nicht gespeichert. Bitte AperioPlan über https:// aufrufen.'
               : 'Die Zugangsdaten stimmen, aber der Browser hat die Anmeldung nicht gespeichert. Bitte Cookies für diese Seite erlauben.');
           }
         }
-        catch (err) { setError((err as Error).message); }
+        catch (err) {
+          setError((err as Error).message);
+          if (ticket && /abgelaufen|erneut anmelden/.test((err as Error).message)) { setTicket(null); setCode(''); }
+        }
         finally { setBusy(false); }
       }}>
         <div className="row" style={{ marginBottom: 20 }}>
           <img className="logo" src="/logo-mark.svg" alt="" style={{ width: 40, height: 40 }} />
           <h2>{info?.company ?? 'AperioPlan'}</h2>
         </div>
-        <Field label={t('Benutzername')}><input autoFocus value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" /></Field>
-        <Field label={t('Passwort')}><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></Field>
+        {ticket ? <>
+          <p className="small" style={{ marginTop: 0 }}>Bitte den 6-stelligen Code aus Ihrer Authenticator-App eingeben.</p>
+          <Field label="Code"><input autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(e) => setCode(e.target.value.replace(/[^\d ]/g, ''))} style={{ fontSize: 22, letterSpacing: 6, textAlign: 'center' }} /></Field>
+        </> : <>
+          <Field label={t('Benutzername')}><input autoFocus value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" /></Field>
+          <Field label={t('Passwort')}><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></Field>
+        </>}
         {info?.ldapEnabled && <div className="hint" style={{ marginBottom: 12 }}>Sie können sich mit Ihren gewohnten Windows-/Firmen-Zugangsdaten anmelden.</div>}
         {error && <div className="error-text" style={{ marginBottom: 12 }}>{error}</div>}
-        <button className="btn primary" style={{ width: '100%', justifyContent: 'center' }} disabled={busy || !username || !password}>{t('Anmelden')}</button>
+        <button className="btn primary" style={{ width: '100%', justifyContent: 'center' }} disabled={busy || (ticket ? code.replace(/\s/g, '').length !== 6 : !username || !password)}>{ticket ? 'Bestätigen' : t('Anmelden')}</button>
+        {ticket && <button type="button" className="btn ghost" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }} onClick={() => { setTicket(null); setCode(''); setError(''); }}>Zurück</button>}
         <div className="small muted" style={{ marginTop: 16, textAlign: 'center' }}>Version {info?.version}</div>
       </form>
     </div>

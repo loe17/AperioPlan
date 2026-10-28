@@ -66,8 +66,13 @@ export async function adminClient(app: FastifyInstance): Promise<Client> {
   return c;
 }
 
+const deptId = new WeakMap<Client, string>();
 export async function userClient(app: FastifyInstance, admin: Client, username: string, role = 'member'): Promise<{ client: Client; id: string }> {
-  const { id } = await admin.post('/api/users', { username, displayName: username.toUpperCase(), password: 'Start-12345', role });
+  if (!deptId.has(admin)) {
+    const teams = await admin.get('/api/teams');
+    deptId.set(admin, teams.find((t: { name: string }) => t.name === 'Testabteilung')?.id ?? (await admin.post('/api/teams', { name: 'Testabteilung' })).id);
+  }
+  const { id } = await admin.post('/api/users', { username, displayName: username.toUpperCase(), password: 'Start-12345', role, departmentId: role === 'guest' ? null : deptId.get(admin) });
   const c = new Client(app);
   await c.post('/api/auth/login', { username, password: 'Start-12345' });
   await c.post('/api/auth/change-password', { currentPassword: 'Start-12345', newPassword: 'Neu-12345678' });
@@ -75,9 +80,9 @@ export async function userClient(app: FastifyInstance, admin: Client, username: 
 }
 
 /** Multipart-Upload über app.inject */
-export async function uploadFiles(app: FastifyInstance, url: string, files: { name: string; content: string | Buffer }[], cookie = '', headers: Record<string, string> = {}) {
+export async function uploadFiles(app: FastifyInstance, url: string, files: { name: string; content: string | Buffer }[], cookie = '', headers: Record<string, string> = {}, type = '') {
   const fd = new FormData();
-  for (const f of files) fd.append('file', new Blob([typeof f.content === 'string' ? f.content : new Uint8Array(f.content)]), f.name);
+  for (const f of files) fd.append('file', new Blob([typeof f.content === 'string' ? f.content : new Uint8Array(f.content)], type ? { type } : {}), f.name);
   const res = new Response(fd);
   const body = Buffer.from(await res.arrayBuffer());
   const r = await app.inject({ method: 'POST', url, payload: body, headers: { 'content-type': res.headers.get('content-type')!, ...(cookie ? { cookie } : {}), ...headers } });

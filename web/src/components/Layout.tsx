@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { APP_VERSION } from '@aperio/shared';
-import { useSession } from '../session';
+import { useCan, useSession } from '../session';
 import { useApi, useHotkey, useLocalState } from '../lib/hooks';
 import { post, invalidate } from '../lib/api';
 import { realtime } from '../lib/realtime';
@@ -130,6 +130,7 @@ function UserMenu() {
 
 export function Layout({ children }: { children: ReactNode }) {
   const t = useT();
+  const can = useCan();
   const { me, settings, theme, setTheme } = useSession();
   const [collapsed, setCollapsed] = useLocalState('aperio-sidebar-collapsed', false);
   const [crumbs, setCrumbs] = useState<Crumb[]>([]);
@@ -168,9 +169,9 @@ export function Layout({ children }: { children: ReactNode }) {
             <NavItem to="/" end ico="home" label={t('Übersicht')} />
             {!isGuest && <NavItem to="/inbox" ico="inbox" label={t('Posteingang')} count={unread} />}
             {!isGuest && <NavItem to="/calendar" end ico="calendar" label={t('Mein Kalender')} />}
-            {!isGuest && <NavItem to="/time" ico="timer" label={t('Stempeluhr')} />}
-            {!isGuest && <NavItem to="/absences" ico="palm" label={t('Urlaubskonto')} />}
-            {!isGuest && <NavItem to="/notes" ico="lock" label={t('Private Notizen')} />}
+            {can('time') && <NavItem to="/time" ico="timer" label={t('Stempeluhr')} />}
+            {can('absences') && <NavItem to="/absences" ico="palm" label={t('Urlaubskonto')} />}
+            {can('notes') && <NavItem to="/notes" ico="lock" label={t('Private Notizen')} />}
 
             {favorites && favorites.length > 0 && (
               <div className="nav-section">
@@ -187,12 +188,12 @@ export function Layout({ children }: { children: ReactNode }) {
 
             <div className="nav-section">
               <div className="nav-title"><Icon name="tools" /> {t('Werkzeuge')}</div>
-              <NavItem to="/cad" ico="cad" label={t('CAD-Zentrale')} />
-              {!isGuest && <NavItem to="/chat" ico="chat" label={t('Chat')} count={chatUnread} />}
-              {!isGuest && settings?.mailEnabled && <NavItem to="/mail" ico="mail" label={t('E-Mail')} />}
-              {!isGuest && <NavItem to="/kvp" ico="lightbulb" label={t('KVP-Ideenbox')} />}
-              {!isGuest && <NavItem to="/calendar/team" ico="calendar-team" label={t('Teamkalender')} />}
-              {!isGuest && <NavItem to="/calendar/resources" ico="car" label={t('Ressourcen')} />}
+              {(can('cad') || isGuest) && <NavItem to="/cad" ico="cad" label={t('CAD-Zentrale')} />}
+              {can('chat') && <NavItem to="/chat" ico="chat" label={t('Chat')} count={chatUnread} />}
+              {can('mail') && settings?.mailEnabled && <NavItem to="/mail" ico="mail" label={t('E-Mail')} />}
+              {can('kvp') && <NavItem to="/kvp" ico="lightbulb" label={t('KVP-Ideenbox')} />}
+              {can('calendar') && <NavItem to="/calendar/team" ico="calendar-team" label={t('Teamkalender')} />}
+              {can('resources') && <NavItem to="/calendar/resources" ico="car" label={t('Ressourcen')} />}
               {plugins?.filter((p) => p.enabled && p.page).map((p) => <NavItem key={p.id} to={`/plugin/${p.id}`} ico={p.page.icon ?? 'puzzle'} label={p.page.label} />)}
               <NavItem to="/settings" ico="settings" label={t('Einstellungen')} />
             </div>
@@ -216,7 +217,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 </span>
               ))}
             </div>
-            {!isGuest && <HeaderClock />}
+            {can('time') && <HeaderClock />}
             <div className="search-trigger" onClick={() => setPalette(true)}><Icon name="search" /> <span className="label">{t('Blitzsuche')}</span><kbd>Strg + K</kbd></div>
             <button className="icon-btn" title="Hell/Dunkel" onClick={() => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark')}>
               {theme === 'dark' || (theme === 'system' && document.documentElement.dataset.theme === 'dark') ? <Icon name="sun" /> : <Icon name="moon" />}

@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Route, Routes, Navigate, useLocation } from 'react-router-dom';
-import { APP_VERSION, PROJECT_MODULES, ROLES } from '@aperio/shared';
+import { APP_VERSION, PROJECT_MODULES, ROLES, TOOLS, TOOL_LABELS } from '@aperio/shared';
 import { useApi, rememberedTab, rememberTab } from '../lib/hooks';
-import { del, get, patch, post, put, invalidate } from '../lib/api';
+import { api, del, get, patch, post, put, invalidate } from '../lib/api';
 import { useCrumbs } from '../components/Layout';
 import { useSession } from '../session';
 import { useT, LANGUAGES } from '../i18n';
@@ -14,8 +14,8 @@ import { MODULE_LABELS } from '../modules/ProjectSettings';
 import { CadMaskSettings, BackupSettings, UpdateSettings, MailSettings, AiSettings, HolidaySettings, StorageSettings, ExtensionSettings, ResourcesSettings } from './SettingsExtra';
 import { EntityIcon, Icon, IconPicker } from '../components/Icon';
 import { DocumentTemplateSettings } from '../modules/Documents';
+import { NotificationPrefs, Profile, ROLE_LABEL, Security } from './SettingsPersonal';
 
-const ROLE_LABEL: Record<string, string> = { admin: 'Administrator', teamlead: 'Teamleitung', member: 'Mitarbeiter', guest: 'Gast' };
 
 function SettingsNav({ to, children }: { to: string; children: ReactNode }) {
   return <NavLink to={to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>{children}</NavLink>;
@@ -34,11 +34,13 @@ export default function SettingsPage() {
       <div style={{ width: 220, flex: 'none', position: 'sticky', top: 0 }}>
         <div className="nav-title">Persönlich</div>
         <SettingsNav to="/settings/profile"><Icon name="user" /> {t('Profil')}</SettingsNav>
+        <SettingsNav to="/settings/security"><Icon name="shield" /> Sicherheit</SettingsNav>
+        <SettingsNav to="/settings/notifications"><Icon name="bell" /> Benachrichtigungen</SettingsNav>
         <SettingsNav to="/settings/tokens"><Icon name="key" /> API-Schlüssel</SettingsNav>
         {admin && <>
           <div className="nav-title" style={{ marginTop: 14 }}>{t('Administration')}</div>
           <SettingsNav to="/settings/users"><Icon name="users" /> {t('Benutzer')}</SettingsNav>
-          <SettingsNav to="/settings/teams"><Icon name="building" /> {t('Teams')}</SettingsNav>
+          <SettingsNav to="/settings/teams"><Icon name="building" /> Abteilungen &amp; Teams</SettingsNav>
           <SettingsNav to="/settings/general"><Icon name="settings" /> Allgemein & Nummern</SettingsNav>
           <SettingsNav to="/settings/storage"><Icon name="hdd" /> Speicherorte</SettingsNav>
           <SettingsNav to="/settings/templates"><Icon name="file-text" /> Dokumentvorlagen</SettingsNav>
@@ -60,6 +62,8 @@ export default function SettingsPage() {
           <Route index element={<Navigate to={last && last !== '/settings' ? last : '/settings/profile'} replace />} />
           <Route path="profile" element={<Profile />} />
           <Route path="tokens" element={<Tokens />} />
+          <Route path="security" element={<Security />} />
+          <Route path="notifications" element={<NotificationPrefs />} />
           {admin && <>
             <Route path="users" element={<Users />} />
             <Route path="templates" element={<DocumentTemplateSettings />} />
@@ -80,39 +84,6 @@ export default function SettingsPage() {
           <Route path="*" element={<Navigate to="/settings/profile" replace />} />
         </Routes>
       </div>
-    </div>
-  );
-}
-
-function Profile() {
-  const t = useT();
-  const act = useAction();
-  const { me, refresh, theme, setTheme } = useSession();
-  const [name, setName] = useState(me!.displayName);
-  const [email, setEmail] = useState(me!.email ?? '');
-  return (
-    <div style={{ maxWidth: 560 }}>
-      <h1 style={{ marginBottom: 16 }}>{t('Profil')}</h1>
-      <div className="row" style={{ marginBottom: 16 }}><Avatar id={me!.id} name={me!.displayName} size="lg" /><div><b>{me!.username}</b><div className="small muted">{ROLE_LABEL[me!.role]} · {me!.authSource === 'ldap' ? 'Firmenkonto' : 'lokales Konto'}</div></div></div>
-      <Field label="Anzeigename"><input value={name} onChange={(e) => setName(e.target.value)} disabled={me!.authSource === 'ldap'} /></Field>
-      <Field label="E-Mail"><input value={email} onChange={(e) => setEmail(e.target.value)} disabled={me!.authSource === 'ldap'} /></Field>
-      <div className="grid2">
-        <Field label={t('Sprache')}>
-          <select value={me!.locale} onChange={async (e) => { await patch('/me', { locale: e.target.value }); await refresh(); }}>
-            {Object.entries(LANGUAGES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
-        </Field>
-        <Field label={t('Farbschema')}>
-          <select value={theme} onChange={(e) => setTheme(e.target.value as 'system')}>
-            <option value="system">{t('Wie System')}</option><option value="light">{t('Hellmodus')}</option><option value="dark">{t('Dunkelmodus')}</option>
-          </select>
-        </Field>
-      </div>
-      <button className="btn primary" onClick={async () => { await act(() => patch('/me', { displayName: name, email: email || null }), 'Gespeichert'); await refresh(); }}>{t('Speichern')}</button>
-      {me!.authSource === 'local' && <>
-        <h2 style={{ margin: '28px 0 12px' }}>{t('Passwort ändern')}</h2>
-        <ChangePasswordPage onDone={() => alert('Passwort geändert')} />
-      </>}
     </div>
   );
 }
@@ -144,32 +115,66 @@ function Tokens() {
   );
 }
 
+function ToolChecks({ value, onChange, inheritLabel, inherited }: { value: string[] | null; onChange: (v: string[] | null) => void; inheritLabel?: string; inherited?: string[] | null }) {
+  const custom = value !== null;
+  const effective = value ?? inherited ?? [...TOOLS];
+  return (
+    <div>
+      {inheritLabel && <label className="row small" style={{ marginBottom: 6 }}>
+        <input type="checkbox" checked={!custom} onChange={(e) => onChange(e.target.checked ? null : [...effective])} /> {inheritLabel}
+      </label>}
+      <div className="tool-grid">
+        {TOOLS.map((tool) => (
+          <label key={tool} className={`row small ${!custom && inheritLabel ? 'muted' : ''}`} style={{ gap: 6 }}>
+            <input type="checkbox" disabled={!custom && Boolean(inheritLabel)} checked={effective.includes(tool)}
+              onChange={(e) => onChange(e.target.checked ? [...effective, tool] : effective.filter((x) => x !== tool))} />
+            {TOOL_LABELS[tool]}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Users() {
   const t = useT();
   const act = useAction();
-  const { refreshLists, teams } = useSession();
+  const { refreshLists, teams, me } = useSession();
   const { data, reload } = useApi<any[]>('/users');
   const [edit, setEdit] = useState<any | null>(null);
+  const [remove, setRemove] = useState<any | null>(null);
+  const [transferTo, setTransferTo] = useState('');
+  const [q, setQ] = useState('');
+  const dept = teams.find((x) => x.id === edit?.departmentId);
+  const rows = (data ?? []).filter((u) => !q || `${u.displayName} ${u.username} ${u.departmentName ?? ''}`.toLowerCase().includes(q.toLowerCase()));
   return (
     <div>
-      <div className="page-head"><h1>{t('Benutzer')}</h1><div className="actions"><button className="btn primary" onClick={() => setEdit({ username: '', displayName: '', email: '', role: 'member', password: '', vacationDaysPerYear: 30, active: true, teamIds: [] })}>＋ Benutzer anlegen</button></div></div>
+      <div className="page-head"><h1>{t('Benutzer')}</h1><div className="actions">
+        <input placeholder="Suchen …" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 200 }} />
+        <button className="btn primary" onClick={() => setEdit({ username: '', displayName: '', email: '', phone: '', role: 'member', password: '', vacationDaysPerYear: 30, active: true, teamIds: [], departmentId: '', tools: null })}><Icon name="plus" /> Benutzer anlegen</button>
+      </div></div>
+      {!teams.length && <div className="hint" style={{ marginBottom: 12 }}><Icon name="info" /> Bitte zuerst unter <b>Abteilungen &amp; Teams</b> mindestens eine Abteilung anlegen – jeder Benutzer gehört zu einer Abteilung.</div>}
       <div className="table-wrap"><table className="table">
-        <thead><tr><th>Name</th><th>Benutzername</th><th>Rolle</th><th>Anmeldung</th><th>Urlaub/Jahr</th><th>Zuletzt angemeldet</th><th>Status</th></tr></thead>
-        <tbody>{data?.map((u) => (
-          <tr key={u.id} className="click" onClick={() => setEdit({ ...u, password: '' })}>
+        <thead><tr><th>Name</th><th>Benutzername</th><th>Abteilung</th><th>Rolle</th><th>Anmeldung</th><th>Zuletzt angemeldet</th><th>Status</th></tr></thead>
+        <tbody>{rows.map((u) => (
+          <tr key={u.id} className="click" onClick={() => setEdit({ ...u, password: '', departmentId: u.departmentId ?? '' })}>
             <td><span className="row" style={{ gap: 6 }}><Avatar id={u.id} name={u.displayName} />{u.displayName}</span></td>
-            <td className="mono">{u.username}</td><td>{ROLE_LABEL[u.role]}</td><td>{u.authSource === 'ldap' ? 'Firmenkonto' : 'lokal'}</td>
-            <td>{u.vacationDaysPerYear}</td><td className="small">{fmtDateTime(u.lastLoginAt)}</td>
+            <td className="mono">{u.username}</td>
+            <td>{u.departmentName ?? (u.role === 'guest' ? <span className="muted">–</span> : <Pill tone="amber">fehlt</Pill>)}</td>
+            <td>{ROLE_LABEL[u.role]}</td><td>{u.authSource === 'ldap' ? 'Firmenkonto' : 'lokal'}{u.totpEnabled && <span title="Zwei-Faktor-Anmeldung aktiv"> <Icon name="shield" size={14} /></span>}</td>
+            <td className="small">{fmtDateTime(u.lastLoginAt)}</td>
             <td>{u.active ? (u.mustChangePassword ? <Pill tone="amber">Passwort ändern</Pill> : <Pill tone="green">aktiv</Pill>) : <Pill tone="red">deaktiviert</Pill>}</td>
           </tr>
         ))}</tbody>
       </table></div>
       {edit && (
-        <Modal title={edit.id ? 'Benutzer bearbeiten' : 'Benutzer anlegen'} onClose={() => setEdit(null)} footer={<>
+        <Modal size="lg" title={edit.id ? 'Benutzer bearbeiten' : 'Benutzer anlegen'} onClose={() => setEdit(null)} footer={<>
+          {edit.id && edit.id !== me!.id && <button className="btn danger" style={{ marginRight: 'auto' }} onClick={() => { setRemove(edit); setTransferTo(''); }}><Icon name="trash" /> Löschen …</button>}
           <button className="btn" onClick={() => setEdit(null)}>{t('Abbrechen')}</button>
           <button className="btn primary" onClick={async () => {
-            const body = { displayName: edit.displayName, email: edit.email || null, role: edit.role, vacationDaysPerYear: Number(edit.vacationDaysPerYear), ...(edit.password ? { password: edit.password } : {}) };
-            const ok = await act(() => (edit.id ? patch(`/users/${edit.id}`, { ...body, active: edit.active }) : post('/users', { ...body, username: edit.username, password: edit.password, teamIds: edit.teamIds })), 'Gespeichert');
+            const body = { displayName: edit.displayName, email: edit.email || null, phone: edit.phone ?? '', role: edit.role, vacationDaysPerYear: Number(edit.vacationDaysPerYear),
+              departmentId: edit.departmentId || null, tools: edit.tools, ...(edit.password ? { password: edit.password } : {}) };
+            const ok = await act(() => (edit.id ? patch(`/users/${edit.id}`, { ...body, active: edit.active }) : post('/users', { ...body, username: edit.username, password: edit.password, teamIds: edit.teamIds })), edit.id ? 'Benutzer gespeichert' : 'Benutzer angelegt');
             if (ok) { setEdit(null); reload(); refreshLists(); }
           }}>{t('Speichern')}</button>
         </>}>
@@ -177,17 +182,44 @@ function Users() {
             <Field label="Benutzername" required><input value={edit.username} disabled={Boolean(edit.id)} onChange={(e) => setEdit({ ...edit, username: e.target.value })} /></Field>
             <Field label="Anzeigename" required><input value={edit.displayName} onChange={(e) => setEdit({ ...edit, displayName: e.target.value })} /></Field>
             <Field label="E-Mail"><input value={edit.email ?? ''} onChange={(e) => setEdit({ ...edit, email: e.target.value })} /></Field>
+            <Field label="Telefon"><input value={edit.phone ?? ''} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} /></Field>
+            <Field label="Abteilung" required={edit.role !== 'guest'} hint="Der Benutzer wird automatisch Mitglied dieses Teams">
+              <select value={edit.departmentId} onChange={(e) => setEdit({ ...edit, departmentId: e.target.value })}>
+                <option value="">– bitte wählen –</option>{teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
+              </select>
+            </Field>
             <Field label="Rolle"><select value={edit.role} onChange={(e) => setEdit({ ...edit, role: e.target.value })}>{ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select></Field>
             <Field label={edit.id ? 'Neues Startpasswort' : 'Startpasswort'} required={!edit.id} hint="Muss bei der nächsten Anmeldung geändert werden">
               <input type="text" value={edit.password} onChange={(e) => setEdit({ ...edit, password: e.target.value })} disabled={edit.authSource === 'ldap'} />
             </Field>
             <Field label="Urlaubstage pro Jahr"><input type="number" value={edit.vacationDaysPerYear} onChange={(e) => setEdit({ ...edit, vacationDaysPerYear: e.target.value })} /></Field>
           </div>
-          {!edit.id && <Field label="Teams"><div className="row wrap">{teams.map((tm) => (
-            <label key={tm.id} className="row small" style={{ gap: 4 }}><input type="checkbox" checked={edit.teamIds.includes(tm.id)} onChange={() => setEdit({ ...edit, teamIds: edit.teamIds.includes(tm.id) ? edit.teamIds.filter((x: string) => x !== tm.id) : [...edit.teamIds, tm.id] })} />{tm.icon} {tm.name}</label>
-          ))}</div></Field>}
-          {edit.id && <label className="row"><input type="checkbox" checked={edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked })} /> Konto aktiv</label>}
+          {edit.role !== 'admin' && edit.role !== 'guest' && <Field label="Werkzeuge">
+            <ToolChecks value={edit.tools ?? null} onChange={(tools) => setEdit({ ...edit, tools })} inherited={dept?.defaultTools ?? null}
+              inheritLabel={`Wie die Abteilung${dept ? ` „${dept.name}“` : ''} (Voreinstellung)`} />
+          </Field>}
+          {edit.role === 'admin' && <div className="hint" style={{ marginBottom: 10 }}>Administratoren haben immer Zugriff auf alle Werkzeuge.</div>}
+          {edit.id && <div className="row" style={{ gap: 16 }}>
+            <label className="row"><input type="checkbox" checked={edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked })} /> Konto aktiv</label>
+            {edit.totpEnabled && <button className="btn sm" onClick={async () => { if (await act(() => del(`/users/${edit.id}/2fa`), 'Zwei-Faktor-Anmeldung zurückgesetzt')) { setEdit({ ...edit, totpEnabled: false }); reload(); } }}><Icon name="shield" /> Zwei-Faktor zurücksetzen</button>}
+          </div>}
           {edit.id && <VacationAdjust userId={edit.id} />}
+        </Modal>
+      )}
+      {remove && (
+        <Modal title={`${remove.displayName} löschen`} onClose={() => setRemove(null)} footer={<>
+          <button className="btn" onClick={() => setRemove(null)}>Abbrechen</button>
+          <button className="btn danger solid" onClick={async () => {
+            const r = await act(() => api(`/users/${remove.id}`, { method: 'DELETE', body: { transferTo: transferTo || null } }), 'Benutzer gelöscht');
+            if (r) { setRemove(null); setEdit(null); reload(); refreshLists(); }
+          }}>Endgültig löschen</button>
+        </>}>
+          <p style={{ marginTop: 0 }}>Gelöscht werden Anmeldung, Passwort, Profilbild, private Notizen und persönliche Einstellungen. <b>Erhalten bleiben</b> Nachrichten, Kommentare, Zeiten, Projekteinträge und das Änderungsprotokoll – dort steht weiter der Name mit dem Zusatz „(gelöscht)“.</p>
+          <Field label="Offene Aufgaben und Projektleitungen übertragen an" hint="Ohne Auswahl sind offene Aufgaben danach niemandem zugewiesen">
+            <select value={transferTo} onChange={(e) => setTransferTo(e.target.value)}>
+              <option value="">– niemandem –</option>{(data ?? []).filter((u) => u.id !== remove.id && u.active).map((u) => <option key={u.id} value={u.id}>{u.displayName}</option>)}
+            </select>
+          </Field>
         </Modal>
       )}
     </div>
@@ -218,7 +250,7 @@ function Teams() {
           {edit.id && <button className="btn danger" style={{ marginRight: 'auto' }} onClick={() => setDelId(edit.id)}>{t('Löschen')}</button>}
           <button className="btn" onClick={() => setEdit(null)}>{t('Abbrechen')}</button>
           <button className="btn primary" onClick={async () => {
-            const body = { name: edit.name, icon: edit.icon, description: edit.description, parentId: edit.parentId || null };
+            const body = { name: edit.name, icon: edit.icon, description: edit.description, parentId: edit.parentId || null, defaultTools: edit.defaultTools ?? null };
             const r = await act(() => (edit.id ? patch(`/teams/${edit.id}`, body).then(() => ({ id: edit.id })) : post('/teams', body)));
             if (!r) return;
             await act(() => put(`/teams/${r.id}/members`, { members: edit.members.map((m: any) => ({ userId: m.userId, isLead: m.isLead })) }));
@@ -230,6 +262,9 @@ function Teams() {
             <Field label="Symbol"><IconPicker value={edit.icon} onChange={(icon) => setEdit({ ...edit, icon })} /></Field>
           </div>
           <Field label="Beschreibung"><input value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} /></Field>
+          <Field label="Werkzeuge für Mitglieder dieser Abteilung (Voreinstellung)" hint="Gilt für alle, deren Werkzeuge nicht einzeln festgelegt sind">
+            <ToolChecks value={edit.defaultTools ?? null} onChange={(defaultTools) => setEdit({ ...edit, defaultTools })} inheritLabel="Alle Werkzeuge" />
+          </Field>
           <Field label="Übergeordnetes Team"><select value={edit.parentId ?? ''} onChange={(e) => setEdit({ ...edit, parentId: e.target.value || null })}><option value="">–</option>{teams.filter((x) => x.id !== edit.id).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Field>
           <Field label="Mitglieder">
             <div className="card flat" style={{ padding: 6, maxHeight: 240, overflow: 'auto' }}>

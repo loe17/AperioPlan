@@ -23,7 +23,7 @@ describe('Chat', () => {
     await admin.post(`/api/chat/channels/${channelId}/messages`, { body: 'Hallo @lisa, bitte Zeichnung prüfen' });
     const lisaChannels = await lisa.get('/api/chat/channels');
     expect(lisaChannels.find((c: any) => c.id === channelId)).toBeUndefined(); // Lisa ist kein Projektmitglied – sieht aber die Erwähnung
-    expect((await lisa.get('/api/notifications'))[0].kind).toBe('chat');
+    expect((await lisa.get('/api/notifications'))[0].kind).toBe('mention');
     const msgs = await lisa.get(`/api/chat/channels/${channelId}/messages`);
     expect(msgs[0].body).toContain('Zeichnung');
     const dm = await lisa.post('/api/chat/direct', { userId: (await admin.get('/api/auth/me')).id });

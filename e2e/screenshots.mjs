@@ -57,15 +57,18 @@ let admin = client(await login('admin', 'admin'));
 await admin.post('/auth/change-password', { currentPassword: 'admin', newPassword: ADMIN_PW });
 admin = client(await login('admin', ADMIN_PW));
 await admin.patch('/me', { displayName: 'Max Mustermann' });
+await admin.post('/me/onboarding', {});
 await admin.put('/settings/company', { name: 'Muster Maschinenbau GmbH', logoText: 'AperioPlan' });
 
 const kon = await admin.post('/teams', { name: 'Konstruktion', icon: 'gear:#4f46e5' });
 const ele = await admin.post('/teams', { name: 'Elektrotechnik', icon: 'bolt:#c98a12' });
 const ein = await admin.post('/teams', { name: 'Einkauf', icon: 'box:#0ea5e9' });
 const mkUser = async (username, displayName, teamIds) => {
-  const u = await admin.post('/users', { username, displayName, password: 'Start-Passwort-1', teamIds });
+  const u = await admin.post('/users', { username, displayName, password: 'Start-Passwort-1', teamIds, departmentId: teamIds[0] });
   await client(await login(username, 'Start-Passwort-1')).post('/auth/change-password', { currentPassword: 'Start-Passwort-1', newPassword: USER_PW });
-  return { ...u, api: client(await login(username, USER_PW)) };
+  const api = client(await login(username, USER_PW));
+  await api.post('/me/onboarding', {});
+  return { ...u, api };
 };
 const lisa = await mkUser('lisa', 'Lisa Berger', [kon.id]);
 const tom = await mkUser('tom', 'Tom Keller', [ele.id]);

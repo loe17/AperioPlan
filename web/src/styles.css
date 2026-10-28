@@ -403,3 +403,27 @@ table.table { width: 100%; border-collapse: collapse; }
 .select-pill { width: auto; padding: 2px 24px 2px 8px; border-radius: 999px; font-size: 12.5px; height: auto; }
 .select-pill.amber { color: var(--amber); } .select-pill.blue { color: var(--blue); } .select-pill.green { color: var(--green); }
 .nowrap { white-space: nowrap; }
+.avatar.img { object-fit: cover; background: var(--bg-hover); }
+.avatar.xl { width: 72px; height: 72px; font-size: 26px; }
+.tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 4px 12px; }
+.avatar-crop { width: 128px; height: 128px; border-radius: 50%; border: 1px solid var(--line); }
+.qr { background: #fff; display: inline-block; padding: 8px; border-radius: 8px; margin: 8px 0; }
+.qr svg { display: block; width: 200px; height: 200px; }
+ol.steps { padding-left: 20px; margin: 0; display: grid; gap: 12px; }
+.presence-modes { display: grid; gap: 6px; }
+.presence-mode { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.presence-mode.active { border-color: var(--accent); background: var(--accent-soft); }
+.presence-mode input { margin: 0; }
+.presence-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; background: var(--text-3); }
+.presence-dot.green, .presence-dot.online { background: var(--green); }
+.presence-dot.amber, .presence-dot.idle { background: var(--amber); }
+.presence-dot.red, .presence-dot.away { background: var(--red); }
+.presence-dot.grey, .presence-dot.offline { background: transparent; border: 1.5px solid var(--text-3); }
+.presence-dot.auto { background: conic-gradient(var(--green) 0 33%, var(--amber) 0 66%, var(--red) 0); }
+.onboarding-backdrop { position: fixed; inset: 0; background: var(--overlay); z-index: 90; display: grid; place-items: center; padding: 16px; overflow-y: auto; }
+.onboarding { width: min(640px, 100%); padding: 24px; box-shadow: var(--shadow-lg); }
+.onboarding h2 { margin: 4px 0 6px; }
+.onboarding-dots { display: flex; gap: 6px; margin-bottom: 16px; }
+.onboarding-dots span { flex: 1; height: 4px; border-radius: 2px; background: var(--line); }
+.onboarding-dots span.on { background: var(--accent); }
+.onboarding-dots span.done { background: var(--accent-soft); }

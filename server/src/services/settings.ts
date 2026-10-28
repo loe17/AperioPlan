@@ -53,6 +53,7 @@ export interface BackupSettings {
 
 export interface SettingsMap {
   company: { name: string; logoText: string };
+  presence: { idleMinutes: number };
   projectNumbers: ProjectNumberSettings;
   defaultModules: ProjectModule[];
   storage: StorageSettings;
@@ -69,6 +70,7 @@ export interface SettingsMap {
 
 export const DEFAULT_SETTINGS: SettingsMap = {
   company: { name: 'AperioPlan', logoText: 'AperioPlan' },
+  presence: { idleMinutes: 10 },
   projectNumbers: DEFAULT_PROJECT_NUMBER_SETTINGS,
   defaultModules: DEFAULT_PROJECT_MODULES,
   storage: { mode: 'local', networkPath: '', projectFolders: DEFAULT_PROJECT_FOLDERS },

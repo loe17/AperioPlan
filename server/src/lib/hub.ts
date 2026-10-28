@@ -8,6 +8,8 @@ export interface HubClient {
   socket: WebSocket;
   userId: string;
   channels: Set<string>;
+  /** Browser oder Fernsteuerungs-Hilfsprogramm */
+  kind?: 'browser' | 'helper';
 }
 
 export class Hub {
@@ -26,9 +28,12 @@ export class Hub {
 
   toUser(userId: string, event: string, data: unknown) { this.publish(`user:${userId}`, event, data); }
 
+  /** Benutzer mit geöffnetem AperioPlan (nur Browser, nicht das Hilfsprogramm) */
   onlineUserIds(): Set<string> {
-    return new Set([...this.clients].map((c) => c.userId));
+    return new Set([...this.clients].filter((c) => (c.kind ?? 'browser') === 'browser').map((c) => c.userId));
   }
+
+  allClients(): HubClient[] { return [...this.clients]; }
 
   clientsIn(channel: string): HubClient[] {
     return [...this.clients].filter((c) => c.channels.has(channel));

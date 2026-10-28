@@ -8,7 +8,9 @@ const ROOT = join(__dirname, '..', '..');
 const DIRS = ['web/src', 'server/src', 'server/migrations', 'shared/src', 'cad-bridge/src', 'e2e', 'docs/plugins'];
 const EXT = /\.(tsx?|mjs|js|cs|sql|json|css|html)$/;
 // Bereits ausgelieferte Datenbank-Schritte bleiben unverändert; 008 übersetzt die alten Emojis in Symbolnamen.
-const ALLOWED = new Set(['server/migrations/001_core.sql', 'server/migrations/002_projects.sql', 'server/migrations/008_icons.sql']);
+const ALLOWED = new Set(['server/migrations/001_core.sql', 'server/migrations/002_projects.sql', 'server/migrations/008_icons.sql',
+  // Emoji-Auswahl im Chat: Inhalt, den Benutzer schreiben – nicht Teil der Oberfläche
+  'web/src/lib/emojiData.ts']);
 const EMOJI = /\p{Extended_Pictographic}|\uFE0F/u;
 // Erlaubte typografische Zeichen, die Unicode ebenfalls als „Bildzeichen“ führt
 const TYPO = /[©®™↔↕]/gu;

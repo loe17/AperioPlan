@@ -10,10 +10,20 @@ class Realtime {
   connected = false;
   private statusListeners = new Set<(c: boolean) => void>();
 
+  private lastActivitySent = 0;
+
   start() {
     if (!this.stopped) return;
     this.stopped = false;
     this.connect();
+    // Eingaben melden, damit Kollegen „aktiv“ (grün) oder „inaktiv“ (orange) sehen
+    const onInput = () => {
+      if (Date.now() - this.lastActivitySent < 30_000) return;
+      this.lastActivitySent = Date.now();
+      this.send({ type: 'activity', active: true });
+    };
+    for (const ev of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'focus']) window.addEventListener(ev, onInput, { passive: true });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { this.lastActivitySent = 0; onInput(); } });
   }
 
   stop() {
@@ -31,6 +41,8 @@ class Realtime {
       this.retry = 1000;
       this.setConnected(true);
       for (const ch of this.channels.keys()) ws.send(JSON.stringify({ type: 'subscribe', channel: ch }));
+      this.lastActivitySent = Date.now();
+      ws.send(JSON.stringify({ type: 'activity', active: true }));
     };
     ws.onmessage = (m) => {
       let msg: { channel: string; event: string; data: any };

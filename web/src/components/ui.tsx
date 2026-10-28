@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { colorFor, initials } from '../lib/format';
 import { useT } from '../i18n';
 import { Icon } from './Icon';
+import { useAvatarUrl } from '../lib/avatars';
 
 // ---------------------------------------------------------------- Toasts
 interface Toast { id: number; text: string; kind: 'info' | 'error' }
@@ -134,7 +135,10 @@ export function Dropdown({ trigger, children, align = 'right' }: { trigger: (tog
 }
 
 // ---------------------------------------------------------------- Kleinteile
-export function Avatar({ id, name, size }: { id?: string | null; name?: string | null; size?: 'lg' }) {
+export function Avatar({ id, name, size }: { id?: string | null; name?: string | null; size?: 'lg' | 'xl' }) {
+  const url = useAvatarUrl(id);
+  const [broken, setBroken] = useState<string | null>(null);
+  if (url && broken !== url) return <img className={`avatar img ${size ?? ''}`} src={url} alt="" title={name ?? ''} onError={() => setBroken(url)} />;
   return <span className={`avatar ${size ?? ''}`} style={{ background: colorFor(id ?? name) }} title={name ?? ''}>{initials(name)}</span>;
 }
 

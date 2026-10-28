@@ -7,6 +7,7 @@ import { Loading } from './components/ui';
 import { LoginPage, ChangePasswordPage } from './pages/Auth';
 import { DeskPage } from './pages/Desk';
 import { PluginPage } from './pages/Plugin';
+import { Onboarding } from './components/Onboarding';
 
 const ProjectsPage = lazy(() => import('./pages/Projects'));
 const ProjectPage = lazy(() => import('./pages/Project'));
@@ -41,6 +42,7 @@ export function App() {
   return (
     <I18nProvider lang={lang}>
       <Layout>
+        {!me.onboarded && me.role !== 'guest' && <Onboarding />}
         <Suspense fallback={<Loading />}>
           <Routes>
             <Route path="/" element={<DeskPage />} />

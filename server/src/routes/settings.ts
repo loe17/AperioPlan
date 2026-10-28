@@ -16,6 +16,7 @@ export default async function settingsRoutes(app: FastifyInstance, ctx: AppConte
     const storage = await settings.get('storage');
     return {
       company: await settings.get('company'),
+      presence: await settings.get('presence'),
       projectNumbers: await settings.get('projectNumbers'),
       defaultModules: await settings.get('defaultModules'),
       cadMask: await settings.get('cadMask'),

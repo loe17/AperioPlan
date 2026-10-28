@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { get, invalidate, setUnauthorizedHandler } from './lib/api';
+import { setAvatarVersions } from './lib/avatars';
 import { realtime } from './lib/realtime';
 
 export interface Me {
@@ -13,10 +14,19 @@ export interface Me {
   theme: 'system' | 'light' | 'dark';
   authSource: 'local' | 'ldap';
   teams: { id: string; name: string; icon: string; isLead: boolean }[];
+  tools: string[];
+  departmentId: string | null;
+  phone: string;
+  avatarVersion: number;
+  hasAvatar: boolean;
+  totpEnabled: boolean;
+  onboarded: boolean;
+  statusMode: 'auto' | 'online' | 'idle' | 'away' | 'offline';
+  showLastSeen: boolean;
 }
 
-export interface UserLite { id: string; displayName: string; username: string; email?: string | null; role: string; online?: boolean; avatarColor?: string | null }
-export interface TeamLite { id: string; name: string; icon: string; description: string; parentId: string | null; members: { userId: string; isLead: boolean; displayName: string }[] }
+export interface UserLite { id: string; displayName: string; username: string; email?: string | null; role: string; online?: boolean; avatarColor?: string | null; avatarVersion?: number; hasAvatar?: boolean; phone?: string; departmentId?: string | null; status?: string; lastSeenAt?: string | null }
+export interface TeamLite { id: string; name: string; icon: string; description: string; parentId: string | null; defaultTools?: string[] | null; members: { userId: string; isLead: boolean; displayName: string }[] }
 
 export interface PublicSettings {
   company: { name: string; logoText: string };
@@ -53,6 +63,11 @@ interface SessionValue {
 const Ctx = createContext<SessionValue>(null as never);
 export const useSession = () => useContext(Ctx);
 export const useMe = () => useContext(Ctx).me!;
+/** Ist ein Werkzeug für den angemeldeten Benutzer freigeschaltet? */
+export function useCan() {
+  const { me } = useContext(Ctx);
+  return (tool: string) => Boolean(me) && me!.role !== 'guest' && (me!.role === 'admin' || (me!.tools ?? []).includes(tool));
+}
 
 function applyTheme(t: 'system' | 'light' | 'dark') {
   const dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
@@ -73,12 +88,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const refreshLists = useCallback(async () => {
     const [s, u, t] = await Promise.all([get<PublicSettings>('/settings/public'), get<UserLite[]>('/users'), get<TeamLite[]>('/teams')]);
     setSettings(s); setUsers(u); setTeams(t);
+    setAvatarVersions(u);
   }, []);
 
   const refresh = useCallback(async () => {
     try {
       const m = await get<Me>('/auth/me');
       setMe(m);
+      setAvatarVersions([m]);
       if (m.theme && m.theme !== theme) { setThemeState(m.theme); applyTheme(m.theme); }
       if (!m.mustChangePassword) {
         await refreshLists();
@@ -111,7 +128,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   // Anwesenheit aktualisieren
   useEffect(() => realtime.subscribe('global', (event, data) => {
-    if (event === 'presence') setUsers((us) => us.map((u) => (u.id === data.userId ? { ...u, online: data.online } : u)));
+    if (event === 'presence') setUsers((us) => us.map((u) => (u.id === data.userId ? { ...u, online: data.online, ...(data.status ? { status: data.status, lastSeenAt: data.lastSeenAt } : {}) } : u)));
+    if (event === 'user.changed') void refreshLists();
   }), []);
   useEffect(() => {
     if (!me) return;

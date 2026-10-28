@@ -46,13 +46,23 @@ await step('1.2 Erstzugang admin/admin mit Passwort-Zwang', async () => {
   await pws.nth(1).fill(PW);
   await pws.nth(2).fill(PW);
   await page.click('button:has-text("Passwort ändern")');
-  await page.waitForSelector('text=Mein Schreibtisch');
+  await page.waitForSelector('text=Willkommen bei AperioPlan');
+});
+await step('1.3 Startassistent: Firmenname setzen und beenden', async () => {
+  await page.fill('input[placeholder="z. B. Muster Maschinenbau GmbH"]', 'Testplan GmbH');
+  await page.click('.onboarding button:has-text("Weiter")');
+  await page.waitForSelector('text=Ihr Profil');
+  await page.click('button:has-text("Assistent beenden")');
+  await page.waitForSelector('.onboarding', { state: 'detached' });
+  let info = {};
+  for (let i = 0; i < 20 && info.company !== 'Testplan GmbH'; i++) { info = await (await fetch(`${BASE}/api/public-info`)).json(); await page.waitForTimeout(200); }
+  expect(info.company === 'Testplan GmbH', 'Firmenname nicht gespeichert');
 });
 
 // ------------------------------------------------------------ 2. Design- & Oberflächen-Test
 let projectId;
 await step('2.1 Teams und Projekt über die Oberfläche anlegen', async () => {
-  await api('POST', '/teams', { name: 'Konstruktion', icon: 'gear' });
+  globalThis.deptId = (await api('POST', '/teams', { name: 'Konstruktion', icon: 'gear' })).id;
   await page.goto(`${BASE}/projects?new=1`);
   await page.fill('input[placeholder="z. B. Verpackungsanlage"]', 'Maschine X');
   await page.click('.modal-foot button.primary');
@@ -136,9 +146,10 @@ await step('3.3 Auschecken/Einchecken und Freigabe mit PDF/DXF/STEP-Aufträgen',
 // ------------------------------------------------------------ 4. Workflow-Test
 await step('4.1 Zeiterfassung: Einstempeln, Ausstempeln, Korrekturanfrage', async () => {
   await page.goto(`${BASE}/time`);
-  await page.click('button:has-text("Einstempeln")');
-  await page.waitForSelector('button:has-text("Ausstempeln")');
-  await page.click('button:has-text("Ausstempeln")');
+  await page.click('main button:has-text("Einstempeln")');
+  await page.waitForSelector('main button:has-text("Ausstempeln")');
+  await page.waitForSelector('.clock-chip.running');
+  await page.click('main button:has-text("Ausstempeln")');
   const c = await api('POST', '/time/corrections', { kind: 'add', projectId, newStartedAt: '2026-10-26T07:00:00Z', newEndedAt: '2026-10-26T09:00:00Z', what: 'Nachtrag', reason: 'vergessen' });
   expect(c.id, 'Korrektur nicht angelegt');
 });
@@ -157,7 +168,7 @@ await step('5.1 Chat in Echtzeit', async () => {
   await page.waitForSelector('.msg:has-text("Hallo Team")');
 });
 await step('5.2 Videoanruf mit zwei Teilnehmern (WebRTC)', async () => {
-  const user = await api('POST', '/users', { username: 'lisa', displayName: 'Lisa Berger', password: 'Start-12345' });
+  const user = await api('POST', '/users', { username: 'lisa', displayName: 'Lisa Berger', password: 'Start-12345', departmentId: globalThis.deptId });
   await api('PUT', `/projects/${projectId}/members`, { members: [{ userId: (await api('GET', '/auth/me')).id, role: 'owner' }, { userId: user.id, role: 'member' }] });
   const ctx2 = await browser.newContext({ viewport: { width: 1200, height: 800 }, permissions: ['camera', 'microphone'] });
   const p2 = await ctx2.newPage();
@@ -169,6 +180,7 @@ await step('5.2 Videoanruf mit zwei Teilnehmern (WebRTC)', async () => {
   const pws = p2.locator('input[type=password]');
   await pws.nth(0).fill('Start-12345'); await pws.nth(1).fill('Lisa-2026-Neu'); await pws.nth(2).fill('Lisa-2026-Neu');
   await p2.click('button:has-text("Passwort ändern")');
+  await p2.click('button:has-text("Assistent beenden")');
   await p2.waitForSelector('text=Mein Schreibtisch');
   console.log('   … Lisa angemeldet, starte Anruf');
   await page.click('button:has-text("Videoanruf")');

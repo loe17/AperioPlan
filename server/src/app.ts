@@ -11,8 +11,11 @@ import { createDb, migrate, type Sql } from './db';
 import { Hub } from './lib/hub';
 import { HttpError } from './lib/errors';
 import { resolveUser } from './lib/auth';
+import { forbidden } from './lib/errors';
+import { TOOL_ROUTES } from '@aperio/shared';
 import { SettingsService } from './services/settings';
 import { Storage } from './services/storage';
+import { Presence } from './services/presence';
 import { bootstrap } from './services/bootstrap';
 import type { AppContext } from './context';
 import { routes } from './routes';
@@ -35,12 +38,15 @@ export async function buildApp(opts: BuildOptions = {}): Promise<{ app: FastifyI
   });
 
   await migrate(sql, (m) => app.log.info(m));
+  const hub = new Hub();
+  const settings = new SettingsService(sql);
   const ctx: AppContext = {
     sql,
-    hub: new Hub(),
-    settings: new SettingsService(sql),
+    hub,
+    settings,
     config,
     storage: new Storage(config.storageRoot),
+    presence: new Presence(sql, hub, settings),
   };
   await bootstrap(ctx, app.log);
 
@@ -51,7 +57,15 @@ export async function buildApp(opts: BuildOptions = {}): Promise<{ app: FastifyI
 
   app.decorateRequest('user', null);
   app.addHook('onRequest', async (req) => {
-    if (req.url.startsWith('/api/')) req.user = await resolveUser(sql, req);
+    if (!req.url.startsWith('/api/')) return;
+    req.user = await resolveUser(sql, req);
+    // Werkzeugrechte zentral prüfen: nicht freigeschaltete Werkzeuge sind auch über die Schnittstelle gesperrt
+    const u = req.user;
+    if (u && u.role !== 'admin') {
+      const path = req.url.slice(4).split('?')[0]!;
+      const hit = TOOL_ROUTES.find(([prefix]) => path === prefix || path.startsWith(prefix + '/'));
+      if (hit && !u.tools.includes(hit[1])) throw forbidden('Dieses Werkzeug ist für Sie nicht freigeschaltet');
+    }
   });
 
   app.setErrorHandler((err, req, reply) => {
@@ -78,6 +92,7 @@ export async function buildApp(opts: BuildOptions = {}): Promise<{ app: FastifyI
   }
 
   app.addHook('onClose', async () => {
+    ctx.presence.stop();
     if (!opts.sql) await sql.end({ timeout: 5 });
   });
 
