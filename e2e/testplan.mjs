@@ -192,7 +192,18 @@ await step('5.2 Videoanruf mit zwei Teilnehmern (WebRTC)', async () => {
   await page.waitForTimeout(1500);
   const playing = await page.evaluate(() => [...document.querySelectorAll('video')].filter((v) => v.srcObject && v.srcObject.getVideoTracks().length).length);
   expect(playing >= 2, `nur ${playing} Videos aktiv`);
-  await page.click('button:has-text("Auflegen")');
+  // Chat im Anruf: Nachricht kommt beim anderen an
+  await page.click('.call-top button:has-text("Chat")');
+  await page.fill('.call-chat-input textarea', 'Hallo aus dem Anruf');
+  await page.press('.call-chat-input textarea', 'Enter');
+  await p2.click('.call-top button:has-text("Chat")');
+  await p2.waitForSelector('.call-msg:has-text("Hallo aus dem Anruf")', { timeout: 10000 });
+  await page.click('.call-top button:has-text("Teilnehmer")');
+  await page.waitForSelector('.call-person:has-text("Gastgeber")');
+  await p2.click('button:has-text("Verlassen")');
+  await page.click('button:has-text("Verlassen")');
+  // Verlaufseintrag im Chat mit dem Anruf-Chat
+  await page.waitForSelector('.call-entry:has-text("Videoanruf")', { timeout: 10000 });
   await ctx2.close();
 });
 

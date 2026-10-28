@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { get, post, del, upload, invalidate } from '../lib/api';
 import { useApi } from '../lib/hooks';
@@ -8,12 +8,20 @@ import { fmtBytes, fmtDateTime, fmtTime } from '../lib/format';
 import { Avatar, Empty, useAction } from '../components/ui';
 import { VideoCall } from './Video';
 import { Icon } from '../components/Icon';
+import { MentionInput } from '../components/MentionInput';
+import { EMOJI_CATEGORIES, QUICK_REACTIONS } from '../lib/emojiData';
 
-export interface Message { id: string; channelId: string; userId: string; userName: string; body: string; attachments: { fileId: string; name: string; size: number }[]; createdAt: string; updatedAt: string; deletedAt: string | null }
+export interface CallMeta { callId: string; startedAt: string; endedAt: string; durationSec: number; participants: { id: string; name: string }[]; messageCount: number }
+export interface Message {
+  id: string; channelId: string; userId: string; userName: string; body: string; attachments: { fileId: string; name: string; size: number }[];
+  createdAt: string; updatedAt: string; deletedAt: string | null; kind?: 'message' | 'call'; meta?: CallMeta | null; callId?: string | null;
+  reactions?: { emoji: string; userId: string }[];
+}
 
 /** Nachrichtenverlauf + Eingabe einer Unterhaltung (Projekt, Team oder Direktnachricht) */
-export function ChatView({ channelId, title, height = 'calc(100vh - 48px)' }: { channelId: string; title: string; height?: string }) {
-  const { me } = useSession();
+export function ChatView({ channelId, title, height = 'calc(100vh - 48px)', subtitle, actions }: { channelId: string; title: string; height?: string; subtitle?: React.ReactNode; actions?: React.ReactNode }) {
+  const { me, users } = useSession();
+  const [emoji, setEmoji] = useState<{ forMsg: string | null } | null>(null);
   const act = useAction();
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState('');
@@ -72,6 +80,11 @@ export function ChatView({ channelId, title, height = 'calc(100vh - 48px)' }: { 
     setBusy(false);
   };
 
+  const react = async (id: string, emojiChar: string) => {
+    const r = await act(() => post<Message>(`/chat/messages/${id}/reactions`, { emoji: emojiChar }));
+    if (r) setMessages((m) => m.map((x) => (x.id === r.id ? r : x)));
+  };
+
   const loadMore = async () => {
     const older = await get<Message[]>(`/chat/channels/${channelId}/messages?before=${encodeURIComponent(messages[0]!.createdAt)}`);
     setMessages((m) => [...older, ...m]);
@@ -82,7 +95,8 @@ export function ChatView({ channelId, title, height = 'calc(100vh - 48px)' }: { 
   return (
     <div className="chat-main" style={{ height }}>
       <div className="row" style={{ padding: '10px 20px', borderBottom: '1px solid var(--line)' }}>
-        <b className="grow">{title}</b>
+        <div className="grow"><b>{title}</b>{subtitle && <div className="small muted">{subtitle}</div>}</div>
+        {actions}
         <button className="btn sm" onClick={() => setCall(true)}><Icon name="video" /> Videoanruf</button>
       </div>
       <div className="chat-messages" ref={listRef}>
@@ -94,6 +108,14 @@ export function ChatView({ channelId, title, height = 'calc(100vh - 48px)' }: { 
           lastDay = day;
           const prev = messages[i - 1];
           const grouped = !showDay && prev && prev.userId === m.userId && new Date(m.createdAt).getTime() - new Date(prev.createdAt).getTime() < 5 * 60000;
+          if (m.kind === 'call') return (
+            <div key={m.id}>
+              {showDay && <div className="small muted" style={{ textAlign: 'center', margin: '12px 0' }}>{day}</div>}
+              <CallEntry m={m} />
+            </div>
+          );
+          const mine = (e: string) => m.reactions?.some((r) => r.emoji === e && r.userId === me?.id);
+          const grouped_reactions = [...new Set((m.reactions ?? []).map((r) => r.emoji))].map((e) => ({ e, n: m.reactions!.filter((r) => r.emoji === e).length, who: m.reactions!.filter((r) => r.emoji === e).map((r) => users.find((u) => u.id === r.userId)?.displayName ?? '').join(', ') }));
           return (
             <div key={m.id}>
               {showDay && <div className="small muted" style={{ textAlign: 'center', margin: '12px 0' }}>{day}</div>}
@@ -107,8 +129,19 @@ export function ChatView({ channelId, title, height = 'calc(100vh - 48px)' }: { 
                       {/\.(png|jpe?g|gif|webp)$/i.test(a.name) ? <img src={`/api/files/${a.fileId}/download?inline=1`} style={{ maxHeight: 160, maxWidth: 260, borderRadius: 6 }} /> : <><Icon name="paperclip" /> {a.name} <span className="muted small">{fmtBytes(a.size)}</span></>}
                     </a>
                   ))}
+                  {grouped_reactions.length > 0 && (
+                    <div className="reactions">
+                      {grouped_reactions.map((r) => <button key={r.e} className={`reaction ${mine(r.e) ? 'mine' : ''}`} title={r.who} onClick={() => react(m.id, r.e)}>{r.e} {r.n}</button>)}
+                    </div>
+                  )}
                 </div>
-                {m.userId === me?.id && !m.deletedAt && <button className="btn ghost sm" title="Löschen" style={{ opacity: 0.4 }} onClick={() => del(`/chat/messages/${m.id}`)}><Icon name="x" /></button>}
+                {!m.deletedAt && (
+                  <div className="msg-tools">
+                    {QUICK_REACTIONS.slice(0, 4).map((e) => <button key={e} title="Reagieren" onClick={() => react(m.id, e)}>{e}</button>)}
+                    <button title="Weitere Reaktion" onClick={() => setEmoji({ forMsg: m.id })}><Icon name="plus" /></button>
+                    {m.userId === me?.id && <button title="Löschen" onClick={() => del(`/chat/messages/${m.id}`)}><Icon name="trash" /></button>}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -118,17 +151,79 @@ export function ChatView({ channelId, title, height = 'calc(100vh - 48px)' }: { 
       <div className="chat-input">
         <button className="btn ghost" title="Datei anhängen" disabled={busy} onClick={() => fileRef.current?.click()}><Icon name="paperclip" /></button>
         <input ref={fileRef} type="file" multiple hidden onChange={(e) => { if (e.target.files) void attach(e.target.files); e.target.value = ''; }} />
-        <textarea value={text} placeholder="Nachricht schreiben … (Enter senden, Umschalt+Enter neue Zeile)" rows={1}
-          onChange={(e) => {
-            setText(e.target.value);
-            if (Date.now() - lastTyping.current > 2000) { realtime.send({ type: 'typing', channel: `chat:${channelId}` }); lastTyping.current = Date.now(); }
-          }}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
-          onPaste={(e) => { if (e.clipboardData.files.length) { e.preventDefault(); void attach(e.clipboardData.files); } }} />
+        <div style={{ position: 'relative' }}>
+          <button className="btn ghost" title="Emoji einfügen" onClick={() => setEmoji(emoji ? null : { forMsg: null })}><Icon name="heart" /></button>
+        </div>
+        <div className="grow" style={{ minWidth: 0 }}>
+          <MentionInput value={text} users={users.filter((u) => u.id !== me?.id)} placeholder="Nachricht schreiben … (Enter senden, Umschalt+Enter neue Zeile, @ erwähnt)" rows={1}
+            onChange={(v) => {
+              setText(v);
+              if (Date.now() - lastTyping.current > 2000) { realtime.send({ type: 'typing', channel: `chat:${channelId}` }); lastTyping.current = Date.now(); }
+            }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
+            onPaste={(e) => { if (e.clipboardData.files.length) { e.preventDefault(); void attach(e.clipboardData.files); } }} />
+        </div>
         <button className="btn primary" disabled={!text.trim()} onClick={send}>Senden</button>
       </div>
+      {emoji && <EmojiPicker onClose={() => setEmoji(null)} onPick={(e) => { if (emoji.forMsg) void react(emoji.forMsg, e); else setText((t) => t + e); setEmoji(null); }} />}
       {call && <VideoCall channelId={channelId} title={title} onClose={() => setCall(false)} />}
     </div>
+  );
+}
+
+/** Verlaufseintrag eines beendeten Anrufs – aufklappbar mit dem Chat aus dem Anruf */
+function CallEntry({ m }: { m: Message }) {
+  const [open, setOpen] = useState(false);
+  const [msgs, setMsgs] = useState<Message[] | null>(null);
+  const meta = m.meta;
+  if (!meta) return null;
+  const mins = Math.floor(meta.durationSec / 60); const secs = meta.durationSec % 60;
+  const toggle = async () => {
+    if (!open && !msgs) setMsgs(await get<Message[]>(`/chat/calls/${meta.callId}/messages`).catch(() => []));
+    setOpen(!open);
+  };
+  return (
+    <div className="call-entry">
+      <div className="row">
+        <Icon name="video" />
+        <div className="grow">
+          <b>Videoanruf</b> <span className="muted small">{fmtTime(meta.startedAt)}–{fmtTime(meta.endedAt)} · {mins ? `${mins} Min. ` : ''}{secs} Sek.</span>
+          <div className="small muted">{meta.participants.map((p) => p.name).join(', ')}</div>
+        </div>
+        {meta.messageCount > 0 && <button className="btn sm ghost" onClick={toggle}><Icon name={open ? 'chevron-down' : 'chevron-right'} /> Chat im Anruf ({meta.messageCount})</button>}
+      </div>
+      {open && msgs && (
+        <div style={{ marginTop: 8, paddingLeft: 26 }}>
+          {msgs.map((x) => (
+            <div key={x.id} className="small" style={{ marginBottom: 4 }}>
+              <b>{x.userName}</b> <span className="muted">{fmtTime(x.createdAt)}</span> {x.body}
+              {x.attachments?.map((a) => <a key={a.fileId} href={`/api/files/${a.fileId}/download`} target="_blank" rel="noreferrer" style={{ marginLeft: 6 }}><Icon name="paperclip" /> {a.name}</a>)}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Emoji-Auswahl mit Kategorien und Suche (deutsche Stichworte) */
+export function EmojiPicker({ onPick, onClose }: { onPick: (e: string) => void; onClose: () => void }) {
+  const [cat, setCat] = useState(0);
+  const [q, setQ] = useState('');
+  const list = q.trim()
+    ? EMOJI_CATEGORIES.flatMap((c) => c.items).filter(([, k]) => k.includes(q.trim().toLowerCase()))
+    : EMOJI_CATEGORIES[cat]!.items;
+  return createPortal(
+    <>
+      <div className="overlay transparent" onClick={onClose} />
+      <div className="dropdown-menu emoji-picker" style={{ position: 'fixed', bottom: 80, left: 'max(280px, 30vw)', top: 'auto', right: 'auto', zIndex: 80 }}>
+        <input autoFocus placeholder="Suchen, z. B. daumen, danke, party" value={q} onChange={(e) => setQ(e.target.value)} style={{ marginBottom: 6 }} />
+        {!q && <div className="emoji-tabs">{EMOJI_CATEGORIES.map((c, i) => <button key={c.name} className={`btn sm ${i === cat ? 'primary' : 'ghost'}`} title={c.name} onClick={() => setCat(i)}><Icon name={c.icon} /></button>)}</div>}
+        <div className="emoji-grid">{list.map(([e, k]) => <button key={e} title={k} onClick={() => onPick(e)}>{e}</button>)}</div>
+        {!list.length && <div className="small muted" style={{ padding: 8 }}>Nichts gefunden</div>}
+      </div>
+    </>,
+    document.body,
   );
 }
 

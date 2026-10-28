@@ -127,8 +127,9 @@ export default async function chatRoutes(app: FastifyInstance, ctx: AppContext) 
       returning id`;
     await sql`update chat_members set last_read_at = now() where channel_id = ${id} and user_id = ${u.id}`;
     const full = await loadMessage(m!.id);
-    ctx.hub.publish(`chat:${id}`, 'message.created', full);
+    // Nachrichten aus dem Anruf laufen nur im Anruf; im Verlauf erscheinen sie gesammelt unter dem Anrufeintrag
     if (b.callId) ctx.hub.publish(`call:${id}`, 'call.message', full);
+    else ctx.hub.publish(`chat:${id}`, 'message.created', full);
     const members = await memberIds(c);
     for (const uid of members) if (uid !== u.id) ctx.hub.toUser(uid, 'chat.unread', { channelId: id });
     const mentions = [...b.body.matchAll(/@([\w.-]+)/g)].map((x) => x[1]!.toLowerCase());

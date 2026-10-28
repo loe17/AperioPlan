@@ -1,0 +1,34 @@
+name: Fernsteuerung (Windows-Hilfsprogramm)
+
+# Baut AperioPlan-Fernsteuerung.exe. Bei jeder neuen Version (Release) wird die Datei automatisch angehängt,
+# damit der Download-Link im Videoanruf immer auf die aktuelle Fassung zeigt.
+on:
+  push:
+    branches: [main]
+    paths: ['cad-bridge/src/AperioPlan.RemoteHelper/**', '.github/workflows/remote-helper.yml']
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Bauen (eine einzelne Datei, ohne Installation lauffähig)
+        run: dotnet publish cad-bridge/src/AperioPlan.RemoteHelper/AperioPlan.RemoteHelper.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AperioPlan-Fernsteuerung
+          path: out/AperioPlan-Fernsteuerung.exe
+      - name: An das Release anhängen
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" out/AperioPlan-Fernsteuerung.exe --clobber

@@ -96,7 +96,7 @@ function Tokens() {
   return (
     <div style={{ maxWidth: 720 }}>
       <h1 style={{ marginBottom: 8 }}>API-Schlüssel</h1>
-      <p className="muted">Für den CAD-Wächter in SolidWorks und für eigene Erweiterungen. Ein Schlüssel handelt mit Ihren Rechten.</p>
+      <p className="muted">Für den CAD-Wächter, das Hilfsprogramm zur Fernsteuerung im Videoanruf und für eigene Erweiterungen. Ein Schlüssel handelt mit Ihren Rechten.</p>
       <div className="row" style={{ margin: '14px 0' }}>
         <input value={name} onChange={(e) => setName(e.target.value)} style={{ maxWidth: 280 }} />
         <button className="btn primary" onClick={async () => { const r = await act(() => post('/me/tokens', { name })); if (r) { setCreated(r.token); reload(); } }}>Schlüssel erzeugen</button>
@@ -301,7 +301,8 @@ function General() {
   const numbers = useAdminSettings('projectNumbers');
   const modules = useAdminSettings('defaultModules');
   const time = useAdminSettings('time');
-  if (!company.value || !numbers.value || !modules.value || !time.value) return null;
+  const presence = useAdminSettings('presence');
+  if (!company.value || !numbers.value || !modules.value || !time.value || !presence.value) return null;
   const n = numbers.value;
   const preview = n.format === 'year' ? `${n.prefix}-${new Date().getFullYear()}-${'1'.padStart(n.digits, '0')}` : String(n.step).padStart(n.digits, '0');
   return (
@@ -342,6 +343,13 @@ function General() {
         <Field label="Warnung ab Stunden pro Tag"><input type="number" min={1} max={24} value={time.value.maxDailyHours} onChange={(e) => time.setValue({ ...time.value, maxDailyHours: Number(e.target.value) })} /></Field>
       </div>
       <button className="btn primary" onClick={async () => { await act(() => time.save(time.value), 'Gespeichert'); refreshLists(); }}>Speichern</button>
+
+      <h2 style={{ margin: '28px 0 10px' }}>Anwesenheit im Chat</h2>
+      <p className="muted">Grün = aktiv, Orange = eine Weile keine Eingabe, Rot = abwesend (Urlaub oder von Hand gewählt).</p>
+      <div className="grid2">
+        <Field label="Orange nach Minuten ohne Eingabe" hint="Standard: 10"><input type="number" min={1} max={240} value={presence.value.idleMinutes} onChange={(e) => presence.setValue({ ...presence.value, idleMinutes: Number(e.target.value) })} /></Field>
+      </div>
+      <button className="btn primary" onClick={async () => { await act(() => presence.save(presence.value), 'Gespeichert'); refreshLists(); }}>Speichern</button>
     </div>
   );
 }

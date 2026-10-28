@@ -15,3 +15,6 @@ deploy/compose.local.yml
 # Pläne und Spezifikationen bleiben lokal
 IMPLEMENTIERUNGSPLAN*.md
 INSTALL_SPEZIFIKATION*.md
+
+# beim Bauen aus node_modules kopiert
+web/public/mediapipe/

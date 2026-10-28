@@ -121,6 +121,14 @@ export default async function wsRoutes(app: FastifyInstance, ctx: AppContext) {
         grants.delete(`${msg.callId}:${target}`);
         ctx.hub.publish(callChannel, 'remote.revoked', { target, controller: user.id });
         sendTo(target, '', 'remote.stop', {}, 'helper');
+      } else if (msg.type === 'remote-stop-helper' && helper) {
+        // Notbremse im Hilfsprogramm: alle Freigaben dieses Benutzers enden
+        for (const [key, controller] of grants) {
+          if (!key.endsWith(`:${user.id}`)) continue;
+          grants.delete(key);
+          const callId = key.slice(0, -(user.id.length + 1));
+          ctx.hub.publish(`call:${callId}`, 'remote.revoked', { target: user.id, controller });
+        }
       } else if (msg.type === 'remote-input' && msg.to && msg.callId && grants.get(`${msg.callId}:${msg.to}`) === user.id) {
         sendTo(msg.to, '', 'remote.input', msg.data, 'helper');
       } else if (msg.type === 'typing' && msg.channel && client.channels.has(msg.channel)) {

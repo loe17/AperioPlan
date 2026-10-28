@@ -107,6 +107,9 @@ importers:
       '@aperio/shared':
         specifier: workspace:*
         version: link:../shared
+      '@mediapipe/selfie_segmentation':
+        specifier: 0.1.1675465747
+        version: 0.1.1675465747
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -342,6 +345,9 @@ packages:
   '@lukeed/ms@2.0.2':
     resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==}
     engines: {node: '>=8'}
+
+  '@mediapipe/selfie_segmentation@0.1.1675465747':
+    resolution: {integrity: sha512-IxYxNhwE5VwOm52L1yoFWYLP7q9Pd+NJjzOC5tlepfvEGaY3o9hslhUrx9BgseqdfZtKSDtd/4NfCSMjNzQalA==}
 
   '@oxc-project/types@0.155.0':
     resolution: {integrity: sha512-SeE8JPwW1xs1tHeNycjUtUBdhorRa8o4jlvjwk49R7/Z291i+4DQa7JJIgOm/TaYQZx+QrPQbVJ/9c8dMIZN8Q==}
@@ -1572,6 +1578,8 @@ snapshots:
   '@jridgewell/sourcemap-codec@1.6.0': {}
 
   '@lukeed/ms@2.0.2': {}
+
+  '@mediapipe/selfie_segmentation@0.1.1675465747': {}
 
   '@oxc-project/types@0.155.0': {}
 
