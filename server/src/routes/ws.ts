@@ -3,6 +3,7 @@ import type { AppContext } from '../context';
 import type { HubClient } from '../lib/hub';
 import { projectAccess } from '../lib/access';
 import { activeCall, joinCall, leaveCall } from '../services/calls';
+import { resolveGuest } from './meetings';
 
 /**
  * Echtzeit-Kanal. Nachrichten vom Browser:
@@ -23,25 +24,37 @@ const grants = new Map<string, string>();
 const HOST_EVENTS = new Set(['mute', 'kick', 'end-for-all']);
 
 export default async function wsRoutes(app: FastifyInstance, ctx: AppContext) {
-  app.get('/ws', { websocket: true }, (socket, req) => {
-    const user = req.user;
+  app.get('/ws', { websocket: true }, async (socket, req) => {
+    // Meeting-Gäste ohne Benutzerkonto: ?guest=<id>&key=<schlüssel> – dürfen nur in den Anruf ihres Meetings
+    const gq = req.query as { guest?: string; key?: string };
+    // Nachrichten, die während der Gast-Prüfung eintreffen, zwischenspeichern
+    const early: Buffer[] = [];
+    const keep = (m: Buffer) => early.push(m);
+    socket.on('message', keep);
+    const guest = !req.user && gq.guest && gq.key ? await resolveGuest(ctx, gq.guest, gq.key).catch(() => null) : null;
+    const user = req.user ?? (guest ? { id: guest.id, displayName: `${guest.name} (Gast)`, role: 'meeting-guest' as const } as unknown as NonNullable<typeof req.user> : null);
     if (!user || user.mustChangePassword) {
       socket.close(4401, 'unauthorized');
       return;
     }
-    const helper = (req.query as { client?: string }).client === 'remote-helper';
-    const client: HubClient = { socket, userId: user.id, channels: new Set(helper ? [`helper:${user.id}`] : [`user:${user.id}`, 'global']), kind: helper ? 'helper' : 'browser' };
+    const helper = !guest && (req.query as { client?: string }).client === 'remote-helper';
+    const client: HubClient = { socket, userId: user.id, channels: new Set(helper ? [`helper:${user.id}`] : guest ? [`meetguest:${user.id}`] : [`user:${user.id}`, 'global']), kind: helper ? 'helper' : 'browser' };
     ctx.hub.add(client);
     if (helper) {
       ctx.hub.toUser(user.id, 'remote.helper', { connected: true });
-    } else {
+    } else if (!guest) {
       ctx.presence.activity(user.id);
     }
 
     const canJoin = async (channel: string): Promise<boolean> => {
       const [kind, id] = channel.split(':');
       if (!id) return false;
+      if (guest) return channel === `call:${guest.channel_id}`;
       try {
+        if (kind === 'meeting') {
+          const [m] = await ctx.sql`select 1 from meetings m where m.id = ${id} and (m.host_id = ${user.id} or exists (select 1 from chat_members cm where cm.channel_id = m.channel_id and cm.user_id = ${user.id}))`;
+          return Boolean(m) || user.role === 'admin';
+        }
         if (kind === 'user') return id === user.id;
         if (kind === 'project') { await projectAccess(ctx.sql, user, id); return true; }
         if (kind === 'chat' || kind === 'call') {
@@ -110,6 +123,8 @@ export default async function wsRoutes(app: FastifyInstance, ctx: AppContext) {
         }
         if (msg.to) sendTo(msg.to, callChannel, 'call.event', payload);
         else ctx.hub.publish(callChannel, 'call.event', payload, user.id);
+      } else if (guest && msg.type?.startsWith('remote')) {
+        return;
       } else if (msg.type === 'remote-grant' && msg.to && msg.callId && client.channels.has(callChannel)) {
         // der Gesteuerte erlaubt msg.to, seinen Rechner zu steuern
         grants.set(`${msg.callId}:${user.id}`, msg.to);
@@ -133,12 +148,15 @@ export default async function wsRoutes(app: FastifyInstance, ctx: AppContext) {
         sendTo(msg.to, '', 'remote.input', msg.data, 'helper');
       } else if (msg.type === 'typing' && msg.channel && client.channels.has(msg.channel)) {
         ctx.hub.publish(msg.channel, 'typing', { userId: user.id, displayName: user.displayName }, user.id);
-      } else if (msg.type === 'activity') {
+      } else if (msg.type === 'activity' && !guest) {
         ctx.presence.activity(user.id, msg.active !== false);
       } else if (msg.type === 'ping') {
         socket.send(JSON.stringify({ channel: 'global', event: 'pong', data: null }));
       }
     });
+
+    socket.off('message', keep);
+    for (const m of early) socket.emit('message', m);
 
     socket.on('close', () => {
       const calls = [...client.channels].filter((ch) => ch.startsWith('call:'));
@@ -148,7 +166,7 @@ export default async function wsRoutes(app: FastifyInstance, ctx: AppContext) {
         if (!ctx.hub.allClients().some((c) => c.userId === user.id && c.kind === 'helper')) ctx.hub.toUser(user.id, 'remote.helper', { connected: false });
         return;
       }
-      void ctx.presence.disconnected(user.id);
+      if (!guest) void ctx.presence.disconnected(user.id);
     });
   });
 

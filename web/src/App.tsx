@@ -21,6 +21,8 @@ const SettingsPage = lazy(() => import('./pages/Settings'));
 const CadPage = lazy(() => import('./pages/Cad'));
 const PcbPage = lazy(() => import('./pages/Pcb'));
 const AppStorePage = lazy(() => import('./pages/AppStore'));
+const MeetingsPage = lazy(() => import('./pages/Meetings'));
+const MeetPage = lazy(() => import('./pages/Meet'));
 const TimePage = lazy(() => import('./pages/Time'));
 const AbsencesPage = lazy(() => import('./pages/Absences'));
 const CalendarPage = lazy(() => import('./pages/Calendar'));
@@ -36,6 +38,10 @@ export function App() {
   const lang = me?.locale ?? (navigator.language.startsWith('de') ? 'de' : 'en');
 
   // Öffentliche Freigabelinks funktionieren ohne Anmeldung
+  // Meeting-Gäste ohne Benutzerkonto
+  if (location.pathname.startsWith('/meet/')) {
+    return <I18nProvider lang={lang}><Suspense fallback={<Loading />}><MeetPage /></Suspense></I18nProvider>;
+  }
   if (location.pathname.startsWith('/s/')) {
     return <I18nProvider lang={lang}><Suspense fallback={<Loading />}><SharePage /></Suspense></I18nProvider>;
   }
@@ -60,6 +66,8 @@ export function App() {
             <Route path="/cad-bridge" element={<Navigate to="/cad" replace />} />
             <Route path="/pcb" element={<PcbPage />} />
             <Route path="/apps" element={<AppStorePage />} />
+            <Route path="/meetings" element={<MeetingsPage />} />
+            <Route path="/meetings/:id" element={<MeetingsPage />} />
             <Route path="/time" element={<TimePage />} />
             <Route path="/absences" element={<AbsencesPage />} />
             <Route path="/crm" element={<CrmPage />} />

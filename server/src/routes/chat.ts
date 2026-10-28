@@ -13,7 +13,7 @@ import { notify } from '../services/notify';
 import { safeName, storeFile } from '../services/files';
 import { activeCall, endCallIfEmpty } from '../services/calls';
 
-interface Channel { id: string; kind: 'project' | 'direct' | 'team' | 'group'; project_id: string | null; team_id: string | null; name: string; direct_key: string | null; created_by: string | null }
+interface Channel { id: string; kind: 'project' | 'direct' | 'team' | 'group' | 'meeting'; project_id: string | null; team_id: string | null; name: string; direct_key: string | null; created_by: string | null }
 
 export default async function chatRoutes(app: FastifyInstance, ctx: AppContext) {
   const { sql } = ctx;
@@ -93,7 +93,7 @@ export default async function chatRoutes(app: FastifyInstance, ctx: AppContext) 
     return c;
   });
 
-  const msgSelect = sql`m.id, m.channel_id as "channelId", m.user_id as "userId", u.display_name as "userName", m.body, m.attachments,
+  const msgSelect = sql`m.id, m.channel_id as "channelId", m.user_id as "userId", coalesce(u.display_name, m.guest_name || ' (Gast)') as "userName", m.body, m.attachments,
     m.kind, m.meta, m.call_id as "callId", m.created_at as "createdAt", m.updated_at as "updatedAt", m.deleted_at as "deletedAt",
     coalesce((select json_agg(json_build_object('emoji', r.emoji, 'userId', r.user_id) order by r.created_at) from message_reactions r where r.message_id = m.id), '[]') as reactions`;
   const loadMessage = async (id: string) => (await sql`select ${msgSelect} from chat_messages m left join users u on u.id = m.user_id where m.id = ${id}`)[0];
@@ -200,8 +200,10 @@ export default async function chatRoutes(app: FastifyInstance, ctx: AppContext) 
     const c = await channelAccess(u, id);
     let [call] = await sql<{ id: string }[]>`select id from calls where channel_id = ${id} and ended_at is null and started_at > now() - interval '12 hours'`;
     if (!call) {
-      [call] = await sql<{ id: string }[]>`insert into calls (channel_id, started_by) values (${id}, ${u.id}) returning id`;
-      for (const uid of await memberIds(c)) if (uid !== u.id) ctx.hub.toUser(uid, 'call.incoming', { callId: call!.id, channelId: id, from: u.displayName, fromId: u.id });
+      // Meetings: Gastgeber bleibt der Organisator; kein Klingeln bei allen Teilnehmern
+      const [mt] = c.kind === 'meeting' ? await sql<{ host_id: string }[]>`select host_id from meetings where channel_id = ${id}` : [];
+      [call] = await sql<{ id: string }[]>`insert into calls (channel_id, started_by) values (${id}, ${mt?.host_id ?? u.id}) returning id`;
+      if (c.kind !== 'meeting') for (const uid of await memberIds(c)) if (uid !== u.id) ctx.hub.toUser(uid, 'call.incoming', { callId: call!.id, channelId: id, from: u.displayName, fromId: u.id });
     }
     const [info] = await sql<{ started_by: string | null; started_at: Date }[]>`select started_by, started_at from calls where id = ${call!.id}`;
     // Anruf-Kanal ist an die Unterhaltung gebunden: call:<channelId>
@@ -334,7 +336,7 @@ export default async function chatRoutes(app: FastifyInstance, ctx: AppContext) 
   });
 }
 
-function iceServers(ctx: AppContext) {
+export function iceServers(ctx: AppContext) {
   const list: { urls: string | string[]; username?: string; credential?: string }[] = [];
   if (ctx.config.turnUrls.length) list.push({ urls: ctx.config.turnUrls, username: 'aperio', credential: process.env.TURN_PASSWORD ?? 'aperio' });
   return list;

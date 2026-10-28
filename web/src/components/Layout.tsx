@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { APP_VERSION, APPS } from '@aperio/shared';
+import { MeetingLobbyNotice } from '../modules/MeetingLobby';
 import { useCan, useSession } from '../session';
 import { useApi, useHotkey, useLocalState } from '../lib/hooks';
 import { post, invalidate } from '../lib/api';
@@ -234,6 +235,7 @@ export function Layout({ children }: { children: ReactNode }) {
         {palette && <CommandPalette onClose={() => setPalette(false)} />}
         {changelog && <ChangelogDialog onClose={() => setChangelog(false)} />}
         <IncomingCalls />
+        <MeetingLobbyNotice />
       </div>
     </CrumbCtx.Provider>
   );

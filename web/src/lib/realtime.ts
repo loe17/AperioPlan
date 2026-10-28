@@ -12,7 +12,11 @@ class Realtime {
 
   private lastActivitySent = 0;
 
-  start() {
+  private query = '';
+
+  /** query: z. B. „guest=…&key=…“ für Meeting-Gäste ohne Benutzerkonto */
+  start(query = '') {
+    this.query = query;
     if (!this.stopped) return;
     this.stopped = false;
     this.connect();
@@ -35,7 +39,7 @@ class Realtime {
   private connect() {
     if (this.stopped) return;
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${proto}://${location.host}/api/ws`);
+    const ws = new WebSocket(`${proto}://${location.host}/api/ws${this.query ? `?${this.query}` : ''}`);
     this.ws = ws;
     ws.onopen = () => {
       this.retry = 1000;

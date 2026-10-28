@@ -9,7 +9,9 @@ import { Icon } from '../components/Icon';
 import { BackgroundProcessor, builtinBackgrounds, type BackgroundMode } from './VideoBackground';
 import type { Message } from './ChatView';
 
-interface PeerState { mic: boolean; cam: boolean; hand: boolean; sharing: boolean }
+interface PeerState { mic: boolean; cam: boolean; hand: boolean; sharing: boolean; name?: string }
+/** Gast ohne Benutzerkonto (Meeting-Link) */
+export interface GuestInfo { token: string; guest: string; key: string; name: string }
 interface Request { kind: 'screen' | 'control'; from: string; fromName: string }
 
 export const REMOTE_HELPER_URL = 'https://github.com/loe17/AperioPlan/releases/latest/download/AperioPlan-Fernsteuerung.exe';
@@ -20,8 +22,12 @@ export const REMOTE_HELPER_URL = 'https://github.com/loe17/AperioPlan/releases/l
  * Jeder Teilnehmer verbindet sich direkt mit jedem anderen (Mesh) – ideal für Runden bis ca. 6 Personen.
  * Die Signalisierung läuft über den WebSocket-Kanal call:<channelId>.
  */
-export function VideoCall({ channelId, title, onClose }: { channelId: string; title: string; onClose: () => void }) {
+export function VideoCall({ channelId, title, onClose, guest }: { channelId: string; title: string; onClose: () => void; guest?: GuestInfo }) {
   const { me, users } = useSession();
+  const selfId = guest ? guest.guest : me!.id;
+  const selfName = guest ? guest.name : me!.displayName;
+  const [names, setNames] = useState<Record<string, string>>({});
+  const gq = guest ? `guest=${guest.guest}&key=${encodeURIComponent(guest.key)}` : '';
   const toast = useToast();
   const [streams, setStreams] = useState<Record<string, MediaStream>>({});
   const [states, setStates] = useState<Record<string, PeerState>>({});
@@ -54,12 +60,12 @@ export function VideoCall({ channelId, title, onClose }: { channelId: string; ti
   const panelRef = useRef(panel);
   panelRef.current = panel;
   const channel = `call:${channelId}`;
-  const isHost = Boolean(me && (info?.hostId === me.id || me.role === 'admin'));
+  const isHost = Boolean(!guest && me && (info?.hostId === me.id || me.role === 'admin'));
 
   const signal = (to: string, data: unknown) => realtime.send({ type: 'signal', to, callId: channelId, data });
   const callEvent = (event: string, data?: unknown, to?: string) => realtime.send({ type: 'call-event', callId: channelId, event, data, to });
-  const shareState = (patch: Partial<PeerState>, to?: string) => { stateRef.current = { ...stateRef.current, ...patch }; callEvent('state', stateRef.current, to); };
-  const nameOf = (id: string) => users.find((u) => u.id === id)?.displayName ?? 'Teilnehmer';
+  const shareState = (patch: Partial<PeerState>, to?: string) => { stateRef.current = { ...stateRef.current, ...patch }; callEvent('state', { ...stateRef.current, name: selfName }, to); };
+  const nameOf = (id: string) => users.find((u) => u.id === id)?.displayName ?? names[id] ?? 'Teilnehmer';
 
   const outgoingVideo = () => screenRef.current?.getVideoTracks()[0] ?? localRef.current?.getVideoTracks()[0] ?? null;
 
@@ -104,10 +110,11 @@ export function VideoCall({ channelId, title, onClose }: { channelId: string; ti
     let unsubUser = () => {};
     (async () => {
       try {
-        const r = await post<{ callId: string; iceServers: RTCIceServer[]; hostId: string | null; startedAt: string }>(`/chat/channels/${channelId}/call`);
+        type CallInfo = { callId: string; iceServers: RTCIceServer[]; hostId: string | null; startedAt: string };
+        const r = guest ? await get<CallInfo>(`/meet/${guest.token}/status?${gq}`) : await post<CallInfo>(`/chat/channels/${channelId}/call`);
         iceRef.current = r.iceServers ?? [];
         setInfo({ callId: r.callId, hostId: r.hostId, startedAt: r.startedAt });
-        get<Message[]>(`/chat/calls/${r.callId}/messages`).then(setMessages).catch(() => {});
+        get<Message[]>(guest ? `/meet/${guest.token}/messages?${gq}&callId=${r.callId}` : `/chat/calls/${r.callId}/messages`).then(setMessages).catch(() => {});
         let stream: MediaStream;
         try { stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { width: 1280, height: 720 } }); }
         catch { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); setCam(false); stateRef.current.cam = false; }
@@ -117,9 +124,10 @@ export function VideoCall({ channelId, title, onClose }: { channelId: string; ti
         setLocal(stream);
         if (me) get<{ connected: boolean }>(`/remote/helper/${me.id}`).then((h) => setHelperOnline(h.connected)).catch(() => {});
         unsubUser = me ? realtime.subscribe(`user:${me.id}`, (event, data) => { if (event === 'remote.helper') setHelperOnline(Boolean(data.connected)); }) : () => {};
-        unsubChat = realtime.subscribe(`chat:${channelId}`, () => {});
+        unsubChat = guest ? () => {} : realtime.subscribe(`chat:${channelId}`, () => {});
         unsubCall = realtime.subscribe(channel, async (event, data) => {
-          if (event === 'call.joined' && data.userId !== me?.id) {
+          if (event === 'call.joined' && data.userId !== selfId) {
+            if (data.displayName) setNames((n) => ({ ...n, [data.userId]: data.displayName }));
             setPresent((p) => (p.includes(data.userId) ? p : [...p, data.userId]));
             const pc = createPeer(data.userId);
             const offer = await pc.createOffer();
@@ -148,7 +156,7 @@ export function VideoCall({ channelId, title, onClose }: { channelId: string; ti
             handleEvent(data.event, data.from, data.fromName, data.data);
           } else if (event === 'call.message') {
             setMessages((m) => (m.some((x) => x.id === data.id) ? m : [...m, data]));
-            if (panelRef.current !== 'chat' && data.userId !== me?.id) setUnreadChat((n) => n + 1);
+            if (panelRef.current !== 'chat' && data.userId !== selfId && data.guestId !== selfId) setUnreadChat((n) => n + 1);
           } else if (event === 'remote.granted') {
             if (data.controller === me?.id) {
               setControlling(data.target);
@@ -174,14 +182,14 @@ export function VideoCall({ channelId, title, onClose }: { channelId: string; ti
       localRef.current?.getTracks().forEach((t) => t.stop());
       camTrackRef.current?.stop();
       screenRef.current?.getTracks().forEach((t) => t.stop());
-      void post(`/chat/channels/${channelId}/call/end`).catch(() => {});
+      void (guest ? post(`/meet/${guest.token}/leave`, { guest: guest.guest, key: guest.key }) : post(`/chat/channels/${channelId}/call/end`)).catch(() => {});
     };
   }, [channelId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const leave = () => onClose();
 
   const handleEvent = (event: string, from: string, fromName: string, data: any) => {
-    if (event === 'state') setStates((s) => ({ ...s, [from]: data as PeerState }));
+    if (event === 'state') { setStates((s) => ({ ...s, [from]: data as PeerState })); if (data?.name) setNames((n) => (n[from] === data.name ? n : { ...n, [from]: data.name })); }
     else if (event === 'mute') { setMicOn(false); toast(`${fromName} hat Ihr Mikrofon stummgeschaltet`); }
     else if (event === 'kick') { toast(`${fromName} hat Sie aus dem Anruf genommen`, 'error'); onClose(); }
     else if (event === 'end-for-all') { toast(`${fromName} hat den Anruf für alle beendet`); onClose(); }
@@ -194,7 +202,7 @@ export function VideoCall({ channelId, title, onClose }: { channelId: string; ti
   useEffect(() => {
     const ac = new AudioContext();
     const meters: { id: string; an: AnalyserNode; src: MediaStreamAudioSourceNode }[] = [];
-    const all: [string, MediaStream | null][] = [[me?.id ?? 'me', local], ...Object.entries(streams)];
+    const all: [string, MediaStream | null][] = [[selfId, local], ...Object.entries(streams)];
     for (const [id, s] of all) {
       if (!s || !s.getAudioTracks().length) continue;
       const src = ac.createMediaStreamSource(s);
@@ -213,7 +221,7 @@ export function VideoCall({ channelId, title, onClose }: { channelId: string; ti
       setSpeaking((old) => (old.size === now.size && [...now].every((x) => old.has(x)) ? old : now));
     }, 250);
     return () => { clearInterval(timer); meters.forEach((m) => m.src.disconnect()); void ac.close(); };
-  }, [local, streams, me?.id]);
+  }, [local, streams, selfId]);
 
   // Laufzeit-Anzeige
   useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 1000); return () => clearInterval(t); }, []);
@@ -270,6 +278,14 @@ export function VideoCall({ channelId, title, onClose }: { channelId: string; ti
   };
 
   const sendChat = async (body: string, files?: FileList) => {
+    if (guest) {
+      if (files?.length) { toast('Als Gast können Sie keine Dateien senden', 'error'); return; }
+      try {
+        const m = await post<Message>(`/meet/${guest.token}/messages`, { guest: guest.guest, key: guest.key, callId: info?.callId, body });
+        setMessages((x) => (x.some((y) => y.id === m.id) ? x : [...x, m]));
+      } catch (e) { toast((e as Error).message, 'error'); }
+      return;
+    }
     try {
       let attachments: unknown[] = [];
       if (files?.length) {
@@ -282,7 +298,7 @@ export function VideoCall({ channelId, title, onClose }: { channelId: string; ti
     } catch (e) { toast((e as Error).message, 'error'); }
   };
 
-  const participants = [me!.id, ...present.filter((p) => p !== me!.id)];
+  const participants = [selfId, ...present.filter((p) => p !== selfId)];
   const elapsed = info ? Math.max(0, Math.floor((Date.now() - new Date(info.startedAt).getTime()) / 1000)) : 0;
   const hhmm = `${Math.floor(elapsed / 3600) ? `${Math.floor(elapsed / 3600)}:` : ''}${String(Math.floor(elapsed / 60) % 60).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
 
@@ -315,34 +331,34 @@ export function VideoCall({ channelId, title, onClose }: { channelId: string; ti
 
       <div className="call-body">
         <div className="video-grid">
-          <VideoTile stream={sharing ? screenRef.current : local} label={`${me?.displayName} (Sie)${sharing ? ' – Bildschirm' : ''}`} muted mirror={!sharing && bg.kind === 'none'}
-            speaking={speaking.has(me!.id)} state={{ mic, cam, hand, sharing }} userId={me!.id} name={me!.displayName} />
+          <VideoTile stream={sharing ? screenRef.current : local} label={`${selfName} (Sie)${sharing ? ' – Bildschirm' : ''}`} muted mirror={!sharing && bg.kind === 'none'}
+            speaking={speaking.has(selfId)} state={{ mic, cam, hand, sharing }} userId={selfId} name={selfName} />
           {Object.entries(streams).map(([id, s]) => (
             <VideoTile key={id} stream={s} label={nameOf(id)} speaking={speaking.has(id)} state={states[id]} userId={id} name={nameOf(id)}
               controlling={controlling === id ? channelId : null}
-              onRequestControl={states[id]?.sharing && controlling !== id ? () => { callEvent('request-control', null, id); toast(`Anfrage an ${nameOf(id)} gesendet`); } : undefined}
+              onRequestControl={!guest && states[id]?.sharing && controlling !== id ? () => { callEvent('request-control', null, id); toast(`Anfrage an ${nameOf(id)} gesendet`); } : undefined}
               onStopControl={controlling === id ? () => realtime.send({ type: 'remote-revoke', callId: channelId, to: id }) : undefined} />
           ))}
-          {Object.keys(streams).length === 0 && <div className="call-wait">Warte auf weitere Teilnehmer …<br />Kollegen sehen eine Einladung im Chat.</div>}
+          {Object.keys(streams).length === 0 && <div className="call-wait">Warte auf weitere Teilnehmer …{!guest && <><br />Kollegen sehen eine Einladung im Chat.</>}</div>}
         </div>
         {panel === 'people' && (
           <aside className="call-panel">
             <h3>Teilnehmer ({participants.length})</h3>
             {participants.map((id) => {
-              const st = id === me!.id ? { mic, cam, hand, sharing } : states[id];
+              const st = id === selfId ? { mic, cam, hand, sharing } : states[id];
               return (
                 <div key={id} className={`call-person ${speaking.has(id) ? 'speaking' : ''}`}>
                   <Avatar id={id} name={nameOf(id)} />
                   <div className="grow">
-                    <div>{id === me!.id ? `${me!.displayName} (Sie)` : nameOf(id)}{info?.hostId === id && <span className="pill" style={{ marginLeft: 6 }}>Gastgeber</span>}</div>
+                    <div>{id === selfId ? `${selfName} (Sie)` : nameOf(id)}{info?.hostId === id && <span className="pill" style={{ marginLeft: 6 }}>Gastgeber</span>}</div>
                     <div className="small" style={{ opacity: 0.7 }}>{st?.hand && 'Hand gehoben · '}{st?.sharing && 'teilt Bildschirm · '}{st?.mic === false ? 'stumm' : 'Mikro an'}</div>
                   </div>
                   {st?.hand && <Icon name="hand" />}
                   <Icon name={st?.mic === false ? 'mic-off' : 'mic'} />
-                  {id !== me!.id && (
+                  {id !== selfId && (
                     <div className="call-person-actions">
                       {!st?.sharing && <button className="btn sm" title="Bildschirm anfordern" onClick={() => { callEvent('request-screen', null, id); toast(`Anfrage an ${nameOf(id)} gesendet`); }}><Icon name="screen-share" /></button>}
-                      {st?.sharing && controlling !== id && <button className="btn sm" title="Steuerung anfragen" onClick={() => { callEvent('request-control', null, id); toast(`Anfrage an ${nameOf(id)} gesendet`); }}><Icon name="mouse" /></button>}
+                      {!guest && st?.sharing && controlling !== id && <button className="btn sm" title="Steuerung anfragen" onClick={() => { callEvent('request-control', null, id); toast(`Anfrage an ${nameOf(id)} gesendet`); }}><Icon name="mouse" /></button>}
                       {isHost && st?.mic !== false && <button className="btn sm" title="Stummschalten" onClick={() => callEvent('mute', null, id)}><Icon name="mic-off" /></button>}
                       {isHost && <button className="btn sm danger" title="Aus dem Anruf nehmen" onClick={() => callEvent('kick', null, id)}><Icon name="x" /></button>}
                     </div>
@@ -364,7 +380,7 @@ export function VideoCall({ channelId, title, onClose }: { channelId: string; ti
         </div>
         <button className={`btn ${sharing ? 'primary' : ''}`} onClick={toggleShare}><Icon name="screen-share" /> {sharing ? 'Freigabe beenden' : 'Bildschirm teilen'}</button>
         <button className={`btn ${hand ? 'primary' : ''}`} onClick={() => { setHand(!hand); shareState({ hand: !hand }); }}><Icon name="hand" /> {hand ? 'Hand senken' : 'Hand heben'}</button>
-        <button className="btn" onClick={() => { setPanel('chat'); setUnreadChat(0); }}><Icon name="paperclip" /> Datei senden</button>
+        {!guest && <button className="btn" onClick={() => { setPanel('chat'); setUnreadChat(0); }}><Icon name="paperclip" /> Datei senden</button>}
         <button className="btn danger solid" onClick={leave}><Icon name="phone" /> Verlassen</button>
         {isHost && present.length > 0 && <button className="btn danger" onClick={async () => { await post(`/chat/channels/${channelId}/call/end`, { forAll: true }).catch(() => {}); onClose(); }}>Für alle beenden</button>}
       </div>

@@ -399,6 +399,47 @@ await step('13.3 Speichermaske: Reiter CAD und PCB', async () => {
   await page.waitForSelector('input[value="{PROJEKT}-E{NN}"]');
 });
 
+// ------------------------------------------------------------ 14. Anwendungen aus dem App-Store (0.2.0)
+await step('14.1 App-Store: Meetings installieren, erscheint in der Seitenleiste', async () => {
+  await page.goto(`${BASE}/apps`);
+  await page.click('.app-card:has-text("Meetings")');
+  await page.click('.modal button:has-text("Installieren")');
+  await page.waitForSelector('nav >> text=Meetings', { timeout: 10000 });
+});
+
+await step('14.2 Meeting mit Gast-Link: Gast wartet, wird eingelassen, beide sehen sich', async () => {
+  await page.goto(`${BASE}/meetings`);
+  await page.click('button:has-text("Meeting planen")');
+  await page.fill('.modal input[placeholder*="Abnahme"]', 'Abnahme mit Kunde');
+  await page.click('.modal button:has-text("Planen und einladen")');
+  await page.waitForSelector('h3:has-text("Gast-Link")');
+  const link = await page.inputValue('input.mono[readonly]');
+  const guestUrl = link.replace(/^https?:\/\/[^/]+/, BASE);
+  const gctx = await browser.newContext({ viewport: { width: 1100, height: 760 }, permissions: ['camera', 'microphone'] });
+  const g = await gctx.newPage();
+  await g.goto(guestUrl);
+  await g.fill('input[placeholder="Vor- und Nachname"]', 'Herr Kunde');
+  await g.click('button:has-text("Meeting beitreten")');
+  await g.waitForSelector('text=Warteraum');
+  await page.waitForSelector('text=Herr Kunde', { timeout: 10000 });
+  await page.click('button:has-text("Einlassen")');
+  await g.waitForSelector('.call', { timeout: 10000 });
+  await page.click('.page-head button:has-text("Beitreten")');
+  await page.waitForFunction(() => [...document.querySelectorAll('.call video')].filter((v) => v.srcObject).length >= 2, null, { timeout: 20000 });
+  await g.waitForFunction(() => [...document.querySelectorAll('.call video')].filter((v) => v.srcObject).length >= 2, null, { timeout: 20000 });
+  await g.click('.call-top button:has-text("Teilnehmer")');
+  await g.waitForSelector('.call-person:has-text("Gastgeber")');
+  await g.click('.call-top button:has-text("Chat")');
+  await g.fill('.call-chat-input textarea', 'Hallo vom Kunden');
+  await g.press('.call-chat-input textarea', 'Enter');
+  await page.click('.call-top button:has-text("Chat")');
+  await page.waitForSelector('.call-msg:has-text("Hallo vom Kunden")', { timeout: 10000 });
+  await g.click('button:has-text("Verlassen")');
+  await g.waitForSelector('text=Sie haben das Meeting');
+  await page.click('.call button:has-text("Verlassen")');
+  await gctx.close();
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);
