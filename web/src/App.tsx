@@ -28,6 +28,8 @@ const FormsPage = lazy(() => import('./pages/Forms'));
 const BoardPage = lazy(() => import('./pages/Board'));
 const Viewer3DPage = lazy(() => import('./pages/Viewer3DPage'));
 const MindmapsPage = lazy(() => import('./pages/Mindmaps'));
+const KnowledgePage = lazy(() => import('./pages/Knowledge'));
+const PublicKbPage = lazy(() => import('./pages/Knowledge').then((m) => ({ default: m.PublicKbPage })));
 const PublicFormPage = lazy(() => import('./pages/Forms').then((m) => ({ default: m.PublicFormPage })));
 const TimePage = lazy(() => import('./pages/Time'));
 const AbsencesPage = lazy(() => import('./pages/Absences'));
@@ -50,6 +52,9 @@ export function App() {
   }
   if (location.pathname.startsWith('/form/')) {
     return <I18nProvider lang={lang}><Suspense fallback={<Loading />}><PublicFormPage /></Suspense></I18nProvider>;
+  }
+  if (location.pathname.startsWith('/kb/')) {
+    return <I18nProvider lang={lang}><Suspense fallback={<Loading />}><PublicKbPage /></Suspense></I18nProvider>;
   }
   if (location.pathname.startsWith('/s/')) {
     return <I18nProvider lang={lang}><Suspense fallback={<Loading />}><SharePage /></Suspense></I18nProvider>;
@@ -80,6 +85,8 @@ export function App() {
             <Route path="/phone" element={<PhonePage />} />
             <Route path="/board" element={<BoardPage />} />
             <Route path="/viewer3d" element={<Viewer3DPage />} />
+            <Route path="/knowledge" element={<KnowledgePage />} />
+            <Route path="/knowledge/:id" element={<KnowledgePage />} />
             <Route path="/mindmaps" element={<MindmapsPage />} />
             <Route path="/mindmaps/:id" element={<MindmapsPage />} />
             <Route path="/forms" element={<FormsPage />} />

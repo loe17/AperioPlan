@@ -530,6 +530,50 @@ await step('14.6 Mindmap: mit Tastatur anlegen, speichern, als Gliederung export
   if (!md.includes('# Produktidee') || !md.includes('  - Handwerker')) throw new Error(`Gliederung falsch: ${md}`);
 });
 
+await step('14.7 Wissensdatenbank: Artikel aus Vorlage, „/“-Befehl, Unterseite, Suche, öffentlicher Link', async () => {
+  await api('POST', '/apps/knowledge/install', {});
+  await page.goto(`${BASE}/knowledge`);
+  await page.click('.kb-card:has-text("Checkliste")');
+  await page.waitForURL(/\/knowledge\/[0-9a-f-]{36}$/);
+  await page.waitForSelector('.kb-content');
+  await page.fill('.kb-title-input', 'Inbetriebnahme Anlage');
+  await page.press('.kb-title-input', 'Enter');
+  await page.waitForTimeout(300);
+  await page.keyboard.press('Control+End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('/tabelle');
+  await page.waitForSelector('.kb-slash');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Messwert Isolationswiderstand');
+  await page.waitForSelector('.kb-article-bar >> text=zuletzt geändert', { timeout: 10000 });
+  const id = page.url().split('/').pop();
+  const a = await api('GET', `/knowledge/articles/${id}`);
+  if (a.title !== 'Inbetriebnahme Anlage' || !JSON.stringify(a.content).includes('Isolationswiderstand') || !JSON.stringify(a.content).includes('"table"')) throw new Error('Inhalt nicht gespeichert');
+  // Unterseite über den Baum
+  await page.hover('.kb-row:has-text("Inbetriebnahme Anlage")');
+  await page.click('.kb-row:has-text("Inbetriebnahme Anlage") .kb-mini.hover');
+  await page.waitForURL((u) => !u.pathname.endsWith(id) && /\/knowledge\/[0-9a-f-]{36}$/.test(u.pathname));
+  await page.waitForSelector('.kb-title-input[value=""]');
+  await page.fill('.kb-title-input', 'Messprotokoll');
+  await page.locator('.kb-title-input').blur();
+  await page.waitForSelector('.kb-row:has-text("Messprotokoll")');
+  // Suche
+  await page.fill('.kb-search input', 'isolations');
+  await page.waitForSelector('.kb-hit:has-text("Inbetriebnahme Anlage")');
+  await page.fill('.kb-search input', '');
+  // öffentlicher Link
+  await page.click('.kb-row .kb-link:has-text("Inbetriebnahme Anlage")');
+  await page.click('.kb-article-bar button:has-text("Teilen")');
+  await page.click('label:has-text("Öffentlicher Link") input');
+  await page.waitForSelector('.modal input.mono');
+  const link = (await page.inputValue('.modal input.mono')).replace(/^https?:\/\/[^/]+/, BASE);
+  const pctx = await browser.newContext();
+  const pp = await pctx.newPage();
+  await pp.goto(link);
+  await pp.waitForSelector('.kb-public >> text=Isolationswiderstand');
+  await pctx.close();
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);

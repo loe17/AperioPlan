@@ -48,6 +48,7 @@ const P: Record<string, ReactNode> = {
   'arrow-up': <path d="M12 19V5M6 11l6-6 6 6" />,
   'arrow-down': <path d="M12 5v14M6 13l6 6 6-6" />,
   'arrow-right': <path d="M5 12h14M13 6l6 6-6 6" />,
+  more: <><circle cx="5" cy="12" r="1.3" /><circle cx="12" cy="12" r="1.3" /><circle cx="19" cy="12" r="1.3" /></>,
   redo: <><path d="M15 14l5-5-5-5" /><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></>,
   undo: <><path d="M9 14 4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-3" /></>,
   plus: <path d="M12 5v14M5 12h14" />,
@@ -184,7 +185,7 @@ export function EntityIcon({ value, size = 16, fallback = 'folder' }: { value?: 
 export const PICKABLE_COLORS = ['', '#4f46e5', '#3b82f6', '#0ea5e9', '#14b8a6', '#5a8f6a', '#c98a12', '#ea580c', '#d9534f', '#db2777', '#7c3aed', '#64748b'];
 
 /** Auswahl aus Symbol und Farbe für Projekte und Teams */
-export function IconPicker({ value, onChange }: { value?: string | null; onChange: (v: string) => void }) {
+export function IconPicker({ value, onChange, extra }: { value?: string | null; onChange: (v: string) => void; extra?: string[] }) {
   const [name0, color0] = (value ?? '').split(':');
   const name = isIconName(name0) ? name0! : 'folder';
   const color = color0 ?? '';
@@ -192,7 +193,7 @@ export function IconPicker({ value, onChange }: { value?: string | null; onChang
   return (
     <div className="icon-pick">
       <div className="icon-pick-grid">
-        {PICKABLE_ICONS.map((n) => (
+        {(extra ?? PICKABLE_ICONS).filter(isIconName).map((n) => (
           <button type="button" key={n} className={n === name ? 'active' : ''} onClick={() => emit(n, color)} title={n} style={n === name && color ? { color } : undefined}>
             <Icon name={n} size={18} />
           </button>

@@ -54,6 +54,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       for (const f of results.files) out.push({ group: 'Dateien', icon: 'file', label: f.name, meta: f.path.split('/').slice(-2, -1)[0], go: go(`/projects/${f.projectId}?tab=files&path=${encodeURIComponent(f.path.split('/').slice(0, -1).join('/'))}`) });
       for (const u of results.users) out.push({ group: 'Mitarbeiter', icon: 'user', label: u.displayName, meta: u.email ?? u.username, go: go(`/chat?user=${u.id}`) });
       for (const k of results.kvp) out.push({ group: 'KVP-Ideen', icon: 'lightbulb', label: `#${k.number} ${k.title}`, go: go(`/kvp?idea=${k.id}`) });
+      for (const k of results.knowledge ?? []) out.push({ group: 'Wissen', icon: 'lightbulb', label: `${k.icon ? k.icon + ' ' : ''}${k.title || 'Ohne Titel'}`, go: go(`/knowledge/${k.id}`) });
     }
     return out;
   }, [results, q]); // eslint-disable-line react-hooks/exhaustive-deps

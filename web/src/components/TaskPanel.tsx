@@ -18,7 +18,7 @@ export interface Task {
   projectNumber?: string; projectName?: string;
 }
 
-export function Comments({ type, id, preferred = [] }: { type: 'task' | 'cad_item' | 'pcb_board' | 'board_post' | 'kvp'; id: string; preferred?: string[] }) {
+export function Comments({ type, id, preferred = [] }: { type: 'task' | 'cad_item' | 'pcb_board' | 'board_post' | 'kvp' | 'kb_article'; id: string; preferred?: string[] }) {
   const t = useT();
   const { users } = useSession();
   const [notifyIds, setNotifyIds] = useState<string[]>([]);

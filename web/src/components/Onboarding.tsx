@@ -29,7 +29,7 @@ export function Onboarding() {
 
   useEffect(() => {
     if (!firstAdmin) return;
-    get('/settings').then((s) => setFirm({ name: '', state: s.time?.holidayState ?? 'BW', numbers: s.projectNumbers?.format ?? 'sequential' })).catch(() => {});
+    get('/settings').then((s) => setFirm((f) => ({ ...f, state: s.time?.holidayState ?? 'BW', numbers: s.projectNumbers?.format ?? 'sequential' }))).catch(() => {});
   }, [firstAdmin]);
 
   const finish = async () => {
