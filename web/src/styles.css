@@ -506,3 +506,30 @@ ol.steps { padding-left: 20px; margin: 0; display: grid; gap: 12px; }
 .calc-line.bold { font-weight: 650; border-top: 1px solid var(--line); margin-top: 3px; padding-top: 5px; }
 @media (max-width: 1000px) { .calc-layout { grid-template-columns: 1fr; } }
 .break-row td { background: var(--bg-soft); color: var(--text-3); font-size: 12px; }
+.mailbox { display: grid; grid-template-columns: 220px 380px minmax(0, 1fr); height: calc(100vh - 48px); }
+.mb-folders { border-right: 1px solid var(--line); padding: 10px 8px; overflow-y: auto; }
+.mb-list { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-width: 0; }
+.mb-toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.mb-toolbar input:not([type]) , .mb-toolbar input[placeholder] { flex: 1; }
+.mb-items { overflow-y: auto; flex: 1; }
+.mb-item { display: flex; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); cursor: pointer; align-items: flex-start; }
+.mb-item:hover { background: var(--bg-hover); }
+.mb-item.active { background: var(--accent-soft); }
+.mb-item.unread .mb-from, .mb-item.unread .mb-subject { font-weight: 700; }
+.mb-item.unread { box-shadow: inset 3px 0 0 var(--accent); }
+.mb-from { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mb-subject { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.mb-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mb-item .flag { opacity: 0.25; padding: 0 3px; }
+.mb-item:hover .flag, .mb-item .flag.on { opacity: 1; }
+.mb-item .flag.on { color: var(--red); }
+.mb-read { overflow-y: auto; min-width: 0; }
+.mb-pane { padding: 16px 22px; }
+.mb-frame { width: 100%; min-height: 60vh; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.mb-text { white-space: pre-wrap; font-family: inherit; }
+.mb-compose-head { display: grid; grid-template-columns: 70px 1fr auto; gap: 6px 8px; align-items: center; margin-bottom: 8px; }
+.mb-compose-head label { color: var(--text-3); font-size: 13px; }
+.mb-compose-head input { grid-column: 2; }
+.mb-format { display: flex; gap: 2px; border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0; padding: 4px; background: var(--bg-soft); }
+.mb-editor { min-height: 280px; max-height: 50vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 0 0 8px 8px; padding: 10px; background: var(--card); outline: none; }
+@media (max-width: 1100px) { .mailbox { grid-template-columns: 180px 300px minmax(0, 1fr); } }

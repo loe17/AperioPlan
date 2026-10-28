@@ -11,6 +11,9 @@
 #
 #  Programmordner: /opt/aperioplan (anderer Ordner: curl ... | APERIO_DIR=/pfad bash)
 #
+#  Weiteren Speicherort (Netzlaufwerk, NAS, Windows-Freigabe) einrichten:
+#    sudo ./install.sh speicherort
+#
 #  AperioPlan wird immer verschlüsselt (https) eingerichtet:
 #   - öffentliche Domain         -> Let's-Encrypt-Zertifikat (automatisch)
 #   - lokales Netz + eigene Domain -> Let's-Encrypt-Zertifikat über den DNS-Anbieter
@@ -156,6 +159,86 @@ else
 fi
 cd "$APERIO_DIR" || fail "Ordner $APERIO_DIR nicht erreichbar."
 ok "Programmordner: $APERIO_DIR"
+
+# ---------------------------------------------------------------- Zusatz: weiteren Speicherort einrichten
+if [ "${1:-}" = "speicherort" ]; then
+  title "Weiteren Speicherort einrichten"
+  info "Ein Netzlaufwerk (NAS, Windows-Freigabe, NFS) oder ein Ordner auf diesem Server wird unter"
+  info "$APERIO_DIR/data/locations/<Name> eingebunden. Danach steht er in AperioPlan unter"
+  info "Einstellungen → Speicherorte zur Auswahl."
+  ask "${C_INFO}[?]${C_0} Kurzer Name, z. B. nas-konstruktion oder archiv: " ""
+  LOC="$(echo "$REPLY" | tr 'A-Z' 'a-z' | sed 's/[^a-z0-9_-]/-/g; s/--*/-/g; s/^-//; s/-$//')"
+  [ -n "$LOC" ] || fail "Bitte einen Namen angeben."
+  TARGET="$APERIO_DIR/data/locations/$LOC"
+  mkdir -p "$TARGET"
+  echo "  1) Windows-Freigabe oder NAS (SMB/CIFS), z. B. //nas01/projekte"
+  echo "  2) NFS-Freigabe, z. B. nas01:/volume1/projekte"
+  echo "  3) Ordner, der auf diesem Server schon vorhanden ist (z. B. zweite Festplatte)"
+  ask "${C_INFO}[?]${C_0} Art [1]: " "1"
+  KIND="$REPLY"
+  SRC=""; OPTS=""; FSTYPE=""
+  case "$KIND" in
+    1)
+      ask "${C_INFO}[?]${C_0} Adresse der Freigabe (//server/freigabe): " ""; SRC="$(echo "$REPLY" | sed 's|\\|/|g')"
+      [[ "$SRC" == //* ]] || SRC="//$SRC"
+      ask "${C_INFO}[?]${C_0} Benutzername: " ""; SMB_USER="$REPLY"
+      read -rsp "${C_INFO}[?]${C_0} Passwort: " SMB_PASS <"$TTY"; echo
+      ask "${C_INFO}[?]${C_0} Domäne (leer lassen, wenn keine): " ""; SMB_DOM="$REPLY"
+      CRED="/root/.aperio-speicherort-$LOC"
+      FSTYPE=cifs
+      OPTS="credentials=$CRED,iocharset=utf8,file_mode=0777,dir_mode=0777,noperm,_netdev,nofail"
+      ;;
+    2)
+      ask "${C_INFO}[?]${C_0} Adresse der Freigabe (server:/pfad): " ""; SRC="$REPLY"
+      FSTYPE=nfs; OPTS="_netdev,nofail"
+      ;;
+    3)
+      ask "${C_INFO}[?]${C_0} Vorhandener Ordner (absoluter Pfad): " ""; SRC="$REPLY"
+      [ -d "$SRC" ] || fail "Ordner $SRC gibt es nicht."
+      FSTYPE=none; OPTS="bind,nofail"
+      ;;
+    *) fail "Unbekannte Auswahl." ;;
+  esac
+  if [[ "$VIRT" == lxc* ]] && [ "$FSTYPE" != none ]; then
+    # Unprivilegierte Proxmox-Container dürfen Netzlaufwerke nicht selbst einbinden
+    warn "Dieser Server ist ein Proxmox-Container (LXC). Netzlaufwerke werden dort auf dem Proxmox-Host eingebunden"
+    warn "und an den Container durchgereicht. Bitte auf dem Proxmox-Host (Shell des Knotens) ausführen:"
+    echo
+    echo "  mkdir -p /mnt/aperio-$LOC"
+    if [ "$FSTYPE" = cifs ]; then
+      echo "  printf 'username=%s\npassword=%s\n%s' '$SMB_USER' 'IHR-PASSWORT' '${SMB_DOM:+domain=$SMB_DOM}' > /root/.aperio-speicherort-$LOC && chmod 600 /root/.aperio-speicherort-$LOC"
+      echo "  echo '$SRC /mnt/aperio-$LOC cifs credentials=/root/.aperio-speicherort-$LOC,iocharset=utf8,file_mode=0777,dir_mode=0777,noperm,_netdev,nofail 0 0' >> /etc/fstab"
+    else
+      echo "  echo '$SRC /mnt/aperio-$LOC nfs _netdev,nofail 0 0' >> /etc/fstab"
+    fi
+    echo "  mount /mnt/aperio-$LOC"
+    echo "  pct set <ID-DIESES-CONTAINERS> -mp<FREIE-NUMMER> /mnt/aperio-$LOC,mp=$TARGET"
+    echo "  pct reboot <ID-DIESES-CONTAINERS>"
+    echo
+    info "Die ID steht in Proxmox links neben dem Containernamen; freie Nummer z. B. 0, wenn noch kein Einhängepunkt (mp0) existiert."
+    info "Danach in AperioPlan unter Einstellungen → Speicherorte den Ordner „$LOC“ hinzufügen."
+    exit 0
+  fi
+  if [ "$FSTYPE" = cifs ]; then
+    apt_install cifs-utils >/dev/null 2>&1 || apt-get install -y -qq cifs-utils >/dev/null 2>&1
+    printf 'username=%s\npassword=%s\n%s' "$SMB_USER" "$SMB_PASS" "${SMB_DOM:+domain=$SMB_DOM}" > "$CRED"; chmod 600 "$CRED"
+  elif [ "$FSTYPE" = nfs ]; then
+    apt_install nfs-common >/dev/null 2>&1 || apt-get install -y -qq nfs-common >/dev/null 2>&1
+  fi
+  sed -i "\| $TARGET |d" /etc/fstab
+  echo "$SRC $TARGET $FSTYPE $OPTS 0 0" >> /etc/fstab
+  systemctl daemon-reload >/dev/null 2>&1 || true
+  if mount "$TARGET"; then
+    if touch "$TARGET/.aperio-test" 2>/dev/null && rm -f "$TARGET/.aperio-test"; then ok "Speicherort eingebunden und beschreibbar: $TARGET"
+    else warn "Eingebunden, aber nicht beschreibbar – bitte Rechte auf der Freigabe prüfen."; fi
+    ok "Wird nach jedem Neustart automatisch eingebunden (/etc/fstab)."
+    dc restart app >/dev/null 2>&1 || true
+    info "Jetzt in AperioPlan unter Einstellungen → Speicherorte den Ordner „$LOC“ hinzufügen."
+  else
+    fail "Einbinden fehlgeschlagen. Adresse, Benutzer und Passwort prüfen (Eintrag in /etc/fstab ist vorhanden)."
+  fi
+  exit 0
+fi
 
 # ---------------------------------------------------------------- 5. .env
 title "Konfiguration"
@@ -328,7 +411,7 @@ else
 fi
 
 # ---------------------------------------------------------------- 4.3 Caddyfile
-mkdir -p ./deploy data/files data/backups data/plugins
+mkdir -p ./deploy data/files data/backups data/plugins data/locations
 SUFFIX=""; [ "$HTTPS_PORT" != 443 ] && SUFFIX=":$HTTPS_PORT"
 {
   cat <<EOF
@@ -436,11 +519,36 @@ else
 fi
 ok "Adresse in .env eingetragen: https://${PRIMARY}${URL_PORT}"
 
+# ---------------------------------------------------------------- 5.9 Office im Browser
+MEM_MB="$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || echo 0)"
+OFFICE_NOW="$(get_env COMPOSE_PROFILES)"
+OFFICE_Q="Office im Browser einrichten (Word, Excel, PowerPoint und OpenDocument direkt in AperioPlan bearbeiten, braucht ca. 2 GB Arbeitsspeicher)?"
+OFFICE_YES=false
+if [[ "$OFFICE_NOW" == *office* ]]; then yes_default "$OFFICE_Q" && OFFICE_YES=true
+elif [ "$MEM_MB" -ge 3500 ]; then yes_default "$OFFICE_Q" && OFFICE_YES=true
+else
+  warn "Dieser Server hat ${MEM_MB} MB Arbeitsspeicher – für Office im Browser werden mindestens 4 GB empfohlen."
+  no_default "$OFFICE_Q" && OFFICE_YES=true
+fi
+if [ "$OFFICE_YES" = true ]; then
+  set_env COMPOSE_PROFILES office
+  set_env OFFICE_URL "https://${PRIMARY}${URL_PORT}"
+  set_env OFFICE_INTERNAL_URL "http://office:9980"
+  set_env OFFICE_WOPI_URL "http://app:3000"
+  set_env OFFICE_SERVER_NAME "${PRIMARY}${URL_PORT}"
+  ok "Office im Browser wird mit eingerichtet (Collabora Online)."
+else
+  sed -i '/^COMPOSE_PROFILES=/d; /^OFFICE_URL=/d; /^OFFICE_INTERNAL_URL=/d; /^OFFICE_WOPI_URL=/d; /^OFFICE_SERVER_NAME=/d' .env
+  info "Office im Browser bleibt aus (später: sudo ./install.sh erneut ausführen)."
+fi
+
 # ---------------------------------------------------------------- 6. Start
 title "Start"
 info "AperioPlan wird gebaut und gestartet. Beim ersten Mal dauert das einige Minuten ..."
 COMPOSE_FILE="$(get_env COMPOSE_FILE)"
 if [ -n "$COMPOSE_FILE" ]; then export COMPOSE_FILE; else unset COMPOSE_FILE; fi
+COMPOSE_PROFILES="$(get_env COMPOSE_PROFILES)"
+if [ -n "$COMPOSE_PROFILES" ]; then export COMPOSE_PROFILES; else unset COMPOSE_PROFILES; fi
 if ! dc up -d --build; then
   fail "Start fehlgeschlagen. Details: ${COMPOSE[*]} logs"
 fi
@@ -558,6 +666,7 @@ Nützliche Befehle zur Verwaltung (im Ordner $APERIO_DIR):
 - Anwendung neu starten:   ${COMPOSE[*]} restart
 - Anwendung stoppen:       ${COMPOSE[*]} down
 - Adresse ändern:          sudo ./install.sh
+- Speicherort hinzufügen:  sudo ./install.sh speicherort
 - Vollständig entfernen:   sudo ./uninstall.sh
 ${C_OK}====================================================================${C_0}
 EOF

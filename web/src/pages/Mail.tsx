@@ -7,10 +7,26 @@ import { useCrumbs } from '../components/Layout';
 import { fmtBytes, fmtDateTime } from '../lib/format';
 import { Empty, Field, Modal, Pill, Tabs, useAction } from '../components/ui';
 import { Icon } from '../components/Icon';
+import { useSession } from '../session';
+import { useTabState } from '../lib/hooks';
+import { Mailbox } from '../modules/Mailbox';
 
-/** Integrierte E-Mail-Verwaltung: Projektpostfach lesen, beantworten und Vorgängen zuordnen */
+/** E-Mail: persönliches Postfach (wie Outlook) und – falls eingerichtet – das gemeinsame Projektpostfach */
 export default function MailPage() {
   useCrumbs([{ label: 'E-Mail' }]);
+  const { settings } = useSession();
+  const [tab, setTab] = useTabState<'personal' | 'shared'>('mail', 'personal', 'box');
+  if (!settings?.mailEnabled) return <Mailbox />;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ padding: '0 16px' }}><Tabs value={tab} onChange={setTab} tabs={[{ id: 'personal', label: 'Mein Postfach' }, { id: 'shared', label: 'Projektpostfach (gemeinsam)' }]} /></div>
+      <div style={{ flex: 1, minHeight: 0 }}>{tab === 'personal' ? <Mailbox /> : <SharedMailbox />}</div>
+    </div>
+  );
+}
+
+/** Gemeinsames Projektpostfach: lesen, beantworten und Vorgängen zuordnen */
+function SharedMailbox() {
   const [params, setParams] = useSearchParams();
   const filter = (params.get('filter') ?? 'all') as 'all' | 'unassigned' | 'sent';
   const projectId = params.get('projectId') ?? '';

@@ -22,7 +22,7 @@ export const fileNameOf = (r: CadItemRow) => cadFileName(toCadNumber(r), r.type)
 /** Ordner der CAD-Dateien im Projekt: 3D-Daten in 01_CAD, Zeichnungen in 02_Zeichnungen, Ableitungen in 04_Fertigung */
 export async function cadFolders(ctx: AppContext, folderPath: string) {
   const s = await ctx.settings.get('storage');
-  const f = s.projectFolders;
+  const f = s.projectFolders.filter((x) => !x.includes('/'));
   const pick = (prefix: string, fallback: string) => f.find((x) => x.toLowerCase().includes(prefix)) ?? fallback;
   return {
     model: `${folderPath}/${pick('cad', '01_CAD')}`,

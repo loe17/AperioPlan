@@ -31,6 +31,10 @@ services:
       SECURE_COOKIES: "true"
       BACKUP_KEY: ${BACKUP_KEY:-}
       OFFICE_URL: ${OFFICE_URL:-}
+      # Office im Browser: Wege innerhalb von Docker (ohne Umweg über das Zertifikat)
+      OFFICE_INTERNAL_URL: ${OFFICE_INTERNAL_URL:-}
+      OFFICE_WOPI_URL: ${OFFICE_WOPI_URL:-}
+      LOCATIONS_DIR: /data/locations
       TURN_URLS: ${TURN_URLS:-}
       UPDATE_TRIGGER_FILE: /update/request
       UPDATE_REPO: ${UPDATE_REPO:-loe17/AperioPlan}
@@ -44,6 +48,11 @@ services:
       - update:/update
       # Erweiterungen (Plugins) – Ordner mit manifest.json, siehe docs/ENTWICKLER.md
       - ./data/plugins:/data/plugins
+      # weitere Speicherorte (Netzlaufwerke), eingerichtet mit: sudo ./install.sh speicherort
+      - type: bind
+        source: ./data/locations
+        target: /data/locations
+        bind: { propagation: rslave, create_host_path: true }
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
       interval: 30s
@@ -98,15 +107,21 @@ services:
       - .:${APERIO_DIR:-/repo}
       - update:/update
 
-  # Optional: Büro-Dokumente im Browser (Collabora Online) – starten mit: docker compose --profile office up -d
+  # Optional: Büro-Dokumente im Browser (Collabora Online, LibreOffice im Browser).
+  # install.sh fragt danach und trägt COMPOSE_PROFILES=office in .env ein.
   office:
     image: collabora/code:latest
     profiles: [office]
     restart: unless-stopped
     environment:
-      aliasgroup1: https://${DOMAIN:-localhost}:443
-      extra_params: --o:ssl.enable=false --o:ssl.termination=true
+      # AperioPlan liefert die Dateien innerhalb von Docker aus
+      aliasgroup1: http://app:3000
+      # Adresse, unter der der Browser den Editor lädt (über Caddy, https)
+      server_name: ${OFFICE_SERVER_NAME:-localhost}
+      dictionaries: de_DE en_US
+      extra_params: --o:ssl.enable=false --o:ssl.termination=true --o:welcome.enable=false --o:user_interface.mode=tabbed
     cap_add: [MKNOD]
+    labels: [autoheal=true]
 
   # Optional: TURN-Server für Videoanrufe über Netzgrenzen – docker compose --profile video up -d
   turn:

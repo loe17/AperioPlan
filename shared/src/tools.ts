@@ -24,7 +24,7 @@ export const TOOL_LABELS: Record<Tool, string> = {
 
 /** Schnittstellen-Bereiche, die zu einem Werkzeug gehören (Präfix nach /api) */
 export const TOOL_ROUTES: [string, Tool][] = [
-  ['/chat', 'chat'], ['/calls', 'chat'], ['/mail', 'mail'], ['/calendar/team', 'calendar'], ['/calendar/events', 'calendar'], ['/calendar/accounts', 'calendar'],
+  ['/chat', 'chat'], ['/calls', 'chat'], ['/mail', 'mail'], ['/mailbox', 'mail'], ['/calendar/team', 'calendar'], ['/calendar/events', 'calendar'], ['/calendar/accounts', 'calendar'],
   ['/resources', 'resources'], ['/time', 'time'], ['/absences', 'absences'], ['/notes', 'notes'], ['/kvp', 'kvp'],
   ['/cad', 'cad'], ['/pcb', 'pcb'], ['/crm', 'crm'], ['/purchasing', 'purchasing'], ['/calculations', 'calculation'], ['/ai', 'ai'],
 ];

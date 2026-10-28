@@ -8,32 +8,84 @@ import { z, parse } from '../lib/validate';
 import { requireRole, requireUser, type AuthUser } from '../lib/auth';
 import { projectAccess } from '../lib/access';
 import { badRequest, HttpError } from '../lib/errors';
-import type { AiSettings } from '../services/settings';
+import type { AiKind, AiProvider, AiSettings } from '../services/settings';
 
 interface Msg { role: 'system' | 'user' | 'assistant'; content: string }
 
-export async function callAi(s: AiSettings, messages: Msg[]): Promise<string> {
-  if (!s.enabled) throw badRequest('Die KI-Anbindung ist nicht eingerichtet');
-  const base = s.baseUrl.replace(/\/$/, '');
-  if (s.provider === 'anthropic') {
-    const system = messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n\n');
-    const res = await fetch(`${base || 'https://api.anthropic.com'}/v1/messages`, {
-      method: 'POST', signal: AbortSignal.timeout(120_000),
-      headers: { 'content-type': 'application/json', 'x-api-key': s.apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: s.model, max_tokens: 2048, system, messages: messages.filter((m) => m.role !== 'system') }),
-    });
-    const j = await res.json().catch(() => ({}));
-    if (!res.ok) throw new HttpError(502, `KI-Dienst: ${j.error?.message ?? res.statusText}`);
+export const AI_KINDS: { kind: AiKind; name: string; baseUrl: string; online: boolean; models: string[] }[] = [
+  { kind: 'gemini', name: 'Google Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta', online: true, models: ['gemini-2.5-flash', 'gemini-2.5-pro'] },
+  { kind: 'openai', name: 'OpenAI (ChatGPT)', baseUrl: 'https://api.openai.com/v1', online: true, models: ['gpt-4.1-mini', 'gpt-4.1'] },
+  { kind: 'anthropic', name: 'Anthropic (Claude)', baseUrl: 'https://api.anthropic.com', online: true, models: ['claude-sonnet-4-5', 'claude-haiku-4-5'] },
+  { kind: 'mistral', name: 'Mistral (Europa)', baseUrl: 'https://api.mistral.ai/v1', online: true, models: ['mistral-large-latest', 'mistral-small-latest'] },
+  { kind: 'azure', name: 'Microsoft Azure OpenAI', baseUrl: 'https://IHR-NAME.openai.azure.com', online: true, models: [] },
+  { kind: 'ollama', name: 'Eigenes Modell (Ollama, LM Studio, vLLM)', baseUrl: 'http://localhost:11434/v1', online: false, models: ['llama3.1', 'qwen2.5'] },
+];
+
+/** Anbieter aus den Einstellungen (auch die frühere Einzel-Einstellung) */
+export function providersOf(s: AiSettings): AiProvider[] {
+  if (!s.enabled) return [];
+  if (s.providers?.length) return s.providers;
+  return [{ id: 'standard', name: s.provider === 'anthropic' ? 'Anthropic' : 'KI', kind: s.provider === 'anthropic' ? 'anthropic' : 'ollama', baseUrl: s.baseUrl, apiKey: s.apiKey, model: s.model, online: s.provider === 'anthropic' }];
+}
+
+export function pickProvider(s: AiSettings, id?: string | null): AiProvider {
+  const list = providersOf(s);
+  const p = (id && list.find((x) => x.id === id)) || list.find((x) => x.id === s.defaultProviderId) || list[0];
+  if (!p) throw badRequest('Die KI-Anbindung ist nicht eingerichtet');
+  return p;
+}
+
+const fail = async (res: Response) => { const j = await res.json().catch(() => ({})); return new HttpError(502, `KI-Dienst: ${j.error?.message ?? j[0]?.error?.message ?? res.statusText}`); };
+
+export async function callAi(p: AiProvider, messages: Msg[]): Promise<string> {
+  const base = (p.baseUrl || AI_KINDS.find((k) => k.kind === p.kind)!.baseUrl).replace(/\/$/, '');
+  const system = messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n\n');
+  const chat = messages.filter((m) => m.role !== 'system');
+  const signal = AbortSignal.timeout(120_000);
+  if (p.kind === 'anthropic') {
+    const res = await fetch(`${base}/v1/messages`, { method: 'POST', signal,
+      headers: { 'content-type': 'application/json', 'x-api-key': p.apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: p.model, max_tokens: 2048, system, messages: chat }) });
+    if (!res.ok) throw await fail(res);
+    const j = await res.json();
     return (j.content ?? []).map((c: { text?: string }) => c.text ?? '').join('');
   }
-  const res = await fetch(`${base}/chat/completions`, {
-    method: 'POST', signal: AbortSignal.timeout(120_000),
-    headers: { 'content-type': 'application/json', ...(s.apiKey ? { authorization: `Bearer ${s.apiKey}` } : {}) },
-    body: JSON.stringify({ model: s.model, messages, temperature: 0.3 }),
-  });
-  const j = await res.json().catch(() => ({}));
-  if (!res.ok) throw new HttpError(502, `KI-Dienst: ${j.error?.message ?? res.statusText}`);
+  if (p.kind === 'gemini') {
+    const res = await fetch(`${base}/models/${encodeURIComponent(p.model)}:generateContent`, { method: 'POST', signal,
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': p.apiKey },
+      body: JSON.stringify({ ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+        contents: chat.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })), generationConfig: { temperature: 0.3 } }) });
+    if (!res.ok) throw await fail(res);
+    const j = await res.json();
+    return (j.candidates?.[0]?.content?.parts ?? []).map((x: { text?: string }) => x.text ?? '').join('');
+  }
+  const url = p.kind === 'azure'
+    ? `${base}/openai/deployments/${encodeURIComponent(p.deployment || p.model)}/chat/completions?api-version=${encodeURIComponent(p.apiVersion || '2024-10-21')}`
+    : `${base}/chat/completions`;
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (p.kind === 'azure') headers['api-key'] = p.apiKey; else if (p.apiKey) headers.authorization = `Bearer ${p.apiKey}`;
+  const res = await fetch(url, { method: 'POST', signal, headers, body: JSON.stringify({ model: p.model, messages, temperature: 0.3 }) });
+  if (!res.ok) throw await fail(res);
+  const j = await res.json();
   return j.choices?.[0]?.message?.content ?? '';
+}
+
+/** verfügbare Modelle des Anbieters (zur Auswahl in den Einstellungen) */
+export async function listModels(p: AiProvider): Promise<string[]> {
+  const base = (p.baseUrl || AI_KINDS.find((k) => k.kind === p.kind)!.baseUrl).replace(/\/$/, '');
+  const signal = AbortSignal.timeout(15_000);
+  if (p.kind === 'azure') return p.deployment ? [p.deployment] : [];
+  if (p.kind === 'gemini') {
+    const res = await fetch(`${base}/models?pageSize=200`, { signal, headers: { 'x-goog-api-key': p.apiKey } });
+    if (!res.ok) throw await fail(res);
+    const j = await res.json();
+    return (j.models ?? []).filter((m: { supportedGenerationMethods?: string[] }) => m.supportedGenerationMethods?.includes('generateContent')).map((m: { name: string }) => m.name.replace(/^models\//, ''));
+  }
+  const res = await fetch(p.kind === 'anthropic' ? `${base}/v1/models` : `${base}/models`, { signal,
+    headers: p.kind === 'anthropic' ? { 'x-api-key': p.apiKey, 'anthropic-version': '2023-06-01' } : p.apiKey ? { authorization: `Bearer ${p.apiKey}` } : {} });
+  if (!res.ok) throw await fail(res);
+  const j = await res.json();
+  return (j.data ?? j.models ?? []).map((m: { id?: string; name?: string }) => m.id ?? m.name ?? '').filter(Boolean).sort();
 }
 
 const TEXT_EXT = /\.(txt|md|csv|json|xml|log|ini|cfg|yaml|yml|html?)$/i;
@@ -64,8 +116,12 @@ Letzte Änderungen:\n${log.map((l) => `- ${new Date(l.at).toISOString().slice(0,
       projectId: z.string().uuid().optional(),
       fileId: z.string().uuid().optional(),
       text: z.string().max(50000).optional(),
+      providerId: z.string().optional(),
     }), req.body);
     const s = await ctx.settings.get('ai');
+    // Projekt kann einen eigenen Anbieter haben (z. B. lokales Modell für vertrauliche Projekte)
+    const projectProvider = b.projectId ? (await sql<{ ai_provider_id: string | null }[]>`select ai_provider_id from projects where id = ${b.projectId}`)[0]?.ai_provider_id : null;
+    const provider = pickProvider(s, b.providerId ?? projectProvider);
     const system: string[] = ['Du bist der Assistent der Projektverwaltung AperioPlan in einem Industrie- bzw. Ingenieurunternehmen. Antworte auf Deutsch, sachlich, klar und ohne Fachchinesisch, sofern der Nutzer nicht anders schreibt.'];
     if (b.projectId) system.push('Kontext:\n' + (await projectContext(u, b.projectId)));
     if (b.fileId) {
@@ -85,13 +141,37 @@ Letzte Änderungen:\n${log.map((l) => `- ${new Date(l.at).toISOString().slice(0,
       free: '',
     }[b.mode];
     const messages: Msg[] = [{ role: 'system', content: system.join('\n\n') }, ...b.history, { role: 'user', content: [task, b.prompt].filter(Boolean).join('\n\n') || 'Bitte zusammenfassen.' }];
-    return { answer: await callAi(s, messages) };
+    return { answer: await callAi(provider, messages), provider: { id: provider.id, name: provider.name, online: provider.online } };
   });
+
+  /** Anbieter (wie im Formular) mit dem gespeicherten Schlüssel ergänzen */
+  async function withKey(p: AiProvider): Promise<AiProvider> {
+    if (p.apiKey !== '••••••••') return p;
+    const s = await ctx.settings.get('ai');
+    return { ...p, apiKey: s.providers.find((x) => x.id === p.id)?.apiKey ?? '' };
+  }
+  const providerBody = z.object({ id: z.string(), name: z.string().default(''), kind: z.enum(['gemini', 'openai', 'anthropic', 'mistral', 'azure', 'ollama']), baseUrl: z.string().default(''),
+    apiKey: z.string().default(''), model: z.string().default(''), deployment: z.string().optional(), apiVersion: z.string().optional(), online: z.boolean().default(true) });
+
+  app.get('/settings/ai/kinds', async (req) => { requireRole(req, 'admin'); return AI_KINDS; });
 
   app.post('/settings/ai/test', async (req) => {
     requireRole(req, 'admin');
-    const s = await ctx.settings.mergeSecrets('ai', { ...(await ctx.settings.get('ai')), ...(req.body as object), enabled: true });
-    try { return { ok: true, message: (await callAi(s, [{ role: 'user', content: 'Antworte nur mit: Verbindung ok' }])).slice(0, 200) }; }
+    const p = await withKey(parse(providerBody, req.body));
+    try { return { ok: true, message: (await callAi(p, [{ role: 'user', content: 'Antworte nur mit: Verbindung ok' }])).slice(0, 200) }; }
     catch (e) { return { ok: false, message: (e as Error).message }; }
+  });
+
+  app.post('/settings/ai/models', async (req) => {
+    requireRole(req, 'admin');
+    const p = await withKey(parse(providerBody, req.body));
+    try { return { ok: true, models: await listModels(p) }; } catch (e) { return { ok: false, models: [], message: (e as Error).message }; }
+  });
+
+  /** Für die Auswahl im KI-Fenster: welche Anbieter gibt es (ohne Schlüssel) */
+  app.get('/ai/providers', async (req) => {
+    requireUser(req);
+    const s = await ctx.settings.get('ai');
+    return providersOf(s).map((p) => ({ id: p.id, name: p.name, kind: p.kind, model: p.model, online: p.online, isDefault: p.id === (s.defaultProviderId ?? providersOf(s)[0]?.id) }));
   });
 }

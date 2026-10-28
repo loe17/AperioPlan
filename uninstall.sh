@@ -131,6 +131,13 @@ for DIR in "${DIRS[@]}"; do
   for p in "$FILES_PATH" "$BACKUP_PATH"; do
     [ -n "$p" ] && [ -d "$p" ] && [ "$p" != "/" ] && [[ "$p" != "$DIR"* ]] && OUTSIDE+=("$p")
   done
+  # eingebundene Speicherorte lösen – die Daten auf dem NAS bzw. der Freigabe bleiben unberührt
+  for m in "$DIR"/data/locations/*; do
+    [ -d "$m" ] && mountpoint -q "$m" 2>/dev/null && { umount "$m" 2>/dev/null || umount -l "$m" 2>/dev/null; } && ok "Speicherort $(basename "$m") gelöst (Daten dort bleiben erhalten)."
+  done
+  if grep -q " $DIR/data/locations/" /etc/fstab 2>/dev/null; then
+    sed -i "\| $DIR/data/locations/|d" /etc/fstab && rm -f /root/.aperio-speicherort-* && ok "Einträge für Speicherorte aus /etc/fstab entfernt."
+  fi
   cd /
   rm -rf --one-file-system "$DIR" && ok "Programmordner $DIR gelöscht."
 done

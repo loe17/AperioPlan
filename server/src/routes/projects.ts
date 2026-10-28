@@ -22,6 +22,8 @@ const projectBody = z.object({
   customerId: z.string().uuid().nullable().default(null),
   customerContactId: z.string().uuid().nullable().default(null),
   budget: z.number().min(0).nullable().default(null),
+  storageLocationId: z.string().max(40).nullable().optional(),
+  aiProviderId: z.string().max(60).nullable().optional(),
   startDate: z.string().date().nullable().default(null),
   dueDate: z.string().date().nullable().default(null),
   number: z.string().trim().regex(/^[\w-]+$/).optional(),
@@ -29,8 +31,17 @@ const projectBody = z.object({
 
 const projectCols = (sql: AppContext['sql']) => sql`p.id, p.number, p.name, p.description, p.icon, p.parent_id as "parentId",
   p.team_id as "teamId", p.status, p.visibility, p.modules, p.customer, p.customer_id as "customerId",
-  p.customer_contact_id as "customerContactId", (select number from crm_accounts ca where ca.id = p.customer_id) as "customerNumber", p.budget::float as budget, p.start_date as "startDate", p.due_date as "dueDate",
+  p.customer_contact_id as "customerContactId", (select number from crm_accounts ca where ca.id = p.customer_id) as "customerNumber", p.budget::float as budget, p.ai_provider_id as "aiProviderId", p.start_date as "startDate", p.due_date as "dueDate",
   p.folder_path as "folderPath", p.created_at as "createdAt", p.updated_at as "updatedAt"`;
+
+/** Pfad für den Windows-Explorer, z. B. \\nas01\projekte\0100_Anlage – je Speicherort */
+function windowsPath(st: { networkPath: string; locations: { id: string; networkPath: string }[] }, folder: string | null) {
+  if (!folder) return null;
+  const m = /^@([a-z0-9_-]+)\/(.*)$/.exec(folder);
+  const base = m ? st.locations.find((l) => l.id === m[1])?.networkPath : st.networkPath;
+  if (!base) return null;
+  return `${base.replace(/[\\/]$/, '')}\\${(m ? m[2]! : folder).replace(/\//g, '\\')}`;
+}
 
 export default async function projectRoutes(app: FastifyInstance, ctx: AppContext) {
   const { sql } = ctx;
@@ -83,7 +94,7 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
         await tx`insert into project_columns (project_id, name, color, base_status, sort) values (${p!.id}, ${c.name}, ${c.color}, ${c.baseStatus},
           ${{ todo: 100, in_progress: 200, review: 300, done: 400 }[c.baseStatus] + 50 + i * 0.01})`;
       await tx`insert into chat_channels (kind, project_id, name) values ('project', ${p!.id}, ${number + ' ' + b.name})`;
-      const folder = await createProjectFolders(ctx, tx, p!.id, number, b.name, b.parentId);
+      const folder = await createProjectFolders(ctx, tx, p!.id, number, b.name, b.parentId, b.storageLocationId, b.teamId);
       return { ...p!, folderPath: folder };
     });
     await audit(sql, u, { action: 'project.create', entityType: 'project', entityId: project.id, projectId: project.id,
@@ -105,7 +116,8 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
     const [chat] = await sql`select id from chat_channels where project_id = ${id} and kind = 'project'`;
     const storage = await ctx.settings.get('storage');
     return { ...p, members, children, parent, chatChannelId: chat?.id ?? null, canEdit: access.canEdit, canManage: access.canManage, locked: access.locked,
-      networkPath: storage.networkPath && p!.folderPath ? `${storage.networkPath.replace(/[\\/]$/, '')}\\${String(p!.folderPath).replace(/\//g, '\\')}` : null };
+      storageLocation: /^@([a-z0-9_-]+)\//.exec(String(p!.folderPath ?? ''))?.[1] ?? 'main',
+      networkPath: windowsPath(storage, p!.folderPath as string | null) };
   });
 
   app.patch('/projects/:id', async (req) => {
@@ -130,6 +142,7 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
       customer_id = ${b.customerId === undefined ? sql`customer_id` : b.customerId},
       customer_contact_id = ${b.customerContactId === undefined ? sql`customer_contact_id` : b.customerContactId},
       budget = ${b.budget === undefined ? sql`budget` : b.budget},
+      ai_provider_id = ${b.aiProviderId === undefined ? sql`ai_provider_id` : b.aiProviderId},
       start_date = ${b.startDate === undefined ? sql`start_date` : b.startDate},
       due_date = ${b.dueDate === undefined ? sql`due_date` : b.dueDate}, updated_at = now()
       where id = ${id}`;

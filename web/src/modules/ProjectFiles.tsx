@@ -24,7 +24,8 @@ export function ProjectFiles({ projectId, project, canEdit }: { projectId: strin
   const setPath = (p: string) => { if (p) params.set('path', p); else params.delete('path'); setParams(params, { replace: true }); };
   const url = `/projects/${projectId}/files?path=${encodeURIComponent(path)}`;
   const { data, reload } = useApi<{ path: string; folderPath: string; entries: Entry[] }>(url);
-  const { me } = useSession();
+  const { me, settings } = useSession();
+  const [newDoc, setNewDoc] = useState<'docx' | 'xlsx' | null>(null);
   const act = useAction();
   const toast = useToast();
   const [progress, setProgress] = useState<number | null>(null);
@@ -67,6 +68,8 @@ export function ProjectFiles({ projectId, project, canEdit }: { projectId: strin
         </div>
         <div className="right row">
           {canEdit && <button className="btn" onClick={() => setNewFolder(true)}><Icon name="folder" /> Neuer Ordner</button>}
+          {canEdit && settings?.officeEnabled && <select className="btn" value="" style={{ width: 'auto' }} onChange={(e) => setNewDoc(e.target.value as 'docx' | 'xlsx')}>
+            <option value="">＋ Neues Dokument</option><option value="docx">Word-Dokument</option><option value="xlsx">Excel-Tabelle</option></select>}
           {canEdit && <button className="btn" onClick={() => setLinks(true)}><Icon name="link" /> Freigaben</button>}
           {canEdit && <button className="btn primary" onClick={() => inputRef.current?.click()}><Icon name="upload" /> Hochladen</button>}
           <input ref={inputRef} type="file" multiple hidden onChange={(e) => { if (e.target.files) void doUpload(e.target.files); e.target.value = ''; }} />
@@ -111,6 +114,11 @@ export function ProjectFiles({ projectId, project, canEdit }: { projectId: strin
         </table></div>
       )}
 
+      {newDoc && <NameDialog title={newDoc === 'docx' ? 'Neues Word-Dokument' : 'Neue Excel-Tabelle'} initial="" onClose={() => setNewDoc(null)} onSave={async (name) => {
+        const r = await act(() => post<{ id: string }>(`/projects/${projectId}/files/new-document`, { folder: path, name, kind: newDoc }));
+        setNewDoc(null); reload();
+        if (r) window.open(`/office/${r.id}?project=${projectId}`, '_blank');
+      }} />}
       {newFolder && <NameDialog title="Neuer Ordner" initial="" onClose={() => setNewFolder(false)} onSave={async (name) => {
         await act(() => post(`/projects/${projectId}/files/folder`, { path, name })); setNewFolder(false); reload();
       }} />}

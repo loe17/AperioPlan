@@ -333,6 +333,43 @@ await step('11.1 Regelsatz Deutschland laden, Stempeluhr zeigt die Regeln', asyn
   await page.waitForSelector('text=Regeln: Deutschland (ArbZG)');
 });
 
+// ------------------------------------------------------------ 12. Ablage, Postfach, KI, Protokoll (1.2)
+await step('12.1 Ordnerstruktur mit Unterordner anlegen', async () => {
+  await page.goto(`${BASE}/settings/storage`);
+  await page.click('.card.flat .row:has(span:text-is("01_CAD")) button[title="Unterordner anlegen"]');
+  await page.fill('input[placeholder*="Unterordner"]', 'Teile');
+  await page.click('button:has-text("Hinzufügen") >> nth=0');
+  await page.waitForSelector('.card.flat span.mono:text-is("Teile")');
+  await page.click('button:has-text("Speichern")');
+});
+
+await step('12.2 Persönliches Postfach fordert zur Einrichtung auf', async () => {
+  await page.goto(`${BASE}/mail`);
+  await page.click('button:has-text("E-Mail-Konto einrichten")');
+  await page.fill('.modal input >> nth=0', 'max@gmx.de');
+  await page.locator('.modal input >> nth=0').blur();
+  await page.waitForFunction(() => [...document.querySelectorAll('.modal input')].some((i) => i.value === 'imap.gmx.net'));
+  await page.click('.modal button:has-text("Abbrechen")');
+});
+
+await step('12.3 KI-Anbieter hinzufügen', async () => {
+  await page.goto(`${BASE}/settings/ai`);
+  await page.selectOption('select:has(option:text("＋ Anbieter hinzufügen …"))', 'gemini');
+  await page.click('.modal button:has-text("Übernehmen")');
+  await page.waitForSelector('td:has-text("Google Gemini")');
+  await page.waitForSelector('.pill:has-text("online")');
+});
+
+await step('12.4 Änderungsprotokoll als Excel herunterladen', async () => {
+  await page.goto(`${BASE}/settings/audit`);
+  const dl = page.waitForEvent('download');
+  await page.click('a:has-text("Excel")');
+  const d = await dl;
+  if (!/\.xlsx$/.test(d.suggestedFilename())) throw new Error(d.suggestedFilename());
+  await page.click('button:has-text("Prüfsumme")');
+  await page.waitForSelector('text=SHA-256');
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);

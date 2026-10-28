@@ -8,7 +8,7 @@ import { projectAccess } from '../lib/access';
 import { badRequest, notFound } from '../lib/errors';
 import { audit } from '../services/audit';
 import { cleanRel, mimeOf, safeName, storeFile, syncFolder, TRASH_DIR, VERSIONS_DIR } from '../services/files';
-import { allocateProjectNumber } from '../services/projects';
+import { allocateProjectNumber, cleanFolderList } from '../services/projects';
 
 export async function sendStoredFile(ctx: AppContext, reply: FastifyReply, path: string, name: string, inline = false) {
   const st = await ctx.storage.stat(path);
@@ -239,7 +239,7 @@ export default async function fileRoutes(app: FastifyInstance, ctx: AppContext) 
         returning id`;
       await tx`insert into project_members (project_id, user_id, role) values (${p!.id}, ${u.id}, 'owner')`;
       await tx`insert into chat_channels (kind, project_id, name) values ('project', ${p!.id}, ${number + ' ' + b.name})`;
-      if (b.createFolders) for (const f of storageSettings.projectFolders ?? DEFAULT_PROJECT_FOLDERS) await storage.ensureDir(`${folder}/${f}`);
+      if (b.createFolders) for (const f of cleanFolderList(storageSettings.projectFolders ?? DEFAULT_PROJECT_FOLDERS)) await storage.ensureDir(`${folder}/${f}`);
       // Dateien indizieren
       const all = await storage.walk(folder, 8);
       for (const e of all) {

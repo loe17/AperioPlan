@@ -49,6 +49,10 @@ export async function buildApp(opts: BuildOptions = {}): Promise<{ app: FastifyI
     presence: new Presence(sql, hub, settings),
   };
   await bootstrap(ctx, app.log);
+  // weitere Speicherorte einbinden – und nach jeder Änderung der Einstellung neu
+  const mountLocations = (st: { locations?: { id: string; path: string }[] }) => ctx.storage.setMounts(Object.fromEntries((st.locations ?? []).map((l) => [l.id, l.path])));
+  mountLocations(await settings.get('storage'));
+  settings.onChange = (key, value) => { if (key === 'storage') mountLocations(value as { locations: { id: string; path: string }[] }); };
 
   await app.register(cookie);
   await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 * 1024, files: 50 } });

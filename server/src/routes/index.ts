@@ -31,7 +31,9 @@ import calendar from './calendar';
 import crm from './crm';
 import purchasing from './purchasing';
 import calculations from './calculations';
+import storageLocations from './storageLocations';
+import mailbox from './mailbox';
 
 export async function routes(app: FastifyInstance, ctx: AppContext) {
-  for (const r of [system, auth, users, teams, settings, me, audit, ws, projects, tasks, whiteboards, search, files, links, cad, time, absences, chat, kvp, mail, ai, backup, update, office, plugins, resources, documents, calendar, crm, purchasing, calculations]) await r(app, ctx);
+  for (const r of [system, auth, users, teams, settings, me, audit, ws, projects, tasks, whiteboards, search, files, links, cad, time, absences, chat, kvp, mail, ai, backup, update, office, plugins, resources, documents, calendar, crm, purchasing, calculations, storageLocations, mailbox]) await r(app, ctx);
 }

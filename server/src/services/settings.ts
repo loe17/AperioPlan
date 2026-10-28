@@ -26,13 +26,24 @@ export interface MailSettings {
   user: string; password: string; from: string;
 }
 
+export type AiKind = 'gemini' | 'openai' | 'anthropic' | 'mistral' | 'azure' | 'ollama';
+export interface AiProvider {
+  id: string; name: string; kind: AiKind; baseUrl: string; apiKey: string; model: string;
+  /** nur Azure OpenAI: Name der Bereitstellung und API-Version */
+  deployment?: string; apiVersion?: string;
+  /** Daten verlassen das Haus (Online-Anbieter) */
+  online: boolean;
+}
 export interface AiSettings {
   enabled: boolean;
-  /** OpenAI-kompatible Schnittstelle (z. B. Ollama, LM Studio, vLLM, OpenAI, Mistral) oder Anthropic */
+  /** frühere Einzel-Einstellung (vor 1.2) – wird als Anbieter übernommen */
   provider: 'openai' | 'anthropic';
   baseUrl: string;
   apiKey: string;
   model: string;
+  /** mehrere Anbieter gleichzeitig, z. B. lokales Modell für vertrauliche Projekte und Gemini für alles andere */
+  providers: AiProvider[];
+  defaultProviderId: string | null;
 }
 
 export interface StorageSettings {
@@ -119,7 +130,7 @@ export const DEFAULT_SETTINGS: SettingsMap = {
     enabled: false, imapHost: '', imapPort: 993, imapSecure: true,
     smtpHost: '', smtpPort: 587, smtpSecure: false, user: '', password: '', from: '',
   },
-  ai: { enabled: false, provider: 'openai', baseUrl: 'http://localhost:11434/v1', apiKey: '', model: 'llama3.1' },
+  ai: { enabled: false, provider: 'openai', baseUrl: 'http://localhost:11434/v1', apiKey: '', model: 'llama3.1', providers: [], defaultProviderId: null },
   backup: { enabled: true, cron: '0 2 * * *', keep: 14, passphrase: '', targetDir: '', includeFiles: true },
   time: { roundMinutes: 1, maxDailyHours: 10, holidayState: 'BW', dailyHours: 8 },
   security: { internalSecret: '' },
@@ -166,6 +177,7 @@ export class SettingsService {
     if (Array.isArray(value)) return value;
     const copy = { ...(value as Record<string, unknown>) };
     for (const [k, f] of SECRET_PATHS) if (k === key && copy[f]) copy[f] = '••••••••';
+    if (key === 'ai' && Array.isArray(copy.providers)) copy.providers = (copy.providers as AiProvider[]).map((p) => ({ ...p, apiKey: p.apiKey ? '••••••••' : '' }));
     return copy as SettingsMap[K];
   }
 
@@ -175,6 +187,10 @@ export class SettingsService {
     const current = (await this.get(key)) as Record<string, unknown>;
     const copy = { ...(incoming as Record<string, unknown>) };
     for (const [k, f] of SECRET_PATHS) if (k === key && copy[f] === '••••••••') copy[f] = current[f];
+    if (key === 'ai' && Array.isArray(copy.providers)) {
+      const old = (current.providers as AiProvider[] | undefined) ?? [];
+      copy.providers = (copy.providers as AiProvider[]).map((p) => (p.apiKey === '••••••••' ? { ...p, apiKey: old.find((o) => o.id === p.id)?.apiKey ?? (p.id === 'standard' ? String(current.apiKey ?? '') : '') } : p));
+    }
     return copy as SettingsMap[K];
   }
 

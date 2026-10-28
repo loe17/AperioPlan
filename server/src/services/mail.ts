@@ -52,14 +52,14 @@ export async function syncMail(ctx: AppContext, limit = 200): Promise<{ fetched:
   try {
     const lock = await client.getMailboxLock('INBOX');
     try {
-      const [last] = await ctx.sql<{ uid: number }[]>`select max(uid)::int as uid from mail_messages where mailbox = 'INBOX' and direction = 'in'`;
+      const [last] = await ctx.sql<{ uid: number }[]>`select max(uid)::int as uid from mail_messages where mailbox = 'INBOX' and direction = 'in' and account_id is null`;
       const status = await client.status('INBOX', { messages: true, uidNext: true });
       const from = last?.uid ? last.uid + 1 : Math.max(1, Number((status && status.uidNext) || 1) - limit);
       for await (const msg of client.fetch(`${from}:*`, { uid: true, source: true, flags: true }, { uid: true })) {
         if (!msg.source || (last?.uid && msg.uid <= last.uid)) continue;
         const parsed = await simpleParser(msg.source);
         const messageId = parsed.messageId ?? `uid-${msg.uid}@${s.imapHost}`;
-        const [exists] = await ctx.sql`select 1 from mail_messages where message_id = ${messageId}`;
+        const [exists] = await ctx.sql`select 1 from mail_messages where message_id = ${messageId} and account_id is null`;
         if (exists) continue;
         const projectId = await autoAssign(ctx, parsed.subject ?? '');
         const [row] = await ctx.sql<{ id: string }[]>`insert into mail_messages (message_id, mailbox, uid, direction, from_addr, to_addrs, cc_addrs, subject, date,

@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { PROJECT_MODULES } from '@aperio/shared';
-import { patch, put, invalidate } from '../lib/api';
+import { patch, post, put, invalidate } from '../lib/api';
+import { useApi } from '../lib/hooks';
+import { fmtBytes } from '../lib/format';
 import { useSession } from '../session';
 import { CustomerPicker } from './CrmShared';
-import { Avatar, Field, useAction } from '../components/ui';
+import { Avatar, Confirm, Field, Pill, useAction } from '../components/ui';
 import { EntityIcon, Icon, IconPicker } from '../components/Icon';
 
 export const MODULE_LABELS: Record<string, { label: string; icon: string }> = {
@@ -58,6 +60,7 @@ export function ProjectSettings({ project }: { project: any }) {
           onChange={(c) => setP({ ...p, customerId: c?.id ?? null, customer: c?.name ?? '', customerNumber: c?.number, customerContactId: null })} />
           : <div className="row"><input value={p.customer} onChange={set('customer')} /><span className="small muted">noch nicht im CRM</span></div>}</Field>
         <Field label="Budget Einkauf (€)" hint="für die Übersicht im Einkauf"><input type="number" min={0} value={p.budget ?? ''} onChange={(e) => setP({ ...p, budget: e.target.value === '' ? null : Number(e.target.value) })} /></Field>
+        <AiProviderField value={p.aiProviderId ?? ''} onChange={(aiProviderId) => setP({ ...p, aiProviderId })} />
         <Field label="Start"><input type="date" value={p.startDate ?? ''} onChange={set('startDate')} /></Field>
         <Field label="Ende"><input type="date" value={p.dueDate ?? ''} onChange={set('dueDate')} /></Field>
       </div>
@@ -80,10 +83,12 @@ export function ProjectSettings({ project }: { project: any }) {
       <button className="btn primary" onClick={async () => {
         await act(() => patch(`/projects/${project.id}`, {
           name: p.name, icon: p.icon, status: p.status, teamId: p.teamId || null, visibility: p.visibility, ...(p.customerId !== project.customerId ? { customerId: p.customerId ?? null } : p.customerId ? {} : { customer: p.customer }),
-          startDate: p.startDate || null, dueDate: p.dueDate || null, description: p.description, modules: p.modules, budget: p.budget ?? null,
+          startDate: p.startDate || null, dueDate: p.dueDate || null, description: p.description, modules: p.modules, budget: p.budget ?? null, aiProviderId: p.aiProviderId || null,
         }), 'Projekt gespeichert');
         invalidate('/projects');
       }}>Speichern</button>
+
+      <StorageBox project={project} />
 
       <h2 style={{ margin: '28px 0 10px' }}>Mitglieder</h2>
       <div className="table-wrap"><table className="table"><tbody>
@@ -112,5 +117,54 @@ export function ProjectSettings({ project }: { project: any }) {
       </div>
       <p className="hint">Externe Partner (Kunden, Lieferanten) erhalten Zugang über Gastlinks im Bereich „Dateien“.</p>
     </div>
+  );
+}
+
+/** KI-Anbieter für dieses Projekt – z. B. ein eigenes Modell für vertrauliche Kundenprojekte */
+function AiProviderField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { data } = useApi<{ id: string; name: string; online: boolean; isDefault: boolean }[]>('/ai/providers');
+  if (!data?.length) return null;
+  const sel = data.find((x) => x.id === value) ?? data.find((x) => x.isDefault);
+  return (
+    <Field label="KI-Anbieter" hint={sel?.online ? 'Online-Anbieter: Projektdaten verlassen das Haus' : 'Daten bleiben im eigenen Netz'}>
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Standard ({data.find((x) => x.isDefault)?.name ?? '–'})</option>
+        {data.map((x) => <option key={x.id} value={x.id}>{x.name}{x.online ? ' (online)' : ' (eigenes Netz)'}</option>)}
+      </select>
+    </Field>
+  );
+}
+
+/** Wo liegen die Dateien? Admins können den Ordner in einen anderen Speicherort (z. B. Archiv) verschieben */
+function StorageBox({ project }: { project: any }) {
+  const { me } = useSession();
+  const act = useAction();
+  const { data: locs } = useApi<any[]>('/storage/locations');
+  const [target, setTarget] = useState('');
+  const [confirm, setConfirm] = useState(false);
+  if (!locs || !project.folderPath) return null;
+  const cur = locs.find((l) => l.id === (project.storageLocation ?? 'main'));
+  const others = locs.filter((l) => l.id !== cur?.id);
+  return (
+    <>
+      <h2 style={{ margin: '28px 0 10px' }}>Speicherort</h2>
+      <div className="card flat" style={{ padding: 12 }}>
+        <div className="row"><Icon name={cur?.archive ? 'archive' : 'hdd'} /> <b>{cur?.name ?? 'Standardablage'}</b> {cur?.archive && <Pill>Archiv</Pill>}
+          {cur?.space?.total ? <span className="small muted">· {fmtBytes(cur.space.free)} frei</span> : null}</div>
+        {project.networkPath && <div className="mono small" style={{ marginTop: 4 }}>{project.networkPath}</div>}
+        {me?.role === 'admin' && others.length > 0 && (
+          <div className="row" style={{ marginTop: 10 }}>
+            <select value={target} onChange={(e) => setTarget(e.target.value)} style={{ maxWidth: 280 }}>
+              <option value="">Verschieben nach …</option>
+              {others.map((l) => <option key={l.id} value={l.id} disabled={!l.reachable}>{l.name}{l.archive ? ' (Archiv)' : ''}</option>)}
+            </select>
+            <button className="btn" disabled={!target} onClick={() => setConfirm(true)}><Icon name="archive" /> Verschieben</button>
+          </div>
+        )}
+      </div>
+      {confirm && <Confirm text={`Projektordner nach „${locs.find((l) => l.id === target)?.name}“ verschieben? Alle Dateien, Versionen und Verweise wandern mit. Bei großen Projekten kann das einige Minuten dauern.`}
+        confirmLabel="Verschieben" onClose={() => setConfirm(false)}
+        onConfirm={async () => { if (await act(() => post(`/projects/${project.id}/move-storage`, { locationId: target }), 'Projektordner verschoben')) { setTarget(''); invalidate(`/projects/${project.id}`); invalidate('/storage/locations'); } }} />}
+    </>
   );
 }

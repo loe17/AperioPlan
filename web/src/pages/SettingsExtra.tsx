@@ -16,35 +16,123 @@ export function StorageSettings() {
   const act = useAction();
   const { refreshLists } = useSession();
   const s = useAdminSettings('storage');
-  const [folder, setFolder] = useState('');
   if (!s.value) return null;
   const v = s.value;
   return (
-    <div style={{ maxWidth: 720 }}>
+    <div style={{ maxWidth: 860 }}>
       <h1 style={{ marginBottom: 8 }}>Speicherorte</h1>
-      <p className="muted">Der Speicherort der Projektdateien wird beim Server-Start festgelegt (FILES_PATH in der Datei .env). Dort kann ein lokaler Ordner oder ein eingebundenes Netzlaufwerk (NAS / SMB / Windows-Freigabe) stehen – siehe Administrator-Handbuch.</p>
-      <Field label="Art der Ablage">
-        <select value={v.mode} onChange={(e) => s.setValue({ ...v, mode: e.target.value })}><option value="local">Lokal auf dem Server</option><option value="network">Netzlaufwerk (NAS / SMB)</option></select>
-      </Field>
-      <Field label="Netzwerkpfad für den Windows-Explorer" hint="Wird bei jedem Projekt angezeigt, z. B. \\nas01\projekte">
+      <p className="muted">Projektdateien liegen in der Standardablage (FILES_PATH in der Datei .env). Zusätzlich lassen sich weitere Speicherorte einbinden – etwa ein NAS je Abteilung oder ein Archiv-Laufwerk. Neue Netzlaufwerke bindet der Administrator auf dem Server mit <span className="mono">sudo ./install.sh speicherort</span> ein; sie erscheinen dann unten zur Auswahl.</p>
+      <Field label="Netzwerkpfad der Standardablage für den Windows-Explorer" hint="Wird bei jedem Projekt angezeigt, z. B. \\nas01\projekte">
         <input className="mono" value={v.networkPath} onChange={(e) => s.setValue({ ...v, networkPath: e.target.value })} />
       </Field>
-      <Field label="Automatische Ordnerstruktur für neue Projekte">
-        <div className="card flat" style={{ padding: 8 }}>
-          {v.projectFolders.map((f: string, i: number) => (
-            <div key={i} className="row" style={{ padding: 2 }}>
-              <span className="mono grow"><Icon name="folder" /> {f}</span>
-              <button className="btn ghost sm" onClick={() => s.setValue({ ...v, projectFolders: v.projectFolders.filter((_: string, j: number) => j !== i) })}><Icon name="x" /></button>
-            </div>
-          ))}
-          <div className="row" style={{ marginTop: 6 }}>
-            <input value={folder} onChange={(e) => setFolder(e.target.value)} placeholder="z. B. 05_Einkauf" />
-            <button className="btn" disabled={!folder.trim()} onClick={() => { s.setValue({ ...v, projectFolders: [...v.projectFolders, folder.trim()] }); setFolder(''); }}>Hinzufügen</button>
-          </div>
-        </div>
+      <Locations v={v} set={s.setValue} />
+      <Field label="Automatische Ordnerstruktur für neue Projekte" hint="Unterordner über das Plus-Zeichen an einem Ordner anlegen">
+        <FolderTree list={v.projectFolders} onChange={(projectFolders) => s.setValue({ ...v, projectFolders })} />
       </Field>
-      <button className="btn primary" onClick={async () => { await act(() => s.save(v), 'Gespeichert'); refreshLists(); }}>Speichern</button>
+      <button className="btn primary" onClick={async () => { await act(() => s.save(v), 'Gespeichert'); refreshLists(); invalidate('/storage/locations'); }}>Speichern</button>
       <ScanWizard />
+    </div>
+  );
+}
+
+interface Loc { id: string; name: string; path: string; networkPath: string; teamIds: string[]; archive: boolean }
+
+/** Weitere Speicherorte: Abteilungen zuordnen, Standard festlegen, Platz anzeigen */
+function Locations({ v, set }: { v: any; set: (v: any) => void }) {
+  const { teams } = useSession();
+  const { data: live } = useApi<any[]>('/storage/locations');
+  const { data: detected } = useApi<{ dir: string; folders: { name: string; path: string; space: any }[] }>('/storage/locations/detected');
+  const [edit, setEdit] = useState<(Loc & { isNew?: boolean }) | null>(null);
+  const locs: Loc[] = v.locations ?? [];
+  const info = (id: string) => live?.find((l) => l.id === id);
+  const unused = detected?.folders.filter((f) => !locs.some((l) => l.path === f.path)) ?? [];
+  const Space = ({ id }: { id: string }) => { const sp = info(id)?.space; return sp?.total ? <span className="small muted">{fmtBytes(sp.free)} frei von {fmtBytes(sp.total)}</span> : <span className="small muted">–</span>; };
+  return (
+    <Field label="Speicherorte">
+      <div className="table-wrap"><table className="table">
+        <thead><tr><th>Name</th><th>Abteilungen</th><th>Platz</th><th>Projekte</th><th>Standard</th><th /></tr></thead>
+        <tbody>
+          <tr><td><Icon name="hdd" /> Standardablage</td><td className="small muted">alle übrigen</td><td><Space id="main" /></td><td>{info('main')?.projects ?? ''}</td>
+            <td><input type="radio" name="defloc" checked={(v.defaultLocation || 'main') === 'main'} onChange={() => set({ ...v, defaultLocation: 'main' })} /></td><td /></tr>
+          {locs.map((l) => (
+            <tr key={l.id}>
+              <td><Icon name={l.archive ? 'archive' : 'server'} /> {l.name} {l.archive && <Pill>Archiv</Pill>} {info(l.id) && !info(l.id).reachable && <Pill tone="red">nicht erreichbar</Pill>}<div className="small muted mono">{l.networkPath || l.path}</div></td>
+              <td className="small">{l.teamIds.map((t) => teams.find((x) => x.id === t)?.name).filter(Boolean).join(', ') || '–'}</td>
+              <td><Space id={l.id} /></td><td>{info(l.id)?.projects ?? ''}</td>
+              <td>{!l.archive && <input type="radio" name="defloc" checked={v.defaultLocation === l.id} onChange={() => set({ ...v, defaultLocation: l.id })} />}</td>
+              <td><button className="btn ghost sm" onClick={() => setEdit(l)}><Icon name="edit" /></button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+      <div className="row wrap" style={{ marginTop: 6, gap: 6 }}>
+        {unused.map((f) => <button key={f.path} className="btn sm" onClick={() => setEdit({ id: f.name.toLowerCase().replace(/[^a-z0-9_-]/g, '-').slice(0, 40), name: f.name, path: f.path, networkPath: '', teamIds: [], archive: /archiv/i.test(f.name), isNew: true })}><Icon name="plus" /> {f.name} einbinden</button>)}
+        {detected && !unused.length && <span className="small muted">Keine weiteren eingebundenen Laufwerke unter {detected.dir} gefunden.</span>}
+      </div>
+      {edit && (
+        <Modal title={edit.isNew ? 'Speicherort einbinden' : 'Speicherort'} onClose={() => setEdit(null)} footer={<>
+          {!edit.isNew && <button className="btn danger" disabled={(info(edit.id)?.projects ?? 0) > 0} title={(info(edit.id)?.projects ?? 0) > 0 ? 'Es liegen noch Projekte dort' : ''}
+            onClick={() => { set({ ...v, locations: locs.filter((l) => l.id !== edit.id), defaultLocation: v.defaultLocation === edit.id ? 'main' : v.defaultLocation }); setEdit(null); }}>Entfernen</button>}
+          <span className="grow" /><button className="btn" onClick={() => setEdit(null)}>Abbrechen</button>
+          <button className="btn primary" disabled={!edit.name.trim() || !/^[a-z0-9_-]+$/.test(edit.id)} onClick={() => {
+            const { isNew, ...l } = edit;
+            set({ ...v, locations: isNew ? [...locs, l] : locs.map((x) => (x.id === l.id ? l : x)) }); setEdit(null);
+          }}>Übernehmen</button></>}>
+          <Field label="Name"><input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
+          <Field label="Ordner auf dem Server"><input className="mono" value={edit.path} disabled /></Field>
+          <Field label="Netzwerkpfad für den Windows-Explorer" hint="z. B. \\nas01\konstruktion"><input className="mono" value={edit.networkPath} onChange={(e) => setEdit({ ...edit, networkPath: e.target.value })} /></Field>
+          <Field label="Archiv" hint="abgeschlossene Projekte lassen sich hierher verschieben; neue Projekte landen nie im Archiv">
+            <label className="row"><input type="checkbox" checked={edit.archive} onChange={(e) => setEdit({ ...edit, archive: e.target.checked })} /> Dies ist ein Archiv-Speicherort</label>
+          </Field>
+          {!edit.archive && <Field label="Neue Projekte dieser Abteilungen hier ablegen">
+            {teams.map((t) => <label key={t.id} className="row small"><input type="checkbox" checked={edit.teamIds.includes(t.id)} onChange={() => setEdit({ ...edit, teamIds: edit.teamIds.includes(t.id) ? edit.teamIds.filter((x) => x !== t.id) : [...edit.teamIds, t.id] })} /> {t.name}</label>)}
+          </Field>}
+        </Modal>
+      )}
+    </Field>
+  );
+}
+
+/** Ordnerbaum aus einer Pfadliste („01_CAD“, „01_CAD/Teile“) */
+function FolderTree({ list, onChange }: { list: string[]; onChange: (l: string[]) => void }) {
+  const [adding, setAdding] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  // Elternordner fehlen ggf. in der Liste – für die Anzeige ergänzen
+  const all = [...new Set(list.flatMap((p) => p.split('/').map((_, i, a) => a.slice(0, i + 1).join('/'))))].sort((a, b) => a.localeCompare(b, 'de'));
+  const add = (parent: string) => {
+    const n = name.trim().replace(/[\\/:*?"<>|]/g, '_');
+    if (!n) return;
+    const path = parent ? `${parent}/${n}` : n;
+    if (!all.includes(path)) onChange([...list, path]);
+    setName(''); setAdding(null);
+  };
+  const remove = (p: string) => {
+    const rest = list.filter((x) => x !== p && !x.startsWith(`${p}/`));
+    const parent = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '';
+    // Elternordner behalten, auch wenn er nur über den entfernten Unterordner in der Liste stand
+    onChange(parent && !rest.some((x) => x === parent || x.startsWith(`${parent}/`)) ? [...rest, parent] : rest);
+  };
+  const input = (parent: string) => (
+    <div className="row" style={{ padding: 2, paddingLeft: parent ? (parent.split('/').length) * 20 + 4 : 4 }}>
+      <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add(parent)} placeholder={parent ? 'Unterordner, z. B. Teile' : 'z. B. 05_Einkauf'} autoFocus={adding !== null} />
+      <button className="btn" disabled={!name.trim()} onClick={() => add(parent)}>Hinzufügen</button>
+      {adding !== null && adding !== '' && <button className="btn ghost" onClick={() => setAdding(null)}>Abbrechen</button>}
+    </div>
+  );
+  return (
+    <div className="card flat" style={{ padding: 8 }}>
+      {all.map((p) => (
+        <div key={p}>
+          <div className="row" style={{ padding: 2, paddingLeft: (p.split('/').length - 1) * 20 }}>
+            <span className="mono grow"><Icon name="folder" /> {p.split('/').pop()}</span>
+            <button className="btn ghost sm" title="Unterordner anlegen" onClick={() => { setAdding(p); setName(''); }}><Icon name="plus" /></button>
+            <button className="btn ghost sm" title="Entfernen (mit Unterordnern)" onClick={() => remove(p)}><Icon name="x" /></button>
+          </div>
+          {adding === p && input(p)}
+        </div>
+      ))}
+      {adding === null || adding === '' ? input('') : null}
+      <div className="hint">Gilt für neu angelegte Projekte. Bestehende Projektordner bleiben unverändert.</div>
     </div>
   );
 }
@@ -405,31 +493,85 @@ export function MailSettings() {
   );
 }
 
+interface AiKindInfo { kind: string; name: string; baseUrl: string; online: boolean; models: string[] }
+
 export function AiSettings() {
   const act = useAction();
   const { refreshLists } = useSession();
   const s = useAdminSettings('ai');
-  const [result, setResult] = useState<string | null>(null);
-  if (!s.value) return null;
+  const { data: kinds } = useApi<AiKindInfo[]>('/settings/ai/kinds');
+  const [edit, setEdit] = useState<{ p: any; index: number } | null>(null);
+  if (!s.value || !kinds) return null;
   const v = s.value;
-  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => s.setValue({ ...v, [k]: e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value });
+  // frühere Einzel-Einstellung als ersten Anbieter anzeigen
+  const providers: any[] = v.providers?.length ? v.providers : v.baseUrl || v.model ? [{ id: 'standard', name: 'KI', kind: v.provider === 'anthropic' ? 'anthropic' : 'ollama', baseUrl: v.baseUrl, apiKey: v.apiKey, model: v.model, online: v.provider === 'anthropic' }] : [];
+  const setProviders = (list: any[]) => s.setValue({ ...v, providers: list, defaultProviderId: list.some((x) => x.id === v.defaultProviderId) ? v.defaultProviderId : list[0]?.id ?? null });
+  const kindName = (k: string) => kinds.find((x) => x.kind === k)?.name ?? k;
   return (
-    <div style={{ maxWidth: 720 }}>
+    <div style={{ maxWidth: 820 }}>
       <h1 style={{ marginBottom: 8 }}>KI-Anbindung</h1>
-      <p className="muted">Schnittstelle für lokale KI-Modelle (z. B. Ollama, LM Studio, vLLM – Daten bleiben im Haus) oder externe Anbieter. Genutzt für Projektzusammenfassungen, Schreibhilfe und Dokumentenanalyse.</p>
-      <label className="row" style={{ margin: '12px 0' }}><input type="checkbox" checked={v.enabled} onChange={set('enabled')} /> KI-Funktionen aktivieren</label>
-      <div className="grid2">
-        <Field label="Schnittstelle"><select value={v.provider} onChange={set('provider')}><option value="openai">OpenAI-kompatibel (Ollama, LM Studio, vLLM, OpenAI, Mistral …)</option><option value="anthropic">Anthropic</option></select></Field>
-        <Field label="Modell"><input value={v.model} onChange={set('model')} placeholder="z. B. llama3.1, mistral, claude-…" /></Field>
-        <Field label="Adresse" hint="Ollama: http://ki-server:11434/v1"><input className="mono" value={v.baseUrl} onChange={set('baseUrl')} /></Field>
-        <Field label="API-Schlüssel" hint="bei lokalen Modellen meist leer"><input type="password" value={v.apiKey} onChange={set('apiKey')} /></Field>
+      <p className="muted">Mehrere Anbieter lassen sich parallel hinterlegen: ein eigenes Modell im Firmennetz (Ollama, LM Studio, vLLM – Daten bleiben im Haus) und Online-Dienste wie Google Gemini, ChatGPT, Claude, Mistral oder Azure. Je Projekt kann ein anderer Anbieter gewählt werden, etwa das eigene Modell für vertrauliche Kundenprojekte.</p>
+      <label className="row" style={{ margin: '12px 0' }}><input type="checkbox" checked={v.enabled} onChange={(e) => s.setValue({ ...v, enabled: e.target.checked })} /> KI-Funktionen aktivieren</label>
+      <div className="table-wrap"><table className="table">
+        <thead><tr><th>Name</th><th>Art</th><th>Modell</th><th>Daten</th><th>Standard</th><th /></tr></thead>
+        <tbody>
+          {providers.map((p, i) => (
+            <tr key={p.id}>
+              <td><b>{p.name}</b></td><td className="small">{kindName(p.kind)}</td><td className="mono small">{p.kind === 'azure' ? p.deployment : p.model}</td>
+              <td>{p.online ? <Pill tone="amber">online</Pill> : <Pill tone="green">eigenes Netz</Pill>}</td>
+              <td><input type="radio" name="defai" checked={(v.defaultProviderId ?? providers[0]?.id) === p.id} onChange={() => s.setValue({ ...v, providers, defaultProviderId: p.id })} /></td>
+              <td className="row"><button className="btn ghost sm" onClick={() => setEdit({ p: { ...p }, index: i })}><Icon name="edit" /></button>
+                <button className="btn ghost sm" onClick={() => setProviders(providers.filter((_, j) => j !== i))}><Icon name="trash" /></button></td>
+            </tr>
+          ))}
+          {!providers.length && <tr><td colSpan={6} className="muted">Noch kein Anbieter hinterlegt.</td></tr>}
+        </tbody>
+      </table></div>
+      <div className="row" style={{ marginTop: 10 }}>
+        <select value="" style={{ width: 'auto' }} onChange={(e) => { const k = kinds.find((x) => x.kind === e.target.value); if (k) setEdit({ index: -1, p: { id: Math.random().toString(36).slice(2, 10), name: k.name, kind: k.kind, baseUrl: k.baseUrl, apiKey: '', model: k.models[0] ?? '', online: k.online, deployment: '', apiVersion: '' } }); }}>
+          <option value="">＋ Anbieter hinzufügen …</option>{kinds.map((k) => <option key={k.kind} value={k.kind}>{k.name}</option>)}
+        </select>
+        <button className="btn primary" onClick={async () => { await act(() => s.save({ ...v, providers }), 'Gespeichert'); refreshLists(); invalidate('/ai/providers'); }}>Speichern</button>
       </div>
-      <div className="row">
-        <button className="btn primary" onClick={async () => { await act(() => s.save(v), 'Gespeichert'); refreshLists(); }}>Speichern</button>
-        <button className="btn" onClick={async () => { const r = await act(() => post('/settings/ai/test', v)); if (r) setResult(`${r.ok ? 'OK' : 'Fehler'}: ${r.message}`); }}>Verbindung testen</button>
-      </div>
-      {result && <div className="card" style={{ marginTop: 12 }}>{result}</div>}
+      <p className="hint">Hinweis: Bei Online-Anbietern werden die abgefragten Projektdaten an den Dienst übertragen. Für personenbezogene Daten ist ein Auftragsverarbeitungsvertrag mit dem Anbieter nötig.</p>
+      {edit && <AiProviderModal init={edit.p} kind={kinds.find((k) => k.kind === edit.p.kind)!} onClose={() => setEdit(null)}
+        onSave={(p) => { setProviders(edit.index < 0 ? [...providers, p] : providers.map((x, j) => (j === edit.index ? p : x))); setEdit(null); }} />}
     </div>
+  );
+}
+
+function AiProviderModal({ init, kind, onClose, onSave }: { init: any; kind: AiKindInfo; onClose: () => void; onSave: (p: any) => void }) {
+  const act = useAction();
+  const [p, setP] = useState(init);
+  const [models, setModels] = useState<string[]>(kind.models);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setP({ ...p, [k]: e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value });
+  const azure = p.kind === 'azure';
+  return (
+    <Modal title={kind.name} onClose={onClose} footer={<>
+      <button className="btn" onClick={async () => { setResult(null); const r = await act(() => post<{ ok: boolean; message: string }>('/settings/ai/test', p)); if (r) setResult(r); }}>Verbindung testen</button>
+      <span className="grow" /><button className="btn" onClick={onClose}>Abbrechen</button>
+      <button className="btn primary" disabled={!p.name.trim() || (!azure && !p.model)} onClick={() => onSave(p)}>Übernehmen</button></>}>
+      <Field label="Bezeichnung" hint="so erscheint der Anbieter bei der Auswahl"><input value={p.name} onChange={set('name')} /></Field>
+      <Field label="Adresse" hint={azure ? 'z. B. https://firmenname.openai.azure.com' : p.kind === 'ollama' ? 'z. B. http://ki-server:11434/v1' : 'normalerweise nicht ändern'}><input className="mono" value={p.baseUrl} onChange={set('baseUrl')} /></Field>
+      <Field label="API-Schlüssel" hint={p.online ? 'beim Anbieter im Kundenkonto erzeugen' : 'bei eigenen Modellen meist leer'}><input type="password" value={p.apiKey} onChange={set('apiKey')} autoComplete="new-password" /></Field>
+      {azure ? (
+        <div className="grid2">
+          <Field label="Name der Bereitstellung (Deployment)"><input value={p.deployment ?? ''} onChange={set('deployment')} /></Field>
+          <Field label="API-Version"><input value={p.apiVersion ?? ''} onChange={set('apiVersion')} placeholder="2024-10-21" /></Field>
+        </div>
+      ) : (
+        <Field label="Modell">
+          <div className="row">
+            <input list="ai-models" value={p.model} onChange={set('model')} />
+            <datalist id="ai-models">{models.map((m) => <option key={m} value={m} />)}</datalist>
+            <button className="btn" title="Verfügbare Modelle beim Anbieter abfragen" onClick={async () => { const r = await act(() => post<{ ok: boolean; models: string[]; message?: string }>('/settings/ai/models', p)); if (r?.ok) setModels(r.models); else if (r) setResult({ ok: false, message: r.message ?? 'Keine Modelle gefunden' }); }}><Icon name="refresh" /> Modelle laden</button>
+          </div>
+        </Field>
+      )}
+      <label className="row"><input type="checkbox" checked={p.online} onChange={set('online')} /> Online-Anbieter (Daten verlassen das Firmennetz)</label>
+      {result && <div className="card" style={{ marginTop: 12, borderColor: result.ok ? 'var(--green)' : 'var(--red)' }}>{result.ok ? 'Verbindung in Ordnung: ' : 'Fehler: '}{result.message}</div>}
+    </Modal>
   );
 }
 

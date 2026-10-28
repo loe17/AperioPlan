@@ -41,8 +41,16 @@ export async function allocateProjectNumber(tx: Sql, ctx: AppContext, parentId: 
 }
 
 /** Legt die Standard-Ordnerstruktur an (01_CAD, 02_Zeichnungen, ...). */
-export async function createProjectFolders(ctx: AppContext, tx: Sql, projectId: string, number: string, name: string, parentId: string | null) {
-  let base = 'Projekte';
+/** Ordnerliste für neue Projekte; Unterordner als „01_CAD/Teile“. Unzulässige Teile (.., Laufwerk) werden entfernt. */
+export function cleanFolderList(list: string[] | undefined) {
+  return (list ?? []).map((f) => f.replace(/\\/g, '/').split('/').map((x) => x.trim()).filter((x) => x && x !== '.' && x !== '..' && !/[:*?"<>|]/.test(x)).join('/')).filter(Boolean);
+}
+
+export async function createProjectFolders(ctx: AppContext, tx: Sql, projectId: string, number: string, name: string, parentId: string | null, locationId?: string | null, teamId?: string | null) {
+  const st = await ctx.settings.get('storage');
+  // Speicherort: ausdrücklich gewählt, sonst der der Abteilung, sonst der Standard
+  const loc = locationId ?? st.locations.find((l) => teamId && l.teamIds.includes(teamId) && !l.archive)?.id ?? st.defaultLocation ?? 'main';
+  let base = loc && loc !== 'main' && st.locations.some((l) => l.id === loc) ? `@${loc}/Projekte` : 'Projekte';
   const s = await ctx.settings.get('projectNumbers');
   if (parentId) {
     const [parent] = await tx<{ folder_path: string | null }[]>`select folder_path from projects where id = ${parentId}`;
@@ -51,7 +59,7 @@ export async function createProjectFolders(ctx: AppContext, tx: Sql, projectId: 
   const folder = `${base}/${projectFolderName(number, name)}`;
   const storage = await ctx.settings.get('storage');
   await ctx.storage.ensureDir(folder);
-  for (const f of storage.projectFolders) await ctx.storage.ensureDir(`${folder}/${f}`);
+  for (const f of cleanFolderList(storage.projectFolders)) await ctx.storage.ensureDir(`${folder}/${f}`);
   await tx`update projects set folder_path = ${folder} where id = ${projectId}`;
   return folder;
 }

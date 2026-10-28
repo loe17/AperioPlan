@@ -12,7 +12,9 @@ import { projectAccess } from '../lib/access';
 import { badRequest, notFound, unauthorized } from '../lib/errors';
 import { randomToken } from '../lib/crypto';
 import { audit } from '../services/audit';
-import { storeFile } from '../services/files';
+import { safeName, storeFile } from '../services/files';
+import { emptyDocx, emptyXlsx } from '../services/officeTemplates';
+import { posix } from 'node:path';
 
 interface Claims { f: string; u: string; n: string; w: boolean; e: number }
 
@@ -67,14 +69,29 @@ export default async function officeRoutes(app: FastifyInstance, ctx: AppContext
     if (!f) throw notFound();
     const access = f.project_id ? await projectAccess(sql, u, f.project_id) : null;
     const ext = f.name.split('.').pop()!.toLowerCase();
-    const urlsrc = (await discovery(config.officeUrl)).get(ext);
+    const urlsrc = (await discovery(config.officeInternalUrl || config.officeUrl)).get(ext);
     if (!urlsrc) throw badRequest(`Dateityp .${ext} wird vom Office-Server nicht unterstützt`);
     const writable = Boolean(access?.canEdit) && (!f.locked_by || f.locked_by === u.id);
     const ttl = 10 * 3600_000;
     const token = await signToken(ctx, { f: id, u: u.id, n: u.displayName, w: writable, e: Date.now() + ttl });
-    const wopiSrc = `${config.publicUrl}/api/wopi/files/${id}`;
+    const wopiSrc = `${(config.officeWopiUrl || config.publicUrl).replace(/\/$/, '')}/api/wopi/files/${id}`;
     const action = `${urlsrc.replace(/[?&]$/, '')}${urlsrc.includes('?') ? '&' : '?'}WOPISrc=${encodeURIComponent(wopiSrc)}&lang=${u.locale}`;
     return { action, accessToken: token, accessTokenTtl: Date.now() + ttl, name: f.name, writable };
+  });
+
+  /** Neues leeres Dokument direkt im Projektordner anlegen und gleich im Browser öffnen */
+  app.post('/projects/:id/files/new-document', async (req) => {
+    const u = requireUser(req);
+    const { id } = parse(idParam, req.params);
+    const b = parse(z.object({ folder: z.string().max(500).default(''), name: z.string().trim().min(1).max(150), kind: z.enum(['docx', 'xlsx']) }), req.body);
+    const p = await projectAccess(sql, u, id, 'edit');
+    if (!p.folder_path) throw badRequest('Projekt hat keinen Ordner');
+    const name = `${safeName(b.name.replace(/\.(docx|xlsx)$/i, ''))}.${b.kind}`;
+    const path = posix.join(p.folder_path, b.folder.replace(/^\/+|\.\./g, ''), name);
+    if (await storage.stat(path)) throw badRequest('Eine Datei mit diesem Namen gibt es dort schon');
+    const f = await storeFile(ctx, { projectId: id, path, stream: Readable.from([b.kind === 'docx' ? emptyDocx() : emptyXlsx()]), userId: u.id, via: 'Neues Dokument' });
+    ctx.hub.publish(`project:${id}`, 'files.changed', {});
+    return { id: f.id, name, path };
   });
 
   // ------------------------------------------------ WOPI-Schnittstelle (wird vom Office-Server aufgerufen)

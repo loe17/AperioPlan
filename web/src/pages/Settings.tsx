@@ -55,7 +55,7 @@ export default function SettingsPage() {
           <SettingsNav to="/settings/time"><Icon name="timer" /> Zeiterfassung &amp; Regeln</SettingsNav>
           <SettingsNav to="/settings/holidays"><Icon name="holiday" /> Feiertage</SettingsNav>
           <SettingsNav to="/settings/ldap"><Icon name="building" /> {t('Firmen-Login')} (LDAP)</SettingsNav>
-          <SettingsNav to="/settings/mail"><Icon name="mail" /> E-Mail-Konto</SettingsNav>
+          <SettingsNav to="/settings/mail"><Icon name="mail" /> E-Mail-Versand (System)</SettingsNav>
           <SettingsNav to="/settings/ai"><Icon name="sparkles" /> KI-Anbindung</SettingsNav>
           <SettingsNav to="/settings/extensions"><Icon name="assembly" /> Erweiterungen</SettingsNav>
           <SettingsNav to="/settings/backup"><Icon name="archive" /> {t('Sicherung')}</SettingsNav>

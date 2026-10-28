@@ -23,7 +23,7 @@ export default async function mailRoutes(app: FastifyInstance, ctx: AppContext) 
     if (q.projectId) await projectAccess(sql, u, q.projectId);
     const like = q.q ? `%${q.q}%` : null;
     return sql`select ${listSelect} from mail_messages m left join projects p on p.id = m.project_id
-      where (m.project_id is null or exists (select 1 from projects p where p.id = m.project_id and ${visibleProjects(sql, u)}))
+      where m.account_id is null and (m.project_id is null or exists (select 1 from projects p where p.id = m.project_id and ${visibleProjects(sql, u)}))
       ${q.projectId ? sql`and m.project_id = ${q.projectId}` : sql``}
       ${q.filter === 'unassigned' ? sql`and m.project_id is null and m.direction = 'in'` : q.filter === 'sent' ? sql`and m.direction = 'out'` : sql``}
       ${like ? sql`and (m.subject ilike ${like} or m.from_addr ilike ${like} or m.text_body ilike ${like})` : sql``}
@@ -35,9 +35,14 @@ export default async function mailRoutes(app: FastifyInstance, ctx: AppContext) 
     const { id } = parse(idParam, req.params);
     const [m] = await sql<any[]>`select m.*, p.number as "projectNumber", p.name as "projectName" from mail_messages m left join projects p on p.id = m.project_id where m.id = ${id}`;
     if (!m) throw notFound();
+    if (m.account_id) {
+      // persönliches Postfach: nur der Inhaber – oder alle mit Zugriff aufs Projekt, wenn sie einem Projekt zugeordnet wurde
+      const [own] = await sql`select 1 from mail_accounts where id = ${m.account_id} and user_id = ${u.id}`;
+      if (!own && !m.project_id) throw notFound();
+    }
     if (m.project_id) await projectAccess(sql, u, m.project_id);
     else if (u.role === 'guest') throw forbidden();
-    if (!m.seen) await sql`update mail_messages set seen = true where id = ${id}`;
+    if (!m.seen && !m.account_id) await sql`update mail_messages set seen = true where id = ${id}`;
     return {
       id: m.id, messageId: m.message_id, direction: m.direction, from: m.from_addr, to: m.to_addrs, cc: m.cc_addrs, subject: m.subject, date: m.date,
       text: m.text_body, html: m.html_body, attachments: m.attachments.map((a: any, i: number) => ({ index: i, name: a.name, size: a.size, mime: a.mime })),

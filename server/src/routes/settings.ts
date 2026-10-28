@@ -23,7 +23,7 @@ export default async function settingsRoutes(app: FastifyInstance, ctx: AppConte
       cadMask: await settings.get('cadMask'),
       storage: { mode: storage.mode, networkPath: storage.networkPath, projectFolders: storage.projectFolders },
       time: await settings.get('time'),
-      aiEnabled: (await settings.get('ai')).enabled,
+      aiEnabled: (await settings.get('ai')).enabled || (await settings.get('ai')).providers.length > 0,
       mailEnabled: (await settings.get('mail')).enabled,
       officeEnabled: Boolean(ctx.config.officeUrl),
       turnUrls: ctx.config.turnUrls,

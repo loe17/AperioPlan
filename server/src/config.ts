@@ -10,6 +10,8 @@ export const config = {
   databaseUrl: env.DATABASE_URL ?? 'postgres://aperio:aperio@localhost:5432/aperio',
   /** Ablage für Projektdateien (lokal oder eingebundenes NAS/SMB-Laufwerk) */
   storageRoot: resolve(env.STORAGE_ROOT ?? './data/files'),
+  /** Hier eingebundene Netzlaufwerke stehen als weitere Speicherorte zur Wahl (install.sh speicherort) */
+  locationsDir: resolve(env.LOCATIONS_DIR ?? './data/locations'),
   /** Ziel der Nacht-Sicherungen */
   backupDir: resolve(env.BACKUP_DIR ?? './data/backups'),
   /** Öffentliche Adresse, z. B. https://plan.firma.de – für Gast- und Teilen-Links */
@@ -27,6 +29,9 @@ export const config = {
   updateTriggerFile: env.UPDATE_TRIGGER_FILE ?? '',
   /** Externe Dienste */
   officeUrl: env.OFFICE_URL ?? '',
+  /** Office-Server aus Sicht von AperioPlan (im Docker-Netz) bzw. AperioPlan aus Sicht des Office-Servers */
+  officeInternalUrl: env.OFFICE_INTERNAL_URL ?? env.OFFICE_URL ?? '',
+  officeWopiUrl: env.OFFICE_WOPI_URL ?? '',
   turnUrls: (env.TURN_URLS ?? '').split(',').filter(Boolean),
   isTest: env.NODE_ENV === 'test',
 };

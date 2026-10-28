@@ -6,6 +6,7 @@ import { syncMail } from './mail';
 import { syncAllCalendars } from './caldav';
 import { deliveryReminders } from '../routes/purchasing';
 import { checkAllRunning } from './timeRules';
+import { syncAllMailboxes } from './mailbox';
 import { sendCalendarReminders } from '../routes/calendar';
 
 /** Geplante Hintergrundaufgaben: Nacht-Tresor, Aufräumen abgelaufener Sitzungen und Links. */
@@ -39,6 +40,11 @@ export function startScheduler(ctx: AppContext, log: FastifyBaseLogger) {
   // Projektpostfach alle 5 Minuten abrufen
   cron.schedule('*/5 * * * *', async () => {
     try { await syncMail(ctx); } catch (e) { log.warn(e, 'E-Mail-Abruf fehlgeschlagen'); }
+  });
+
+  // Persönliche Postfächer alle 3 Minuten abrufen
+  cron.schedule('*/3 * * * *', async () => {
+    try { await syncAllMailboxes(ctx); } catch (e) { log.warn(e, 'Abruf der Postfächer fehlgeschlagen'); }
   });
 
   // Kalender der E-Mail-Konten alle 15 Minuten abgleichen, Erinnerungen jede Minute
