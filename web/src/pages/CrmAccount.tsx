@@ -6,6 +6,7 @@ import { useCrumbs } from '../components/Layout';
 import { useSession } from '../session';
 import { fmtBytes, fmtDate, fmtDateTime, fmtEuro } from '../lib/format';
 import { Confirm, Empty, ErrorBox, Loading, Pill, Tabs, useAction } from '../components/ui';
+import { PhoneLink } from '../modules/Phone';
 import { Icon } from '../components/Icon';
 import { MentionInput } from '../components/MentionInput';
 import { ACCOUNT_KIND, ACCOUNT_STATUS, AccountModal, CASE_STATUS, QUOTE_STATUS, STAGES, contactName, type CrmContact } from '../modules/CrmShared';
@@ -41,7 +42,7 @@ export default function CrmAccountPage() {
           <div className="sub row wrap">
             <span className="mono">{a.number}</span>
             {addr && <span><Icon name="location" /> {addr}</span>}
-            {a.phone && <a href={`tel:${a.phone}`}><Icon name="phone" /> {a.phone}</a>}
+            {a.phone && <PhoneLink number={a.phone} />}
             {a.email && <a href={`mailto:${a.email}`}><Icon name="mail" /> {a.email}</a>}
             {a.website && <a href={/^https?:/.test(a.website) ? a.website : `https://${a.website}`} target="_blank" rel="noreferrer"><Icon name="globe" /> {a.website}</a>}
             {a.ownerName && <span><Icon name="user" /> {a.ownerName}</span>}
@@ -156,8 +157,8 @@ function Contacts({ accountId, contacts, onChanged }: { accountId: string; conta
             <div className="card-title"><Icon name="user" /><h3>{c.salutation} {contactName(c)}</h3>{c.isPrimary && <Pill tone="green">Hauptkontakt</Pill>}</div>
             <div className="small muted">{[c.position, c.department].filter(Boolean).join(' · ')}</div>
             <div className="small" style={{ marginTop: 6 }}>
-              {c.phone && <div><a href={`tel:${c.phone}`} onClick={(e) => e.stopPropagation()}><Icon name="phone" /> {c.phone}</a></div>}
-              {c.mobile && <div><a href={`tel:${c.mobile}`} onClick={(e) => e.stopPropagation()}><Icon name="phone" /> {c.mobile} (mobil)</a></div>}
+              {c.phone && <div><PhoneLink number={c.phone} stop /></div>}
+              {c.mobile && <div><PhoneLink number={c.mobile} label={`${c.mobile} (mobil)`} stop /></div>}
               {c.email && <div><a href={`mailto:${c.email}`} onClick={(e) => e.stopPropagation()}><Icon name="mail" /> {c.email}</a></div>}
               {c.birthday && <div className="muted">Geburtstag {new Date(c.birthday).toLocaleDateString('de-DE', { day: '2-digit', month: 'long' })}</div>}
               {c.preferredChannel && <div className="muted">am liebsten per {CH[c.preferredChannel]}</div>}

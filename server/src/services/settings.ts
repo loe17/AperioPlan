@@ -46,6 +46,24 @@ export interface AiSettings {
   defaultProviderId: string | null;
 }
 
+export type PhoneProvider = 'none' | 'fritzbox' | 'sipgate' | 'placetel' | '3cx' | 'asterisk' | 'generic';
+export interface PhoneSettings {
+  provider: PhoneProvider;
+  /** Rufnummern vereinheitlichen: Landesvorwahl ohne +, Ortsvorwahl ohne 0, Amtsholung */
+  countryCode: string; areaCode: string; outsideLinePrefix: string;
+  /** Teil der Webhook-Adressen für sipgate, Placetel, 3CX und die allgemeine Schnittstelle */
+  webhookSecret: string;
+  /** Anruf ohne zugeordnete Nebenstelle allen Telefonie-Nutzern anzeigen */
+  popupForAll: boolean;
+  /** Wählen per Klick: tel:-Link, Softphone im Browser, FRITZ!Box-Wählhilfe oder sipgate */
+  dialMethod: 'tel' | 'softphone' | 'fritzbox' | 'sipgate';
+  fritzHost: string; fritzMonitorPort: number; fritzUser: string; fritzPassword: string;
+  amiHost: string; amiPort: number; amiUser: string; amiPassword: string; amiContext: string;
+  sipgateTokenId: string; sipgateToken: string;
+  /** Softphone: SIP über WebSocket (z. B. wss://pbx.firma.de:8089/ws) */
+  sipWsUrl: string; sipDomain: string;
+}
+
 export interface StorageSettings {
   /** Unterordner im Speicherwurzelverzeichnis bzw. eingebundener Netzpfad */
   mode: 'local' | 'network';
@@ -85,6 +103,7 @@ export interface SettingsMap {
   pcbMask: PcbMaskSettings;
   /** App-Store: eingeschaltete mitgelieferte Anwendungen */
   apps: { installed: Tool[] };
+  phone: PhoneSettings;
   cadMask: { fields: MaskField[]; catalogs: Catalog[]; askCreateDrawing: boolean; drawingTemplate: string; subassemblies: { code: string; label: string }[] };
   ldap: LdapSettings;
   mail: MailSettings;
@@ -113,6 +132,12 @@ export const DEFAULT_SETTINGS: SettingsMap = {
   storage: { mode: 'local', networkPath: '', projectFolders: DEFAULT_PROJECT_FOLDERS, locations: [], defaultLocation: 'main' },
   pcbMask: DEFAULT_PCB_MASK,
   apps: { installed: PREINSTALLED_APPS },
+  phone: {
+    provider: 'none', countryCode: '49', areaCode: '', outsideLinePrefix: '', webhookSecret: '', popupForAll: true, dialMethod: 'tel',
+    fritzHost: 'fritz.box', fritzMonitorPort: 1012, fritzUser: '', fritzPassword: '',
+    amiHost: '', amiPort: 5038, amiUser: '', amiPassword: '', amiContext: 'from-internal',
+    sipgateTokenId: '', sipgateToken: '', sipWsUrl: '', sipDomain: '',
+  },
   cadMask: {
     fields: DEFAULT_MASK_FIELDS,
     catalogs: DEFAULT_CATALOGS,
@@ -146,6 +171,7 @@ export const DEFAULT_SETTINGS: SettingsMap = {
 /** Felder, die nie an Nicht-Administratoren oder in Exporte im Klartext gehen */
 export const SECRET_PATHS: [keyof SettingsMap, string][] = [
   ['ldap', 'bindPassword'], ['mail', 'password'], ['ai', 'apiKey'], ['security', 'internalSecret'],
+  ['phone', 'fritzPassword'], ['phone', 'amiPassword'], ['phone', 'sipgateToken'],
 ];
 
 export class SettingsService {

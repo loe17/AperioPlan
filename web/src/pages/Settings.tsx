@@ -14,6 +14,7 @@ import { Avatar, Confirm, Empty, Field, Modal, Pill, useAction } from '../compon
 import { ChangePasswordPage } from './Auth';
 import { AuditView } from '../modules/AuditView';
 import { MODULE_LABELS } from '../modules/ProjectSettings';
+import { PhoneSettings } from './SettingsPhone';
 import { CadMaskSettings, BackupSettings, UpdateSettings, MailSettings, AiSettings, HolidaySettings, StorageSettings, ExtensionSettings, ResourcesSettings } from './SettingsExtra';
 import { EntityIcon, Icon, IconPicker } from '../components/Icon';
 import { DocumentTemplateSettings } from '../modules/Documents';
@@ -56,6 +57,7 @@ export default function SettingsPage() {
           <SettingsNav to="/settings/holidays"><Icon name="holiday" /> Feiertage</SettingsNav>
           <SettingsNav to="/settings/ldap"><Icon name="building" /> {t('Firmen-Login')} (LDAP)</SettingsNav>
           <SettingsNav to="/settings/mail"><Icon name="mail" /> E-Mail-Versand (System)</SettingsNav>
+          {can('phone') && <SettingsNav to="/settings/phone"><Icon name="phone" /> Telefonie</SettingsNav>}
           <SettingsNav to="/settings/ai"><Icon name="sparkles" /> KI-Anbindung</SettingsNav>
           <SettingsNav to="/settings/extensions"><Icon name="assembly" /> Erweiterungen</SettingsNav>
           <SettingsNav to="/settings/backup"><Icon name="archive" /> {t('Sicherung')}</SettingsNav>
@@ -86,6 +88,7 @@ export default function SettingsPage() {
             <Route path="ldap" element={<Ldap />} />
             <Route path="mail" element={<MailSettings />} />
             <Route path="ai" element={<AiSettings />} />
+            <Route path="phone" element={<PhoneSettings />} />
             <Route path="backup" element={<BackupSettings />} />
             <Route path="extensions" element={<ExtensionSettings />} />
             <Route path="update" element={<UpdateSettings />} />

@@ -23,6 +23,7 @@ const PcbPage = lazy(() => import('./pages/Pcb'));
 const AppStorePage = lazy(() => import('./pages/AppStore'));
 const MeetingsPage = lazy(() => import('./pages/Meetings'));
 const MeetPage = lazy(() => import('./pages/Meet'));
+const PhonePage = lazy(() => import('./pages/Phone'));
 const TimePage = lazy(() => import('./pages/Time'));
 const AbsencesPage = lazy(() => import('./pages/Absences'));
 const CalendarPage = lazy(() => import('./pages/Calendar'));
@@ -68,6 +69,7 @@ export function App() {
             <Route path="/apps" element={<AppStorePage />} />
             <Route path="/meetings" element={<MeetingsPage />} />
             <Route path="/meetings/:id" element={<MeetingsPage />} />
+            <Route path="/phone" element={<PhonePage />} />
             <Route path="/time" element={<TimePage />} />
             <Route path="/absences" element={<AbsencesPage />} />
             <Route path="/crm" element={<CrmPage />} />

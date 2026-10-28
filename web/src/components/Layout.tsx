@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { APP_VERSION, APPS } from '@aperio/shared';
 import { MeetingLobbyNotice } from '../modules/MeetingLobby';
+import { PhoneProvider } from '../modules/Phone';
 import { useCan, useSession } from '../session';
 import { useApi, useHotkey, useLocalState } from '../lib/hooks';
 import { post, invalidate } from '../lib/api';
@@ -163,6 +164,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <CrumbCtx.Provider value={setCrumbs}>
+      <PhoneProvider>
       <div className={`app ${collapsed ? 'collapsed' : ''}`}>
         <nav className="sidebar">
           <div className="sidebar-head">
@@ -237,6 +239,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <IncomingCalls />
         <MeetingLobbyNotice />
       </div>
+      </PhoneProvider>
     </CrumbCtx.Provider>
   );
 }

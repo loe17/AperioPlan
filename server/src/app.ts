@@ -20,6 +20,7 @@ import { bootstrap } from './services/bootstrap';
 import type { AppContext } from './context';
 import { routes } from './routes';
 import { registerPluginStatic } from './routes/plugins';
+import { startPhoneConnector } from './services/phone';
 import { initWebhooks } from './lib/webhooks';
 
 export interface BuildOptions {
@@ -52,9 +53,22 @@ export async function buildApp(opts: BuildOptions = {}): Promise<{ app: FastifyI
   // weitere Speicherorte einbinden – und nach jeder Änderung der Einstellung neu
   const mountLocations = (st: { locations?: { id: string; path: string }[] }) => ctx.storage.setMounts(Object.fromEntries((st.locations ?? []).map((l) => [l.id, l.path])));
   mountLocations(await settings.get('storage'));
-  settings.onChange = (key, value) => { if (key === 'storage') mountLocations(value as { locations: { id: string; path: string }[] }); };
+  settings.onChange = (key, value) => {
+    if (key === 'storage') mountLocations(value as { locations: { id: string; path: string }[] });
+    if (key === 'phone' || key === 'apps') void startPhoneConnector(ctx).catch(() => {});
+  };
+  void startPhoneConnector(ctx).catch(() => {});
 
   await app.register(cookie);
+  // Formulardaten (z. B. Webhooks von Telefonanlagen wie sipgate und Placetel)
+  app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_req, body, done) => {
+    const out: Record<string, string | string[]> = {};
+    for (const [k, v] of new URLSearchParams(body as string)) {
+      const key = k.replace(/\[\]$/, '');
+      out[key] = key in out ? [...(Array.isArray(out[key]) ? out[key] as string[] : [out[key] as string]), v] : v;
+    }
+    done(null, out);
+  });
   await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 * 1024, files: 50 } });
   await app.register(rateLimit, { global: false });
   await app.register(websocket);

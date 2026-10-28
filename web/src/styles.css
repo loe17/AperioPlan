@@ -582,3 +582,19 @@ ol.steps { padding-left: 20px; margin: 0; display: grid; gap: 12px; }
 .meet-card h1 { margin: 10px 0 6px; font-size: 22px; }
 .meet-spinner { width: 34px; height: 34px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: meetspin 1s linear infinite; margin: 16px auto 0; }
 @keyframes meetspin { to { transform: rotate(360deg); } }
+/* Telefonie */
+.phone-stack { position: fixed; top: 60px; right: 20px; z-index: 76; display: flex; flex-direction: column; gap: 8px; width: 340px; max-width: calc(100vw - 32px); }
+.phone-card { box-shadow: var(--shadow-lg); }
+.phone-card.live { border-color: var(--green); }
+.phone-layout { display: flex; gap: 16px; align-items: flex-start; }
+.dialpad-card { width: 260px; flex: none; position: sticky; top: 10px; }
+.dial-input { font-size: 20px; text-align: center; margin-bottom: 8px; }
+.dialpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.dialpad .btn { justify-content: center; font-size: 17px; padding: 10px 0; }
+.dialpad.mini { position: absolute; bottom: calc(100% + 6px); left: 0; width: 160px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px; z-index: 5; box-shadow: var(--shadow-lg); }
+.dialpad.mini .btn { font-size: 14px; padding: 6px 0; }
+.provider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.provider { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.provider input { grid-row: span 2; margin-top: 3px; }
+.provider.on { border-color: var(--accent); background: var(--accent-soft); }
+@media (max-width: 900px) { .phone-layout { flex-direction: column; } .dialpad-card { width: 100%; position: static; } }
