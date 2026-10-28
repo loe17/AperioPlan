@@ -4,14 +4,15 @@ import { useApi, useTabState } from '../lib/hooks';
 import { fmtDateTime } from '../lib/format';
 import { Empty, Pill, Tabs } from '../components/ui';
 import { CadCenter } from '../modules/CadCenter';
+import { BridgeSetup } from '../modules/BridgeSetup';
 
 export default function CadPage() {
-  useCrumbs([{ label: 'CAD-Zentrale' }]);
+  useCrumbs([{ label: 'CAD-Bridge' }]);
   const [tab, setTab] = useTabState<'items' | 'exports' | 'setup'>('cad', 'items');
   return (
     <div className="page wide">
-      <div className="page-head"><div><h1>CAD-Zentrale</h1><div className="sub">Baugruppen, Einzelteile und Zeichnungen aller Projekte – mit Sperren, Versionsständen und Freigaben</div></div></div>
-      <Tabs value={tab} onChange={setTab} tabs={[{ id: 'items', label: 'Teile & Baugruppen' }, { id: 'exports', label: 'Fertigungsableitungen' }, { id: 'setup', label: 'CAD-Wächter einrichten' }]} />
+      <div className="page-head"><div><h1>CAD-Bridge</h1><div className="sub">Baugruppen, Einzelteile und Zeichnungen aller Projekte – mit Sperren, Versionsständen und Freigaben</div></div></div>
+      <Tabs value={tab} onChange={setTab} tabs={[{ id: 'items', label: 'Teile & Baugruppen' }, { id: 'exports', label: 'Fertigungsableitungen' }, { id: 'setup', label: 'Wächter einrichten' }]} />
       {tab === 'items' && <CadCenter />}
       {tab === 'exports' && <Exports />}
       {tab === 'setup' && <Setup />}
@@ -35,17 +36,5 @@ function Exports() {
 }
 
 function Setup() {
-  return (
-    <div className="card" style={{ maxWidth: 820 }}>
-      <h2 style={{ marginBottom: 10 }}>CAD-Wächter für SolidWorks</h2>
-      <ol style={{ lineHeight: 1.9, paddingLeft: 20 }}>
-        <li>Unter <b>Einstellungen → API-Schlüssel</b> einen Schlüssel „CAD-Wächter“ erzeugen.</li>
-        <li>Auf dem Konstruktions-PC das Installationspaket <span className="mono">AperioPlan.CadBridge</span> ausführen (siehe Administrator-Handbuch).</li>
-        <li>In SolidWorks unter <i>Extras → Zusatzanwendungen</i> „AperioPlan CAD-Wächter“ aktivieren.</li>
-        <li>Beim ersten Start Server-Adresse (<span className="mono">{location.origin}</span>) und API-Schlüssel eingeben.</li>
-        <li>Ab jetzt öffnet <b>Speichern</b> bei neuen Dateien die Speichermaske; Nummer, Eigenschaften und Zeichnung werden automatisch erzeugt.</li>
-        <li>Für die automatischen PDF/DXF/STEP-Ableitungen den Dienst <span className="mono">AperioPlan.ExportWorker</span> auf einem Rechner mit SolidWorks laufen lassen.</li>
-      </ol>
-    </div>
-  );
+  return <BridgeSetup kind="cad" />;
 }

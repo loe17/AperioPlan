@@ -188,7 +188,8 @@ export function Layout({ children }: { children: ReactNode }) {
 
             <div className="nav-section">
               <div className="nav-title"><Icon name="tools" /> {t('Werkzeuge')}</div>
-              {(can('cad') || isGuest) && <NavItem to="/cad" ico="cad" label={t('CAD-Zentrale')} />}
+              {(can('cad') || isGuest) && <NavItem to="/cad" ico="cad" label={t('CAD-Bridge')} />}
+              {can('pcb') && <NavItem to="/pcb" ico="bolt" label={t('PCB-Bridge')} />}
               {can('crm') && <NavItem to="/crm" ico="building" label="Kunden (CRM)" />}
               {can('purchasing') && <NavItem to="/purchasing" ico="truck" label="Einkauf" />}
               {can('calculation') && <NavItem to="/calculations" ico="euro" label="Kalkulation" />}

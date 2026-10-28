@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    PCB-Wächter "aperio-pcb" für KiCad ab Version 8 (Windows, Linux, macOS).
+    Erkennt neue KiCad-Projekte, vergibt über AperioPlan Nummern, checkt ein/aus, überträgt die Stückliste
+    und erzeugt bei Freigaben mit kicad-cli die Fertigungsdaten. Braucht keine KiCad-Bibliotheken zum Übersetzen.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>aperio-pcb</AssemblyName>
+    <RootNamespace>AperioPlan.PcbBridge</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AperioPlan.Core\AperioPlan.Core.csproj" />
+  </ItemGroup>
+</Project>

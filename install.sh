@@ -411,7 +411,7 @@ else
 fi
 
 # ---------------------------------------------------------------- 4.3 Caddyfile
-mkdir -p ./deploy data/files data/backups data/plugins data/locations
+mkdir -p ./deploy data/files data/backups data/plugins data/locations data/downloads
 SUFFIX=""; [ "$HTTPS_PORT" != 443 ] && SUFFIX=":$HTTPS_PORT"
 {
   cat <<EOF

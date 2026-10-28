@@ -1,5 +1,5 @@
 /**
- * CAD-Zentrale / PDM (Kapitel 6B und 7): Nummernvergabe, Speichermaske, Auschecken/Einchecken,
+ * CAD-Bridge / PDM (Kapitel 6B und 7): Nummernvergabe, Speichermaske, Auschecken/Einchecken,
  * Versionsstände, Verwendungsnachweis, Stücklisten, Freigabe-Workflow und Fertigungsableitungen.
  * Der CAD-Wächter (SolidWorks-Add-in, C#) spricht dieselbe Schnittstelle per API-Schlüssel an.
  */

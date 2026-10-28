@@ -16,6 +16,7 @@ export const MODULE_LABELS: Record<string, { label: string; icon: string }> = {
   report: { label: 'Abschlussbericht', icon: 'report' },
   files: { label: 'Dateien', icon: 'folder' },
   cad: { label: 'CAD-Dateien', icon: 'cad' },
+  pcb: { label: 'Leiterplatten', icon: 'bolt' },
   chat: { label: 'Chat', icon: 'chat' },
   time: { label: 'Zeiterfassung', icon: 'timer' },
   purchasing: { label: 'Einkauf', icon: 'truck' },

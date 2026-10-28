@@ -3,8 +3,8 @@
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <Company>AperioPlan</Company>
-    <Product>AperioPlan CAD-Wächter</Product>
-    <Version>1.0.0</Version>
+    <Product>AperioPlan CAD-/PCB-Bridge</Product>
+    <Version>1.2.0</Version>
     <!-- Pfad zur SolidWorks-API (Interop-DLLs). Bei abweichender Installation anpassen oder per /p:SolidWorksApiPath=... setzen -->
     <SolidWorksApiPath Condition="'$(SolidWorksApiPath)' == ''">C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\redist</SolidWorksApiPath>
   </PropertyGroup>

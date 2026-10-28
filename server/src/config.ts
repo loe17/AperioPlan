@@ -12,6 +12,8 @@ export const config = {
   storageRoot: resolve(env.STORAGE_ROOT ?? './data/files'),
   /** Hier eingebundene Netzlaufwerke stehen als weitere Speicherorte zur Wahl (install.sh speicherort) */
   locationsDir: resolve(env.LOCATIONS_DIR ?? './data/locations'),
+  /** Installationsdateien der Wächter (CAD-/PCB-Bridge), z. B. aus dem GitHub-Release hierher kopiert */
+  downloadsDir: resolve(env.DOWNLOADS_DIR ?? './data/downloads'),
   /** Ziel der Nacht-Sicherungen */
   backupDir: resolve(env.BACKUP_DIR ?? './data/backups'),
   /** Öffentliche Adresse, z. B. https://plan.firma.de – für Gast- und Teilen-Links */

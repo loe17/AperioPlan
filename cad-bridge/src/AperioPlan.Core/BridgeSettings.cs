@@ -20,6 +20,11 @@ namespace AperioPlan.Core
         public bool InterceptAllSaves = true;
         public bool CheckinOnClose = false;
         public string LastProjectId = "";
+        /// <summary>Nur PCB-Wächter: Pfad zu kicad-cli (leer = automatisch suchen)</summary>
+        public string KicadCli = "";
+
+        /// <summary>Dateiname der Einstellungen: cad-bridge.json (SolidWorks) oder pcb-bridge.json (KiCad)</summary>
+        public static string FileName = "cad-bridge.json";
 
         public static string ConfigDir
         {
@@ -30,7 +35,7 @@ namespace AperioPlan.Core
                 return Path.Combine(appData, "AperioPlan");
             }
         }
-        public static string ConfigFile => Path.Combine(ConfigDir, "cad-bridge.json");
+        public static string ConfigFile => Path.Combine(ConfigDir, FileName);
 
         public bool IsConfigured => !string.IsNullOrWhiteSpace(ServerUrl) && !string.IsNullOrWhiteSpace(Token);
 
@@ -47,6 +52,7 @@ namespace AperioPlan.Core
                 s.InterceptAllSaves = !d.ContainsKey("interceptAllSaves") || d.Bool("interceptAllSaves");
                 s.CheckinOnClose = d.Bool("checkinOnClose");
                 s.LastProjectId = d.Str("lastProjectId") ?? "";
+                s.KicadCli = d.Str("kicadCli") ?? "";
             }
             catch { /* beschädigte Datei – Standardwerte */ }
             return s;
@@ -58,7 +64,7 @@ namespace AperioPlan.Core
             var d = new Dictionary<string, object>
             {
                 ["serverUrl"] = ServerUrl, ["token"] = Protect(Token), ["workspace"] = Workspace,
-                ["interceptAllSaves"] = InterceptAllSaves, ["checkinOnClose"] = CheckinOnClose, ["lastProjectId"] = LastProjectId,
+                ["interceptAllSaves"] = InterceptAllSaves, ["checkinOnClose"] = CheckinOnClose, ["lastProjectId"] = LastProjectId, ["kicadCli"] = KicadCli,
             };
             File.WriteAllText(ConfigFile, Json.Stringify(d), Encoding.UTF8);
         }

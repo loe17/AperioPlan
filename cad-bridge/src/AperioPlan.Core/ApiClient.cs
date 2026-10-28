@@ -82,6 +82,33 @@ namespace AperioPlan.Core
             }
         }
 
+        /// <summary>Mehrere Dateien in einem Aufruf hochladen (Feldname, Pfad)</summary>
+        public async Task<Dictionary<string, object>> UploadFilesAsync(string path, IList<KeyValuePair<string, string>> files, IDictionary<string, string> fields = null)
+        {
+            using (var content = new MultipartFormDataContent())
+            {
+                var streams = new List<Stream>();
+                try
+                {
+                    if (fields != null) foreach (var f in fields) content.Add(new StringContent(f.Value ?? "", Encoding.UTF8), f.Key);
+                    foreach (var f in files)
+                    {
+                        var stream = new FileStream(f.Value, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                        streams.Add(stream);
+                        var fc = new StreamContent(stream);
+                        fc.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                        content.Add(fc, f.Key, Path.GetFileName(f.Value));
+                    }
+                    using (var res = await _http.PostAsync(Url(path), content).ConfigureAwait(false))
+                        return await Read(res).ConfigureAwait(false) as Dictionary<string, object>;
+                }
+                finally { foreach (var s in streams) s.Dispose(); }
+            }
+        }
+
+        public Dictionary<string, object> UploadFiles(string path, IList<KeyValuePair<string, string>> files, IDictionary<string, string> fields = null)
+            => Task.Run(() => UploadFilesAsync(path, files, fields)).GetAwaiter().GetResult();
+
         public Dictionary<string, object> Upload(string path, string filePath, IDictionary<string, string> fields = null)
             => Task.Run(() => UploadAsync(path, filePath, fields)).GetAwaiter().GetResult();
 
@@ -108,6 +135,29 @@ namespace AperioPlan.Core
 
         // ------------------------------------------------------------ Fachliche Aufrufe
         public Dictionary<string, object> Me() => Get("/auth/me");
+
+        /// <summary>Version dieses Wächters (aus Directory.Build.props)</summary>
+        public static string BridgeVersion
+        {
+            get
+            {
+                var v = typeof(ApiClient).Assembly.GetName().Version;
+                return v == null ? "" : $"{v.Major}.{v.Minor}.{v.Build}";
+            }
+        }
+
+        /// <summary>
+        /// Lebenszeichen an den Server: erscheint unter „Verbundene Arbeitsplätze“.
+        /// Liefert updateAvailable/latestVersion/downloadUrl zurück.
+        /// </summary>
+        public Dictionary<string, object> Hello(string kind, string appVersion)
+        {
+            string os = System.Runtime.InteropServices.RuntimeInformation.OSDescription;
+            return Post("/bridge/hello", new Dictionary<string, object>
+            {
+                ["kind"] = kind, ["host"] = Environment.MachineName, ["os"] = os, ["version"] = BridgeVersion, ["appVersion"] = appVersion ?? "",
+            });
+        }
         public SaveMask GetMask() => SaveMask.From(Get("/cad/mask"));
 
         public List<Project> Projects() => GetList("/projects").Cast<Dictionary<string, object>>().Select(Project.From).ToList();

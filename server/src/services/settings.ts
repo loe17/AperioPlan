@@ -2,7 +2,7 @@ import type { Sql } from '../db';
 import {
   DEFAULT_PROJECT_NUMBER_SETTINGS, DEFAULT_CALC_RATES, type CalcRates, DEFAULT_TIME_RULES, type TimeRuleSettings, DEFAULT_PROJECT_MODULES, DEFAULT_PROJECT_FOLDERS,
   DEFAULT_MASK_FIELDS, DEFAULT_CATALOGS, type ProjectNumberSettings, type ProjectModule,
-  type MaskField, type Catalog,
+  type MaskField, type Catalog, type PcbMaskSettings, DEFAULT_PCB_MASK,
 } from '@aperio/shared';
 
 export interface LdapSettings {
@@ -82,6 +82,7 @@ export interface SettingsMap {
   /** Firmendaten für Angebote und Bestellungen */
   letterhead: { address: string; footer: string; vatRate: number; paymentTerms: string; quoteValidityDays: number; quoteIntro: string; quoteOutro: string };
   storage: StorageSettings;
+  pcbMask: PcbMaskSettings;
   cadMask: { fields: MaskField[]; catalogs: Catalog[]; askCreateDrawing: boolean; drawingTemplate: string; subassemblies: { code: string; label: string }[] };
   ldap: LdapSettings;
   mail: MailSettings;
@@ -108,6 +109,7 @@ export const DEFAULT_SETTINGS: SettingsMap = {
     quoteOutro: 'Wir freuen uns auf Ihren Auftrag. Bei Fragen sind wir gerne für Sie da.',
   },
   storage: { mode: 'local', networkPath: '', projectFolders: DEFAULT_PROJECT_FOLDERS, locations: [], defaultLocation: 'main' },
+  pcbMask: DEFAULT_PCB_MASK,
   cadMask: {
     fields: DEFAULT_MASK_FIELDS,
     catalogs: DEFAULT_CATALOGS,

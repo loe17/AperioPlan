@@ -7,7 +7,7 @@ using AperioPlan.Core;
 namespace AperioPlan.Cli
 {
     /// <summary>
-    /// aperio-cad – Kommandozeilenwerkzeug für die CAD-Zentrale.
+    /// aperio-cad – Kommandozeilenwerkzeug für die CAD-Bridge.
     ///   aperio-cad config --server https://plan.firma.de --token ap_...
     ///   aperio-cad whoami
     ///   aperio-cad list [--project 0100] [--q Rahmen]
@@ -80,7 +80,7 @@ namespace AperioPlan.Cli
 
         private static void Help()
         {
-            Console.WriteLine("aperio-cad – CAD-Zentrale von AperioPlan");
+            Console.WriteLine("aperio-cad – CAD-Bridge von AperioPlan");
             Console.WriteLine("  config --server URL --token SCHLÜSSEL [--workspace ORDNER]");
             Console.WriteLine("  whoami | list [--project NR] [--q TEXT]");
             Console.WriteLine("  new --project NR --type part|assembly --sub 100 [--subsub 0] --name BENENNUNG [--drawing] [--proc make|buy|standard] [--prop KEY=WERT]");
@@ -93,7 +93,7 @@ namespace AperioPlan.Cli
             if (string.IsNullOrEmpty(key)) throw new ArgumentException("Nummer oder Datei angeben");
             var item = api.Resolve(Path.GetFileName(key) + (CadTypes.FromFileName(key) == null ? ".sldprt" : ""));
             if (item == null && CadTypes.FromFileName(key) == null) item = api.Resolve(Path.GetFileName(key) + ".sldasm");
-            return item ?? throw new InvalidOperationException("Nicht in der CAD-Zentrale gefunden: " + key);
+            return item ?? throw new InvalidOperationException("Nicht in der CAD-Bridge gefunden: " + key);
         }
 
         private static Project FindProject(ApiClient api, string number)
@@ -139,7 +139,7 @@ namespace AperioPlan.Cli
         private static int Checkin(ApiClient api, Workspace ws, Options o)
         {
             string file = Path.GetFullPath(o.Positional(0) ?? throw new ArgumentException("Datei angeben"));
-            var item = api.Resolve(Path.GetFileName(file)) ?? throw new InvalidOperationException("Datei ist nicht in der CAD-Zentrale registriert");
+            var item = api.Resolve(Path.GetFileName(file)) ?? throw new InvalidOperationException("Datei ist nicht in der CAD-Bridge registriert");
             var refs = o.All("ref").Select(x => x.Split('=')).Select(x => new Reference { FileName = x[0], Quantity = x.Length > 1 ? int.Parse(x[1]) : 1 }).ToList();
             var unknown = api.Checkin(item.Id, file, o.Get("m"), null, item.CadType == CadType.Assembly ? refs : null, o.Has("keep"));
             if (!o.Has("keep")) Workspace.SetReadOnly(file, true);

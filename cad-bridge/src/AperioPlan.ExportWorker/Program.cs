@@ -30,8 +30,19 @@ namespace AperioPlan.ExportWorker
             using (var api = settings.CreateClient())
             {
                 Console.WriteLine($"AperioPlan Export-Dienst – {api.BaseUrl} – Formate: {string.Join(", ", formats)}");
+                DateTime lastHello = DateTime.MinValue;
                 while (true)
                 {
+                    if (DateTime.Now - lastHello > TimeSpan.FromMinutes(5))
+                    {
+                        lastHello = DateTime.Now;
+                        try
+                        {
+                            var h = api.Hello("export", sw != null ? "SOLIDWORKS " + sw.RevisionNumber() : "SOLIDWORKS");
+                            if (h != null && h.Bool("updateAvailable")) Console.WriteLine($"Hinweis: Version {h.Str("latestVersion")} ist verfügbar – Einrichtung unter {api.BaseUrl}/cad?tab=setup");
+                        }
+                        catch { /* Server kurz nicht erreichbar */ }
+                    }
                     ExportJob job = null;
                     try
                     {

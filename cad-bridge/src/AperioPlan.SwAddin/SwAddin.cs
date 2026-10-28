@@ -74,7 +74,41 @@ namespace AperioPlan.SwAddin
             _sw.DocumentLoadNotify2 += OnDocumentLoaded;
             _sw.FileNewNotify2 += OnFileNew;
             AttachAllOpenDocuments();
+            SayHello();
             return true;
+        }
+
+        private volatile string _updateNotice;
+        private bool _updateShown;
+
+        /// <summary>Beim Start beim Server melden (Liste „Verbundene Arbeitsplätze“) und nach neuen Versionen fragen</summary>
+        private void SayHello()
+        {
+            if (!_settings.IsConfigured) return;
+            string rev = "SOLIDWORKS " + _sw.RevisionNumber();
+            string url = _settings.ServerUrl, token = _settings.Token;
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    using (var api = new ApiClient(url, token, TimeSpan.FromSeconds(20)))
+                    {
+                        var r = api.Hello("cad", rev);
+                        if (r != null && r.Bool("updateAvailable")) _updateNotice = r.Str("latestVersion");
+                    }
+                }
+                catch { /* Server nicht erreichbar – beim nächsten Start erneut */ }
+            });
+        }
+
+        /// <summary>Neue Version anbieten – einmal je Sitzung, sobald SolidWorks ein Dokument aktiviert</summary>
+        private void OfferUpdate()
+        {
+            if (_updateShown || _updateNotice == null) return;
+            _updateShown = true;
+            int r = _sw.SendMsgToUser2("AperioPlan CAD-Wächter: Version " + _updateNotice + " ist verfügbar.\n\nJetzt die Einrichtung öffnen? (Installationspaket herunterladen und ausführen)",
+                (int)swMessageBoxIcon_e.swMbInformation, (int)swMessageBoxBtn_e.swMbYesNo);
+            if (r == (int)swMessageBoxResult_e.swMbHitYes) Process.Start(_settings.ServerUrl.TrimEnd('/') + "/cad?tab=setup");
         }
 
         public bool DisconnectFromSW()
@@ -106,7 +140,7 @@ namespace AperioPlan.SwAddin
             grp.AddCommandItem2("Zur Prüfung geben", -1, "Freigabe-Workflow: In Arbeit → Prüfung", "Zur Prüfung", 4, nameof(CmdReview), nameof(EnableIfManaged), 5, menuOnly);
             grp.AddCommandItem2("Wo verbaut?", -1, "Verwendungsnachweis anzeigen", "Wo verbaut?", 5, nameof(CmdWhereUsed), nameof(EnableIfManaged), 6, both);
             grp.AddCommandItem2("Zeichnung anlegen", -1, "Passende 2D-Zeichnung mit gleicher Nummer anlegen", "Zeichnung anlegen", 6, nameof(CmdCreateDrawing), nameof(EnableIfManagedModel), 7, menuOnly);
-            grp.AddCommandItem2("Im Browser öffnen", -1, "Teil in der CAD-Zentrale anzeigen", "Im Browser öffnen", 7, nameof(CmdOpenInBrowser), nameof(EnableIfManaged), 8, menuOnly);
+            grp.AddCommandItem2("Im Browser öffnen", -1, "Teil in der CAD-Bridge anzeigen", "Im Browser öffnen", 7, nameof(CmdOpenInBrowser), nameof(EnableIfManaged), 8, menuOnly);
             grp.AddCommandItem2("Einstellungen …", -1, "Server-Adresse, API-Schlüssel, Arbeitsbereich", "Einstellungen", 8, nameof(CmdSettings), "", 9, menuOnly);
             grp.HasToolbar = true;
             grp.HasMenu = true;
@@ -117,6 +151,7 @@ namespace AperioPlan.SwAddin
         private int OnActiveDocChanged()
         {
             AttachAllOpenDocuments();
+            OfferUpdate();
             return 0;
         }
 

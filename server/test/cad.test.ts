@@ -23,7 +23,7 @@ async function checkin(id: string, content: string, fields: Record<string, strin
   return { status: r.statusCode, body: JSON.parse(r.body) };
 }
 
-describe('CAD-Zentrale / PDM', () => {
+describe('CAD-Bridge / PDM', () => {
   let frame: any, plate: any, asm: any, frameDrawing: any;
 
   it('vergibt Nummern 0100-100-00-0000-00 und legt Zeichnung an', async () => {

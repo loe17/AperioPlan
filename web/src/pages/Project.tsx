@@ -22,6 +22,7 @@ import { AuditView } from '../modules/AuditView';
 import { ProjectSettings, MODULE_LABELS, STATUS_OPTIONS } from '../modules/ProjectSettings';
 import { ProjectFiles } from '../modules/ProjectFiles';
 import { ProjectCad } from '../modules/ProjectCad';
+import { PcbCenter } from '../modules/PcbCenter';
 import { ProjectChat } from '../modules/ProjectChat';
 import { ProjectTime } from '../modules/ProjectTime';
 import { AiPanel } from '../modules/AiPanel';
@@ -155,6 +156,7 @@ export default function ProjectPage() {
       {tab === 'report' && <Report project={project} tasks={tasks ?? []} canEdit={project.canEdit} />}
       {tab === 'files' && <ProjectFiles projectId={project.id} project={project} canEdit={project.canEdit} />}
       {tab === 'cad' && <ProjectCad projectId={project.id} project={project} canEdit={project.canEdit} />}
+      {tab === 'pcb' && <PcbCenter projectId={project.id} canEdit={project.canEdit && !project.locked} />}
       {tab === 'chat' && <ProjectChat projectId={project.id} project={project} />}
       {tab === 'time' && <ProjectTime projectId={project.id} project={project} />}
       {tab === 'purchasing' && <ProjectPurchasing project={project} canEdit={!project.locked && me?.role !== 'guest'} />}

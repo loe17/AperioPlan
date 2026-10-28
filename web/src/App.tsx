@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { useSession } from './session';
 import { I18nProvider } from './i18n';
 import { Layout } from './components/Layout';
@@ -19,6 +19,7 @@ const InboxPage = lazy(() => import('./pages/Inbox'));
 const NotesPage = lazy(() => import('./pages/Notes'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
 const CadPage = lazy(() => import('./pages/Cad'));
+const PcbPage = lazy(() => import('./pages/Pcb'));
 const TimePage = lazy(() => import('./pages/Time'));
 const AbsencesPage = lazy(() => import('./pages/Absences'));
 const CalendarPage = lazy(() => import('./pages/Calendar'));
@@ -55,6 +56,8 @@ export function App() {
             <Route path="/inbox" element={<InboxPage />} />
             <Route path="/notes" element={<NotesPage />} />
             <Route path="/cad" element={<CadPage />} />
+            <Route path="/cad-bridge" element={<Navigate to="/cad" replace />} />
+            <Route path="/pcb" element={<PcbPage />} />
             <Route path="/time" element={<TimePage />} />
             <Route path="/absences" element={<AbsencesPage />} />
             <Route path="/crm" element={<CrmPage />} />

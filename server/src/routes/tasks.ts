@@ -275,6 +275,12 @@ export default async function taskRoutes(app: FastifyInstance, ctx: AppContext) 
       await projectAccess(sql, u, c.project_id, need);
       return c.project_id;
     }
+    if (type === 'pcb_board') {
+      const [c] = await sql<{ project_id: string }[]>`select project_id from pcb_boards where id = ${id}`;
+      if (!c) throw notFound();
+      await projectAccess(sql, u, c.project_id, need);
+      return c.project_id;
+    }
     if (type === 'kvp') {
       const [k] = await sql`select 1 from kvp_ideas where id = ${id}`;
       if (!k) throw notFound();
@@ -285,7 +291,7 @@ export default async function taskRoutes(app: FastifyInstance, ctx: AppContext) 
 
   app.get('/comments/:type/:id', async (req) => {
     const u = requireUser(req);
-    const p = parse(z.object({ type: z.enum(['task', 'cad_item', 'kvp']), id: z.string().uuid() }), req.params);
+    const p = parse(z.object({ type: z.enum(['task', 'cad_item', 'pcb_board', 'kvp']), id: z.string().uuid() }), req.params);
     await checkEntity(u, p.type, p.id);
     return sql`select c.id, c.body, c.user_id as "userId", us.display_name as "userName", c.created_at as "createdAt"
       from comments c left join users us on us.id = c.user_id
@@ -294,7 +300,7 @@ export default async function taskRoutes(app: FastifyInstance, ctx: AppContext) 
 
   app.post('/comments/:type/:id', async (req) => {
     const u = requireUser(req);
-    const p = parse(z.object({ type: z.enum(['task', 'cad_item', 'kvp']), id: z.string().uuid() }), req.params);
+    const p = parse(z.object({ type: z.enum(['task', 'cad_item', 'pcb_board', 'kvp']), id: z.string().uuid() }), req.params);
     const projectId = await checkEntity(u, p.type, p.id, 'write');
     const b = parse(z.object({ body: z.string().trim().min(1).max(20000), notify: z.array(z.string().uuid()).max(200).default([]) }), req.body);
     const [c] = await sql`insert into comments (entity_type, entity_id, user_id, body) values (${p.type}, ${p.id}, ${u.id}, ${b.body})

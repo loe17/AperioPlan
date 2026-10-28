@@ -6,7 +6,7 @@ import { ResourceLabel, useResourceTypes, type ResourceType } from './Resources'
 import { fmtBytes, fmtDate, fmtDateTime } from '../lib/format';
 import { Confirm, Modal, Pill } from '../components/ui';
 import { del, upload } from '../lib/api';
-import { APP_VERSION } from '@aperio/shared';
+import { APP_VERSION, PCB_EXPORT_FORMATS, PCB_EXPORT_LABELS, pcbFullNumber, pcbNumber, validatePcbPattern } from '@aperio/shared';
 import { Field, useAction } from '../components/ui';
 import { useSession } from '../session';
 import { useAdminSettings } from './Settings';
@@ -196,23 +196,32 @@ const FIELD_TYPES: [string, string][] = [['text', 'Text'], ['textarea', 'Mehrzei
 const TYPES: [string, string][] = [['part', 'Teil'], ['assembly', 'Baugruppe'], ['drawing', 'Zeichnung']];
 
 /** Baukasten für die Speichermaske des CAD-Wächters (Kapitel 7.1) */
+/** Speichermaske für CAD- und PCB-Bridge: gleiche Seite, je ein Reiter */
 export function CadMaskSettings() {
-  const act = useAction();
-  const { refreshLists } = useSession();
-  const s = useAdminSettings('cadMask');
-  const [catalog, setCatalog] = useState<string | null>(null);
-  if (!s.value) return null;
-  const v = s.value;
-  const setField = (i: number, f: any) => s.setValue({ ...v, fields: v.fields.map((x: any, j: number) => (j === i ? f : x)) });
-  const move = (i: number, d: number) => { const n = [...v.fields]; const j = i + d; if (j < 0 || j >= n.length) return; [n[i], n[j]] = [n[j], n[i]]; s.setValue({ ...v, fields: n }); };
-  const cat = v.catalogs.find((c: any) => c.name === catalog);
+  const [tab, setTab] = useState<'cad' | 'pcb'>(() => (new URLSearchParams(location.search).get('tab') === 'pcb' ? 'pcb' : 'cad'));
   return (
     <div>
-      <h1 style={{ marginBottom: 6 }}>Speichermaske (CAD)</h1>
-      <p className="muted">Legen Sie fest, welche Felder die Konstrukteure beim Speichern in SolidWorks ausfüllen. Jedes Feld wird als Custom Property in die Datei geschrieben und erscheint so im Schriftkopf.</p>
+      <h1 style={{ marginBottom: 6 }}>Speichermaske</h1>
+      <div className="tabs" style={{ marginBottom: 14 }}>
+        <button className={`tab ${tab === 'cad' ? 'active' : ''}`} onClick={() => setTab('cad')}><Icon name="cad" /> CAD (SolidWorks)</button>
+        <button className={`tab ${tab === 'pcb' ? 'active' : ''}`} onClick={() => setTab('pcb')}><Icon name="bolt" /> PCB (KiCad)</button>
+      </div>
+      {tab === 'cad' ? <CadMaskTab /> : <PcbMaskTab />}
+    </div>
+  );
+}
+
+/** Felder und Dropdown-Kataloge – für CAD und PCB gemeinsam */
+function MaskEditor({ v, set, propLabel, appliesTo }: { v: any; set: (v: any) => void; propLabel: string; appliesTo: boolean }) {
+  const [catalog, setCatalog] = useState<string | null>(null);
+  const setField = (i: number, f: any) => set({ ...v, fields: v.fields.map((x: any, j: number) => (j === i ? f : x)) });
+  const move = (i: number, d: number) => { const n = [...v.fields]; const j = i + d; if (j < 0 || j >= n.length) return; [n[i], n[j]] = [n[j], n[i]]; set({ ...v, fields: n }); };
+  const cat = v.catalogs.find((c: any) => c.name === catalog);
+  return (
+    <>
       <h2 style={{ margin: '18px 0 8px' }}>Felder</h2>
       <div className="table-wrap"><table className="table">
-        <thead><tr><th /><th>Eigenschaft (SolidWorks)</th><th>Bezeichnung</th><th>Typ</th><th>Katalog</th><th>Pflicht</th><th>Gilt für</th><th>Vorgabe</th><th /></tr></thead>
+        <thead><tr><th /><th>{propLabel}</th><th>Bezeichnung</th><th>Typ</th><th>Katalog</th><th>Pflicht</th>{appliesTo && <th>Gilt für</th>}<th>Vorgabe</th><th /></tr></thead>
         <tbody>{v.fields.map((f: any, i: number) => (
           <tr key={i}>
             <td style={{ whiteSpace: 'nowrap' }}><button className="btn ghost sm" onClick={() => move(i, -1)}>↑</button><button className="btn ghost sm" onClick={() => move(i, 1)}>↓</button></td>
@@ -221,33 +230,47 @@ export function CadMaskSettings() {
             <td><select style={{ minWidth: 130 }} value={f.type} onChange={(e) => setField(i, { ...f, type: e.target.value })}>{FIELD_TYPES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></td>
             <td>{f.type === 'select' ? <select style={{ minWidth: 140 }} value={f.catalog ?? ''} onChange={(e) => setField(i, { ...f, catalog: e.target.value })}><option value="">–</option>{v.catalogs.map((c: any) => <option key={c.name} value={c.name}>{c.label}</option>)}</select> : ''}</td>
             <td><input type="checkbox" checked={f.required} onChange={(e) => setField(i, { ...f, required: e.target.checked })} /></td>
-            <td style={{ whiteSpace: 'nowrap' }}>{TYPES.map(([k, l]) => (
+            {appliesTo && <td style={{ whiteSpace: 'nowrap' }}>{TYPES.map(([k, l]) => (
               <label key={k} className="small" style={{ marginRight: 6 }}><input type="checkbox" checked={!f.appliesTo || f.appliesTo.includes(k)} onChange={(e) => {
                 const cur: string[] = f.appliesTo ?? TYPES.map((t) => t[0]);
                 const next = e.target.checked ? [...cur, k] : cur.filter((x) => x !== k);
                 setField(i, { ...f, appliesTo: next.length === 3 ? undefined : next });
               }} /> {l}</label>
-            ))}</td>
+            ))}</td>}
             <td><input style={{ minWidth: 90 }} value={f.defaultValue ?? ''} onChange={(e) => setField(i, { ...f, defaultValue: e.target.value || undefined })} /></td>
-            <td><button className="btn ghost sm" onClick={() => s.setValue({ ...v, fields: v.fields.filter((_: any, j: number) => j !== i) })}><Icon name="x" /></button></td>
+            <td><button className="btn ghost sm" onClick={() => set({ ...v, fields: v.fields.filter((_: any, j: number) => j !== i) })}><Icon name="x" /></button></td>
           </tr>
         ))}</tbody>
       </table></div>
-      <button className="btn" style={{ marginTop: 8 }} onClick={() => s.setValue({ ...v, fields: [...v.fields, { key: 'NeuesFeld', label: 'Neues Feld', type: 'text', required: false }] })}>＋ Feld hinzufügen</button>
+      <button className="btn" style={{ marginTop: 8 }} onClick={() => set({ ...v, fields: [...v.fields, { key: 'NeuesFeld', label: 'Neues Feld', type: 'text', required: false }] })}>＋ Feld hinzufügen</button>
 
       <h2 style={{ margin: '24px 0 8px' }}>Dropdown-Kataloge</h2>
       <div className="row wrap" style={{ marginBottom: 8 }}>
         {v.catalogs.map((c: any) => <button key={c.name} className={`btn sm ${catalog === c.name ? 'primary' : ''}`} onClick={() => setCatalog(c.name)}>{c.label} ({c.values.length})</button>)}
-        <button className="btn sm" onClick={() => { const name = prompt('Interner Name (ohne Leerzeichen)'); if (name) { s.setValue({ ...v, catalogs: [...v.catalogs, { name, label: name, values: [] }] }); setCatalog(name); } }}>＋ Katalog</button>
+        <button className="btn sm" onClick={() => { const name = prompt('Interner Name (ohne Leerzeichen)'); if (name) { set({ ...v, catalogs: [...v.catalogs, { name, label: name, values: [] }] }); setCatalog(name); } }}>＋ Katalog</button>
       </div>
       {cat && (
         <div className="card flat">
-          <div className="grid2"><Field label="Bezeichnung"><input value={cat.label} onChange={(e) => s.setValue({ ...v, catalogs: v.catalogs.map((c: any) => (c.name === cat.name ? { ...c, label: e.target.value } : c)) })} /></Field></div>
+          <div className="grid2"><Field label="Bezeichnung"><input value={cat.label} onChange={(e) => set({ ...v, catalogs: v.catalogs.map((c: any) => (c.name === cat.name ? { ...c, label: e.target.value } : c)) })} /></Field></div>
           <Field label="Einträge (einer pro Zeile)">
-            <textarea rows={8} value={cat.values.join('\n')} onChange={(e) => s.setValue({ ...v, catalogs: v.catalogs.map((c: any) => (c.name === cat.name ? { ...c, values: e.target.value.split('\n').map((x: string) => x.trim()).filter(Boolean) } : c)) })} />
+            <textarea rows={8} value={cat.values.join('\n')} onChange={(e) => set({ ...v, catalogs: v.catalogs.map((c: any) => (c.name === cat.name ? { ...c, values: e.target.value.split('\n').map((x: string) => x.trim()).filter(Boolean) } : c)) })} />
           </Field>
         </div>
       )}
+    </>
+  );
+}
+
+function CadMaskTab() {
+  const act = useAction();
+  const { refreshLists } = useSession();
+  const s = useAdminSettings('cadMask');
+  if (!s.value) return null;
+  const v = s.value;
+  return (
+    <div>
+      <p className="muted">Legen Sie fest, welche Felder die Konstrukteure beim Speichern in SolidWorks ausfüllen. Jedes Feld wird als Custom Property in die Datei geschrieben und erscheint so im Schriftkopf.</p>
+      <MaskEditor v={v} set={s.setValue} propLabel="Eigenschaft (SolidWorks)" appliesTo />
 
       <h2 style={{ margin: '24px 0 8px' }}>Unterbaugruppen (Nummernbereiche)</h2>
       <div className="card flat" style={{ padding: 8, maxWidth: 520 }}>
@@ -265,6 +288,33 @@ export function CadMaskSettings() {
       <label className="row"><input type="checkbox" checked={v.askCreateDrawing} onChange={(e) => s.setValue({ ...v, askCreateDrawing: e.target.checked })} /> Beim Speichern von Teilen/Baugruppen fragen, ob die passende Zeichnung angelegt werden soll</label>
       <Field label="Zeichnungsvorlage (Dateiname auf dem Konstruktions-PC)"><input className="mono" value={v.drawingTemplate} onChange={(e) => s.setValue({ ...v, drawingTemplate: e.target.value })} style={{ maxWidth: 420 }} /></Field>
       <button className="btn primary" onClick={async () => { await act(() => s.save(v), 'Speichermaske gespeichert'); refreshLists(); }}>Speichern</button>
+    </div>
+  );
+}
+
+function PcbMaskTab() {
+  const act = useAction();
+  const s = useAdminSettings('pcbMask');
+  if (!s.value) return null;
+  const v = s.value;
+  const err = validatePcbPattern(v.numberPattern);
+  return (
+    <div>
+      <p className="muted">Felder, die beim Anlegen einer Leiterplatte (neues KiCad-Projekt) ausgefüllt werden. Sie landen als Textvariablen im KiCad-Projekt (z. B. <span className="mono">{'${APERIO_LAGEN}'}</span>) und können so im Schriftfeld erscheinen.</p>
+      <div className="grid2">
+        <Field label="Aufbau der Nummer" hint={err ?? `Beispiel: ${pcbFullNumber(pcbNumber(v.numberPattern, '0100', 1), 0)} – {PROJEKT} = Projektnummer, {NN} = laufende Nummer, der Versionsstand wird angehängt`}>
+          <input className="mono" value={v.numberPattern} onChange={(e) => s.setValue({ ...v, numberPattern: e.target.value })} />
+        </Field>
+        <Field label="Ordner im Projekt"><input className="mono" value={v.folder} onChange={(e) => s.setValue({ ...v, folder: e.target.value })} /></Field>
+      </div>
+      <Field label="Fertigungsdaten bei der Freigabe">
+        <div className="row wrap">{PCB_EXPORT_FORMATS.map((f) => (
+          <label key={f} className="row small"><input type="checkbox" checked={v.exportFormats.includes(f)} onChange={(e) => s.setValue({ ...v, exportFormats: e.target.checked ? [...v.exportFormats, f] : v.exportFormats.filter((x: string) => x !== f) })} /> {PCB_EXPORT_LABELS[f]}</label>
+        ))}</div>
+      </Field>
+      <MaskEditor v={v} set={s.setValue} propLabel="Variable (KiCad)" appliesTo={false} />
+      <div className="spacer" />
+      <button className="btn primary" disabled={Boolean(err)} onClick={() => act(() => s.save(v), 'Speichermaske gespeichert')}>Speichern</button>
     </div>
   );
 }

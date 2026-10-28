@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { validateNumberPattern } from '@aperio/shared';
+import { validateNumberPattern, validatePcbPattern } from '@aperio/shared';
 import type { AppContext } from '../context';
 import { z, parse } from '../lib/validate';
 import { requireRole, requireUser } from '../lib/auth';
@@ -56,6 +56,10 @@ export default async function settingsRoutes(app: FastifyInstance, ctx: AppConte
       const v = value as { format?: string; pattern?: string };
       const err = v.format === 'pattern' ? validateNumberPattern(v.pattern ?? '') : null;
       if (err) throw badRequest(err);
+    }
+    if (k === 'pcbMask') {
+      const err = validatePcbPattern(String((value as { numberPattern?: string }).numberPattern ?? ''));
+      if (err) throw badRequest(`Nummer der Leiterplatten: ${err}`);
     }
     const merged = await settings.mergeSecrets(k, value as SettingsMap[typeof k]);
     await settings.set(k, merged);

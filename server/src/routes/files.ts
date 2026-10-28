@@ -111,7 +111,7 @@ export default async function fileRoutes(app: FastifyInstance, ctx: AppContext) 
     if (!rel) throw badRequest('Projektordner kann nicht gelöscht werden');
     const from = `${p.folder_path}/${rel}`;
     const [cad] = await sql`select 1 from cad_items where file_path = ${from} or file_path like ${from + '/%'}`;
-    if (cad) throw badRequest('Enthält CAD-Dateien – bitte in der CAD-Zentrale verwalten');
+    if (cad) throw badRequest('Enthält CAD-Dateien – bitte in der CAD-Bridge verwalten');
     const to = `${p.folder_path}/${TRASH_DIR}/${new Date().toISOString().replace(/[:.]/g, '-')}_${posix.basename(rel)}`;
     await storage.move(from, to);
     await sql`delete from files where path = ${from} or path like ${from + '/%'}`;

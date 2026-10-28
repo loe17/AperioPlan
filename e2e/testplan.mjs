@@ -370,6 +370,35 @@ await step('12.4 Änderungsprotokoll als Excel herunterladen', async () => {
   await page.waitForSelector('text=SHA-256');
 });
 
+// ------------------------------------------------------------ 13. CAD-/PCB-Bridge (1.2)
+await step('13.1 PCB-Bridge: Leiterplatte über die Speichermaske anlegen', async () => {
+  await page.goto(`${BASE}/pcb`);
+  await page.click('button:has-text("Neue Leiterplatte")');
+  await page.selectOption('.modal select >> nth=0', { index: 1 });
+  await page.fill('.modal input[placeholder*="Steuerplatine"]', 'Steuerplatine');
+  await page.selectOption('.modal .field:has-text("Oberfläche") select', 'ENIG (chem. Gold)');
+  await page.click('.modal button:has-text("Nummer vergeben")');
+  await page.waitForSelector('.slideover b.mono:text-matches("-E01-00$")');
+  await page.waitForSelector('text=APERIO_NUMMER', { state: 'attached' });
+});
+
+await step('13.2 Wächter einrichten: Installationspaket herunterladen', async () => {
+  await page.goto(`${BASE}/pcb?tab=setup`);
+  const dl = page.waitForEvent('download');
+  await page.click('button:has-text("Installationspaket herunterladen")');
+  const d = await dl;
+  if (d.suggestedFilename() !== 'AperioPlan-PCB-Bridge-Einrichtung.zip') throw new Error(d.suggestedFilename());
+  await page.goto(`${BASE}/cad?tab=setup`);
+  await page.waitForSelector('h2:has-text("CAD-Wächter für SolidWorks einrichten")');
+  await page.waitForSelector('nav >> text=CAD-Bridge');
+});
+
+await step('13.3 Speichermaske: Reiter CAD und PCB', async () => {
+  await page.goto(`${BASE}/settings/cad`);
+  await page.click('button.tab:has-text("PCB (KiCad)")');
+  await page.waitForSelector('input[value="{PROJEKT}-E{NN}"]');
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);

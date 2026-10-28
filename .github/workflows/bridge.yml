@@ -1,0 +1,96 @@
+name: CAD- und PCB-Bridge (Wächter)
+
+# Baut die Programmpakete der Wächter. Bei jeder neuen Version (Release) werden sie automatisch angehängt –
+# das Installationspaket aus AperioPlan lädt sie von dort (oder aus dem Download-Ordner des Servers).
+#
+#  AperioPlan-PCB-Bridge-win-x64.zip / -linux-x64.tar.gz / -osx-arm64.tar.gz   PCB-Wächter (KiCad), ohne Zusatzprogramme lauffähig
+#  AperioPlan-CAD-Bridge-win-x64.zip                                         SolidWorks-Add-in, Export-Dienst, aperio-cad
+#
+# Das SolidWorks-Add-in braucht zum Übersetzen die Schnittstellen-Dateien (Interop-DLLs) von SolidWorks. Sie dürfen nicht
+# öffentlich im Repository liegen. Dafür im Repository unter Settings → Secrets → Actions das Geheimnis
+# SOLIDWORKS_API_ZIP_URL anlegen: Download-Adresse einer ZIP-Datei mit dem Inhalt von
+# „C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\api\redist“ (z. B. aus dem eigenen Firmenspeicher).
+# Ohne dieses Geheimnis enthält das CAD-Paket nur die Kommandozeile aperio-cad.
+on:
+  push:
+    branches: [main]
+    paths: ['cad-bridge/**', '.github/workflows/bridge.yml']
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pcb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Bauen für Windows, Linux und macOS
+        run: |
+          set -e
+          mkdir -p dist
+          for rid in win-x64 linux-x64 osx-arm64; do
+            dotnet publish cad-bridge/src/AperioPlan.PcbBridge/AperioPlan.PcbBridge.csproj -c Release -r $rid --self-contained true \
+              -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o out/$rid
+            rm -f out/$rid/*.pdb
+          done
+          (cd out/win-x64 && zip -q ../../dist/AperioPlan-PCB-Bridge-win-x64.zip *)
+          tar -czf dist/AperioPlan-PCB-Bridge-linux-x64.tar.gz -C out/linux-x64 .
+          tar -czf dist/AperioPlan-PCB-Bridge-osx-arm64.tar.gz -C out/osx-arm64 .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AperioPlan-PCB-Bridge
+          path: dist/*
+      - name: An das Release anhängen
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber
+
+  cad:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: SolidWorks-Schnittstelle bereitstellen (falls hinterlegt)
+        id: swapi
+        shell: pwsh
+        env:
+          SW_URL: ${{ secrets.SOLIDWORKS_API_ZIP_URL }}
+        run: |
+          if ($env:SW_URL) {
+            Invoke-WebRequest -Uri $env:SW_URL -OutFile swapi.zip
+            Expand-Archive swapi.zip -DestinationPath swapi
+            $dll = Get-ChildItem swapi -Recurse -Filter SolidWorks.Interop.sldworks.dll | Select-Object -First 1
+            "path=$($dll.DirectoryName)" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "::warning::SOLIDWORKS_API_ZIP_URL ist nicht hinterlegt – das CAD-Paket enthält nur aperio-cad (ohne SolidWorks-Add-in)."
+          }
+      - name: Bauen
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist, pkg | Out-Null
+          dotnet publish cad-bridge/src/AperioPlan.Cli/AperioPlan.Cli.csproj -c Release -f net8.0 -r win-x64 --self-contained true -p:PublishSingleFile=true -o pkg/Cli
+          if ("${{ steps.swapi.outputs.path }}") {
+            dotnet build cad-bridge/src/AperioPlan.SwAddin/AperioPlan.SwAddin.csproj -c Release "/p:SolidWorksApiPath=${{ steps.swapi.outputs.path }}" -o pkg/SwAddin
+            dotnet build cad-bridge/src/AperioPlan.ExportWorker/AperioPlan.ExportWorker.csproj -c Release "/p:SolidWorksApiPath=${{ steps.swapi.outputs.path }}" -o pkg/ExportWorker
+            Copy-Item "${{ steps.swapi.outputs.path }}\SolidWorks.Interop.*.dll" pkg/ExportWorker/ -ErrorAction SilentlyContinue
+          }
+          Get-ChildItem pkg -Recurse -Filter *.pdb | Remove-Item
+          Compress-Archive -Path pkg/* -DestinationPath dist/AperioPlan-CAD-Bridge-win-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AperioPlan-CAD-Bridge
+          path: dist/*
+      - name: An das Release anhängen
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/AperioPlan-CAD-Bridge-win-x64.zip --clobber

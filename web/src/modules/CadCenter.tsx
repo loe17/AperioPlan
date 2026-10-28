@@ -23,7 +23,7 @@ export const TYPE_META: Record<string, { label: string; icon: string }> = {
 const PROC: Record<string, string> = { make: 'Eigenfertigung', buy: 'Kaufteil', standard: 'Normteil' };
 const STATE_ACTION: Record<string, string> = { review: 'Zur Prüfung', released: 'Freigeben', in_work: 'Zurück in Arbeit', obsolete: 'Ungültig setzen' };
 
-/** CAD-Zentrale: alle Baugruppen, Teile und Zeichnungen – optional auf ein Projekt beschränkt */
+/** CAD-Bridge: alle Baugruppen, Teile und Zeichnungen – optional auf ein Projekt beschränkt */
 export function CadCenter({ projectId, canEdit = true }: { projectId?: string; canEdit?: boolean }) {
   const [params, setParams] = useSearchParams();
   const { me } = useSession();
@@ -90,7 +90,7 @@ export function CadCenter({ projectId, canEdit = true }: { projectId?: string; c
 }
 
 // ---------------------------------------------------------------- Speichermaske (Web-Variante)
-export function MaskFields({ mask, type, values, onChange }: { mask: PublicSettings['cadMask']; type: string; values: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
+export function MaskFields({ mask, type, values, onChange }: { mask: Pick<PublicSettings['cadMask'], 'fields' | 'catalogs'>; type: string; values: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
   const fields = mask.fields.filter((f) => !f.appliesTo || f.appliesTo.includes(type));
   return (
     <div className="grid2">

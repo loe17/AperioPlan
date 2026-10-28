@@ -2,7 +2,7 @@
   "name": "aperioplan",
   "version": "1.1.1",
   "private": true,
-  "description": "AperioPlan – modulare Web-Projektverwaltung, CAD-Zentrale & Firmen-Plattform",
+  "description": "AperioPlan – modulare Web-Projektverwaltung, CAD-Bridge & Firmen-Plattform",
   "scripts": {
     "dev": "pnpm -r --parallel --filter ./server --filter ./web dev",
     "build": "pnpm --filter ./server build && pnpm --filter ./web build",

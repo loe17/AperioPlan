@@ -39,6 +39,8 @@ services:
       UPDATE_TRIGGER_FILE: /update/request
       UPDATE_REPO: ${UPDATE_REPO:-loe17/AperioPlan}
       PLUGINS_DIR: /data/plugins
+      # Programmpakete der CAD-/PCB-Wächter für Arbeitsplätze ohne Internetzugang (aus dem GitHub-Release hierher kopieren)
+      DOWNLOADS_DIR: /data/downloads
       TZ: ${TZ:-Europe/Berlin}
     volumes:
       # Projektdateien: lokal oder Netzlaufwerk (NAS/SMB), siehe FILES_PATH in .env
@@ -48,6 +50,7 @@ services:
       - update:/update
       # Erweiterungen (Plugins) – Ordner mit manifest.json, siehe docs/ENTWICKLER.md
       - ./data/plugins:/data/plugins
+      - ./data/downloads:/data/downloads:ro
       # weitere Speicherorte (Netzlaufwerke), eingerichtet mit: sudo ./install.sh speicherort
       - type: bind
         source: ./data/locations
