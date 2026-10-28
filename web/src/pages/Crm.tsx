@@ -1,3 +1,4 @@
+import { InvoiceList } from '../modules/Invoices';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { patch, post, upload, invalidate } from '../lib/api';
@@ -10,7 +11,7 @@ import { Icon } from '../components/Icon';
 import { ACCOUNT_STATUS, AccountModal, CASE_STATUS, CASE_TYPE, QUOTE_STATUS, STAGES, type CrmAccount } from '../modules/CrmShared';
 import { CaseModal, OpportunityModal, QuoteEditor } from '../modules/CrmModals';
 
-type Tab = 'overview' | 'customers' | 'suppliers' | 'opportunities' | 'quotes' | 'cases' | 'duplicates';
+type Tab = 'overview' | 'customers' | 'suppliers' | 'opportunities' | 'quotes' | 'invoices' | 'cases' | 'duplicates';
 
 /** CRM – Kunden, Lieferanten, Verkaufschancen, Angebote, Reklamationen */
 export default function CrmPage() {
@@ -19,7 +20,7 @@ export default function CrmPage() {
   const [tab, setTab] = useTabState<Tab>('crm', 'overview');
   const tabs: { id: Tab; label: string }[] = [
     { id: 'overview', label: 'Übersicht' }, { id: 'customers', label: 'Kunden' }, { id: 'opportunities', label: 'Verkaufschancen' },
-    { id: 'quotes', label: 'Angebote' }, { id: 'cases', label: 'Reklamationen' }, { id: 'suppliers', label: 'Lieferanten' },
+    { id: 'quotes', label: 'Angebote' }, { id: 'invoices', label: 'Rechnungen' }, { id: 'cases', label: 'Reklamationen' }, { id: 'suppliers', label: 'Lieferanten' },
     ...(me?.role === 'admin' ? [{ id: 'duplicates' as Tab, label: 'Doppelte zusammenführen' }] : []),
   ];
   return (
@@ -31,6 +32,7 @@ export default function CrmPage() {
       {tab === 'suppliers' && <Accounts kind="supplier" />}
       {tab === 'opportunities' && <OpportunityBoard />}
       {tab === 'quotes' && <Quotes />}
+      {tab === 'invoices' && <InvoiceList />}
       {tab === 'cases' && <Cases />}
       {tab === 'duplicates' && <Duplicates />}
     </div>

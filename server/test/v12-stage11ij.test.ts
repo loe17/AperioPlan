@@ -43,6 +43,11 @@ describe('Lager', () => {
     const reorder = await admin.get('/api/warehouse/reorder');
     expect(reorder[0]).toMatchObject({ id: schraube.id, suggest: 500 });
 
+    // Teiländerung lässt übrige Felder unverändert
+    await admin.patch(`/api/warehouse/articles/${schraube.id}`, { description: 'DIN 912, verzinkt' });
+    await admin.patch(`/api/warehouse/articles/${schraube.id}`, { minQty: 120 });
+    expect(await admin.get(`/api/warehouse/articles/${schraube.id}`)).toMatchObject({ description: 'DIN 912, verzinkt', minQty: 120, barcode: '4012345678901', purchasePrice: 0.12 });
+
     const motor = await admin.post('/api/warehouse/articles', { name: 'Servomotor', tracking: 'serial' });
     await admin.req('POST', '/api/warehouse/moves', { kind: 'receipt', articleId: motor.id, qty: 1, toLocationId: fach.id }, 400);
     await admin.req('POST', '/api/warehouse/moves', { kind: 'receipt', articleId: motor.id, qty: 2, toLocationId: fach.id, lot: 'SN1' }, 400);
@@ -121,6 +126,7 @@ describe('Inventar', () => {
     await lisa.post(`/api/inventory/assets/${a.id}/seen`, { location: 'Büro 2.14' });
     expect((await admin.get('/api/inventory/assets?notSeenSince=2026-01-01')).map((x: any) => x.id)).not.toContain(a.id);
     await admin.patch(`/api/inventory/assets/${a.id}`, { status: 'retired' });
+    expect(await admin.get(`/api/inventory/assets/${a.id}`)).toMatchObject({ serialNo: 'PF-123', category: 'IT', purchasePrice: 1800 });
     expect((await admin.get('/api/inventory/assets')).map((x: any) => x.id)).not.toContain(a.id);
     await lisa.req('DELETE', `/api/inventory/assets/${a.id}`, undefined, 403);
     const x = await env.app.inject({ method: 'GET', url: '/api/inventory/export.xlsx', headers: { cookie: admin.cookie } });

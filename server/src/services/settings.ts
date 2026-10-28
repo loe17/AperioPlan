@@ -97,6 +97,8 @@ export interface SettingsMap {
   calcRates: CalcRates;
   timeRules: TimeRuleSettings;
   numbers: { customer: string; supplier: string; quote: string; case: string; order: string; calculation: string; article: string; asset: string; invoice: string };
+  /** Rechnungen: Pflichtangaben für Rechnung und E-Rechnung, Übergabe an die Buchhaltung */
+  invoicing: InvoicingSettings;
   /** Firmendaten für Angebote und Bestellungen */
   letterhead: { address: string; footer: string; vatRate: number; paymentTerms: string; quoteValidityDays: number; quoteIntro: string; quoteOutro: string };
   storage: StorageSettings;
@@ -116,6 +118,18 @@ export interface SettingsMap {
   webhooks: { id: string; url: string; events: string[]; secret: string; active: boolean }[];
 }
 
+export interface InvoicingSettings {
+  legalName: string; street: string; zip: string; city: string; countryCode: string;
+  vatId: string; taxNumber: string; registry: string; managingDirector: string;
+  iban: string; bic: string; bankName: string;
+  contactName: string; contactPhone: string; contactEmail: string;
+  dueDays: number; skonto: { percent: number; days: number } | null;
+  defaultFormat: 'zugferd' | 'xrechnung' | 'pdf'; smallBusiness: boolean;
+  mailSubject: string; mailText: string;
+  accountingEmail: string;
+  datev: { consultantNo: string; clientNo: string; chart: 'SKR03' | 'SKR04'; accountLength: number; firstDebtor: number; revenue19: string; revenue7: string; revenueEu: string; revenueExport: string; revenueReverse: string; revenueSmall: string };
+}
+
 export const DEFAULT_SETTINGS: SettingsMap = {
   company: { name: 'AperioPlan', logoText: 'AperioPlan' },
   presence: { idleMinutes: 10 },
@@ -125,6 +139,14 @@ export const DEFAULT_SETTINGS: SettingsMap = {
   calcRates: DEFAULT_CALC_RATES,
   timeRules: DEFAULT_TIME_RULES,
   numbers: { customer: 'K{NNNN}', supplier: 'L{NNNN}', quote: 'AN-{JJJJ}-{NNNN}', case: 'RK-{JJJJ}-{NNNN}', order: 'B-{JJJJ}-{NNNN}', calculation: 'KA-{JJJJ}-{NNNN}', article: 'A{NNNNN}', asset: 'INV-{NNNN}', invoice: 'RE-{JJJJ}-{NNNN}' },
+  invoicing: {
+    legalName: '', street: '', zip: '', city: '', countryCode: 'DE', vatId: '', taxNumber: '', registry: '', managingDirector: '',
+    iban: '', bic: '', bankName: '', contactName: '', contactPhone: '', contactEmail: '',
+    dueDays: 14, skonto: null, defaultFormat: 'zugferd', smallBusiness: false,
+    mailSubject: 'Rechnung {nummer}', mailText: 'Guten Tag,\n\nanbei erhalten Sie unsere Rechnung {nummer} über {betrag}, zahlbar bis {faellig}.\n\nMit freundlichen Grüßen\n{firma}',
+    accountingEmail: '',
+    datev: { consultantNo: '', clientNo: '', chart: 'SKR03', accountLength: 4, firstDebtor: 10000, revenue19: '8400', revenue7: '8300', revenueEu: '8125', revenueExport: '8120', revenueReverse: '8337', revenueSmall: '8195' },
+  },
   letterhead: {
     address: '', footer: '', vatRate: 19, paymentTerms: '30 Tage netto', quoteValidityDays: 30,
     quoteIntro: 'vielen Dank für Ihre Anfrage. Gerne bieten wir Ihnen wie folgt an:',

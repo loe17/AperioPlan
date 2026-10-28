@@ -1,3 +1,4 @@
+import { InvoiceList } from '../modules/Invoices';
 import { MindmapList } from './Mindmaps';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
@@ -80,6 +81,7 @@ export default function ProjectPage() {
     { id: 'overview', label: `${t('Übersicht')}` },
     ...project.modules.filter(moduleOk).map((m: string) => ({ id: m, label: t(MODULE_LABELS[m]?.label ?? m) })),
     ...(can('mindmap') ? [{ id: 'mindmaps', label: 'Mindmaps' }] : []),
+    ...(can('crm') ? [{ id: 'invoices', label: 'Rechnungen' }] : []),
     ...pluginTabs.map((p) => ({ id: `plugin:${p.id}`, label: p.projectTab.label })),
     { id: 'documents', label: 'Dokumente' },
     { id: 'audit', label: `${t('Änderungsprotokoll')}` },
@@ -157,6 +159,7 @@ export default function ProjectPage() {
       {tab === 'gantt' && <Gantt projectId={project.id} tasks={tasks ?? []} onOpen={openTask} canEdit={project.canEdit} />}
       {tab === 'whiteboard' && <Whiteboards projectId={project.id} canEdit={project.canEdit} />}
       {tab === 'mindmaps' && <MindmapList projectId={project.id} canEdit={project.canEdit} />}
+      {tab === 'invoices' && <InvoiceList projectId={project.id} />}
       {tab === 'report' && <Report project={project} tasks={tasks ?? []} canEdit={project.canEdit} />}
       {tab === 'files' && <ProjectFiles projectId={project.id} project={project} canEdit={project.canEdit} />}
       {tab === 'cad' && <ProjectCad projectId={project.id} project={project} canEdit={project.canEdit} />}

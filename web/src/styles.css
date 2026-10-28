@@ -836,3 +836,8 @@ ol.steps { padding-left: 20px; margin: 0; display: grid; gap: 12px; }
 .onb-app { display: flex; gap: 8px; align-items: flex-start; padding: 8px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .onb-app.on { border-color: var(--accent); background: var(--accent-soft); }
 .onb-app > span { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+
+/* Rechnungen */
+.inv-totals { margin: 10px 0 14px auto; width: min(380px, 100%); display: flex; flex-direction: column; gap: 3px; }
+.inv-totals > div { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.inv-totals > div.big { border-top: 1px solid var(--line); padding-top: 4px; font-size: 15px; }

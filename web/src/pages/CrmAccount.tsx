@@ -1,3 +1,4 @@
+import { InvoiceList } from '../modules/Invoices';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { del, post, upload } from '../lib/api';
@@ -15,7 +16,7 @@ import { CaseTable, QuoteTable, WonToProject } from './Crm';
 import { EventModal } from '../modules/EventModal';
 import { NewProjectDialog } from './Projects';
 
-type Tab = 'timeline' | 'contacts' | 'opportunities' | 'quotes' | 'cases' | 'projects';
+type Tab = 'timeline' | 'contacts' | 'opportunities' | 'quotes' | 'invoices' | 'cases' | 'projects';
 
 const TL_ICON: Record<string, string> = { note: 'note', minutes: 'file-text', event: 'calendar', opportunity: 'target', quote: 'euro', case: 'alert', project: 'projects', mail: 'mail' };
 const TL_LABEL: Record<string, string> = { note: 'Notiz', minutes: 'Gesprächsprotokoll', event: 'Termin', opportunity: 'Verkaufschance', quote: 'Angebot', case: 'Reklamation', project: 'Projekt', mail: 'E-Mail' };
@@ -62,12 +63,13 @@ export default function CrmAccountPage() {
       </div>
       <Tabs value={tab} onChange={setTab} tabs={[
         { id: 'timeline', label: 'Verlauf' }, { id: 'contacts', label: `Ansprechpartner (${a.contacts.length})` }, { id: 'opportunities', label: 'Verkaufschancen' },
-        { id: 'quotes', label: 'Angebote' }, { id: 'cases', label: 'Reklamationen' }, { id: 'projects', label: `Projekte (${a.projects.length})` },
+        { id: 'quotes', label: 'Angebote' }, { id: 'invoices', label: 'Rechnungen' }, { id: 'cases', label: 'Reklamationen' }, { id: 'projects', label: `Projekte (${a.projects.length})` },
       ]} />
       {tab === 'timeline' && <Timeline account={a} />}
       {tab === 'contacts' && <Contacts accountId={a.id} contacts={a.contacts} onChanged={reload} />}
       {tab === 'opportunities' && <AccountOpps accountId={a.id} />}
       {tab === 'quotes' && <AccountQuotes accountId={a.id} />}
+      {tab === 'invoices' && <InvoiceList accountId={a.id} />}
       {tab === 'cases' && <AccountCases accountId={a.id} />}
       {tab === 'projects' && <AccountProjects account={a} />}
       {a.notes && tab === 'timeline' && <div className="card flat" style={{ marginTop: 12 }}><div className="small muted">Notizen zum Kunden</div><div style={{ whiteSpace: 'pre-wrap' }}>{a.notes}</div></div>}

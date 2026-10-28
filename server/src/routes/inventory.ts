@@ -6,7 +6,7 @@ import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { addMonths, ASSET_STATUS, bookValue, depreciationSchedule } from '@aperio/shared';
 import type { AppContext } from '../context';
-import { z, parse, idParam } from '../lib/validate';
+import { z, parse, idParam, patchSchema } from '../lib/validate';
 import { requireUser } from '../lib/auth';
 import { badRequest, forbidden, notFound } from '../lib/errors';
 import { audit } from '../services/audit';
@@ -131,7 +131,7 @@ export default async function inventoryRoutes(app: FastifyInstance, ctx: AppCont
   app.patch('/inventory/assets/:id', async (req) => {
     const u = staff(req);
     const { id } = parse(idParam, req.params);
-    const b = parse(assetBody.partial(), req.body);
+    const b = parse(patchSchema(assetBody), req.body);
     const [cur] = await sql<{ number: string; status: string }[]>`select number, status from inv_assets where id = ${id}`;
     if (!cur) throw notFound();
     if (b.number && b.number !== cur.number) await assetNumber(b.number);
@@ -256,7 +256,7 @@ export default async function inventoryRoutes(app: FastifyInstance, ctx: AppCont
   app.patch('/inventory/inspections/:id', async (req) => {
     staff(req);
     const { id } = parse(idParam, req.params);
-    const b = parse(inspBody.partial(), req.body);
+    const b = parse(patchSchema(inspBody), req.body);
     await sql`update inv_inspections set kind = coalesce(${b.kind ?? null}, kind), interval_months = coalesce(${b.intervalMonths ?? null}, interval_months),
       next_date = ${b.nextDate === undefined ? sql`next_date` : b.nextDate}, responsible_id = ${b.responsibleId === undefined ? sql`responsible_id` : b.responsibleId},
       notes = coalesce(${b.notes ?? null}, notes), reminded_for = null where id = ${id}`;

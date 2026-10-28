@@ -88,7 +88,14 @@ export async function syncMail(ctx: AppContext, limit = 200): Promise<{ fetched:
   return { fetched };
 }
 
+/** Für Tests: E-Mails nur sammeln statt senden */
+export const testOutbox: { enabled: boolean; messages: { to: string; cc?: string; subject: string; text: string; attachments: string[] }[] } = { enabled: false, messages: [] };
+
 export async function sendMail(ctx: AppContext, opts: { to: string; cc?: string; subject: string; text: string; inReplyTo?: string; attachments?: { path: string; name: string }[] }) {
+  if (testOutbox.enabled) {
+    testOutbox.messages.push({ to: opts.to, cc: opts.cc, subject: opts.subject, text: opts.text, attachments: (opts.attachments ?? []).map((a) => a.name) });
+    return { messageId: `test-${testOutbox.messages.length}`, from: 'test@aperio' };
+  }
   const s = await ctx.settings.get('mail');
   if (!s.enabled || !s.smtpHost) throw badRequest('Kein E-Mail-Konto eingerichtet');
   const info = await smtpTransport(s).sendMail({

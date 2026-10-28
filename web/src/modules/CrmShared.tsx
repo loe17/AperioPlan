@@ -6,7 +6,7 @@ import { Icon } from '../components/Icon';
 
 export interface CrmAccount {
   id: string; number: string; kind: 'customer' | 'supplier' | 'both'; status: 'prospect' | 'customer' | 'former'; name: string; street: string; zip: string; city: string;
-  country: string; industry: string; paymentTerms: string; website: string; phone: string; email: string; vatId: string; ownerId: string | null; ownerName?: string | null;
+  country: string; industry: string; paymentTerms: string; website: string; phone: string; email: string; vatId: string; leitwegId?: string; invoiceEmail?: string; eInvoice?: 'zugferd' | 'xrechnung' | 'pdf' | null; ownerId: string | null; ownerName?: string | null;
   notes: string; custom: Record<string, unknown>; lastContactAt: string | null; contactCount?: number; openOpportunities?: number; projectCount?: number;
   primaryContact?: { name: string; email: string; phone: string } | null;
 }
@@ -77,7 +77,8 @@ export function AccountModal({ initial, onClose, onSaved }: { initial: Partial<C
   const set = (k: keyof typeof a) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setA({ ...a, [k]: e.target.value });
   const save = async () => {
     const body = { kind: a.kind, status: a.status, name: a.name, street: a.street ?? '', zip: a.zip ?? '', city: a.city ?? '', country: a.country ?? '', industry: a.industry ?? '',
-      paymentTerms: a.paymentTerms ?? '', website: a.website ?? '', phone: a.phone ?? '', email: a.email ?? '', vatId: a.vatId ?? '', notes: a.notes ?? '' };
+      paymentTerms: a.paymentTerms ?? '', website: a.website ?? '', phone: a.phone ?? '', email: a.email ?? '', vatId: a.vatId ?? '', notes: a.notes ?? '',
+      leitwegId: a.leitwegId ?? '', invoiceEmail: a.invoiceEmail ?? '', eInvoice: a.eInvoice || null };
     if (a.id) {
       const r = await act(() => patch(`/crm/accounts/${a.id}`, body), 'Gespeichert');
       if (r !== undefined) onSaved({ id: a.id, name: a.name!, number: a.number! });
@@ -109,6 +110,11 @@ export function AccountModal({ initial, onClose, onSaved }: { initial: Partial<C
         <Field label="Webseite"><input value={a.website ?? ''} onChange={set('website')} /></Field>
         <Field label="USt-IdNr."><input value={a.vatId ?? ''} onChange={set('vatId')} /></Field>
         <Field label="Zahlungsbedingungen" hint="leer = Firmen-Standard"><input value={a.paymentTerms ?? ''} onChange={set('paymentTerms')} placeholder="z. B. 14 Tage 2 % Skonto, 30 Tage netto" /></Field>
+        {a.kind !== 'supplier' && <>
+          <Field label="E-Mail für Rechnungen" hint="leer = allgemeine E-Mail"><input type="email" value={a.invoiceEmail ?? ''} onChange={set('invoiceEmail')} /></Field>
+          <Field label="Rechnungsformat" hint="leer = Firmen-Standard"><select value={a.eInvoice ?? ''} onChange={set('eInvoice')}><option value="">Standard</option><option value="zugferd">ZUGFeRD (PDF mit E-Rechnung)</option><option value="xrechnung">XRechnung (Behörden)</option><option value="pdf">nur PDF</option></select></Field>
+          <Field label="Leitweg-ID" hint="nur bei öffentlichen Auftraggebern"><input value={a.leitwegId ?? ''} onChange={set('leitwegId')} placeholder="z. B. 04011000-12345-67" /></Field>
+        </>}
       </div>
       {!a.id && <>
         <h3 style={{ margin: '8px 0' }}>Ansprechpartner (optional)</h3>

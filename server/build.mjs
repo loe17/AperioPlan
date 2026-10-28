@@ -17,4 +17,5 @@ await build({
   banner: { js: "import { createRequire as __cr } from 'module'; const require = __cr(import.meta.url);" },
 });
 cpSync('migrations', 'dist/migrations', { recursive: true });
+cpSync('assets', 'dist/assets', { recursive: true });
 console.log('Server gebaut: dist/index.js');

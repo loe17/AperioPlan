@@ -5,7 +5,7 @@
 import type { FastifyInstance } from 'fastify';
 import { posix } from 'node:path';
 import type { AppContext } from '../context';
-import { z, parse, idParam } from '../lib/validate';
+import { z, parse, idParam, patchSchema } from '../lib/validate';
 import { requireUser, type AuthUser } from '../lib/auth';
 import { projectAccess } from '../lib/access';
 import { badRequest, forbidden, notFound } from '../lib/errors';
@@ -296,7 +296,7 @@ export default async function chatRoutes(app: FastifyInstance, ctx: AppContext) 
     const u = requireUser(req);
     const { id } = parse(idParam, req.params);
     await groupOf(u, id, true);
-    const b = parse(groupBody.partial(), req.body);
+    const b = parse(patchSchema(groupBody), req.body);
     await sql`update chat_channels set name = coalesce(${b.name ?? null}, name), icon = coalesce(${b.icon ?? null}, icon) where id = ${id}`;
     if (b.memberIds) {
       const before = (await sql<{ user_id: string }[]>`select user_id from chat_members where channel_id = ${id}`).map((r) => r.user_id);

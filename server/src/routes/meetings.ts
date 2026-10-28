@@ -6,7 +6,7 @@
 import type { FastifyInstance } from 'fastify';
 import { randomBytes } from 'node:crypto';
 import type { AppContext } from '../context';
-import { z, parse, idParam } from '../lib/validate';
+import { z, parse, idParam, patchSchema } from '../lib/validate';
 import { requireUser, type AuthUser } from '../lib/auth';
 import { badRequest, forbidden, notFound } from '../lib/errors';
 import { sha256 } from '../lib/crypto';
@@ -156,7 +156,7 @@ export default async function meetingRoutes(app: FastifyInstance, ctx: AppContex
     const { id } = parse(idParam, req.params);
     const m = await load(id);
     await access(u, m, true);
-    const b = parse(body.partial(), req.body);
+    const b = parse(patchSchema(body), req.body);
     const start = b.startsAt ? new Date(b.startsAt) : m.starts_at;
     const end = b.durationMinutes ? new Date(start.getTime() + b.durationMinutes * 60000) : new Date(start.getTime() + (m.ends_at.getTime() - m.starts_at.getTime()));
     const [n] = await sql<MeetingRow[]>`update meetings set title = coalesce(${b.title ?? null}, title), description = coalesce(${b.description ?? null}, description),

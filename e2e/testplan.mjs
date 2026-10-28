@@ -639,6 +639,25 @@ await step('14.9 Inventar: Gerät mit Prüftermin, Übergabe, Etikett', async ()
   await popup.close();
 });
 
+await step('14.10 Rechnung: aus Angebot, festschreiben (ZUGFeRD), Zahlung erfassen', async () => {
+  await api('PUT', '/settings/invoicing', { legalName: 'Testplan GmbH', street: 'Teststr. 1', zip: '78120', city: 'Furtwangen', countryCode: 'DE', vatId: 'DE123456789',
+    iban: 'DE02120300000000202051', contactName: 'Admin', contactPhone: '07723 1234', contactEmail: 'rechnung@testplan.de' });
+  const acc = await api('POST', '/crm/accounts', { name: 'Rechnungskunde GmbH', street: 'Weg 2', zip: '79098', city: 'Freiburg', email: 'buha@kunde.de' });
+  const q = await api('POST', '/crm/quotes', { accountId: acc.id, title: 'Prüfstand', positions: [{ pos: 1, text: 'Montage', qty: 8, unit: 'Std', price: 90, discount: 0 }] });
+  await page.goto(`${BASE}/crm/${acc.id}?tab=quotes`);
+  await page.click('tr:has-text("Prüfstand")');
+  await page.click('.modal button:has-text("Rechnung")');
+  await page.waitForSelector('.slideover >> text=Entwurf');
+  await page.click('.slideover button:has-text("Festschreiben")');
+  await page.locator('.modal').last().locator('button.primary').click();
+  await page.waitForSelector('.slideover .mono:has-text("RE-")', { timeout: 15000 });
+  await page.waitForSelector('.slideover a:has-text("XML")');
+  await page.click('.slideover button:has-text("Zahlung erfassen")');
+  await page.locator('.modal').last().locator('button:has-text("Buchen")').click();
+  await page.waitForSelector('.slideover >> text=bezahlt');
+  void q;
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);

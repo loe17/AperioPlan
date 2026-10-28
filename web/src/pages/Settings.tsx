@@ -1,3 +1,5 @@
+import { lazy, Suspense } from 'react';
+const InvoicingSettings = lazy(() => import('./SettingsInvoicing'));
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { APP_VERSION, PROJECT_MODULES, ROLES, TOOLS, TOOL_LABELS, NUMBER_TOKENS, formatNumberPattern, validateNumberPattern, TASK_STATUSES } from '@aperio/shared';
@@ -50,10 +52,11 @@ export default function SettingsPage() {
           <SettingsNav to="/settings/general"><Icon name="settings" /> Allgemein & Nummern</SettingsNav>
           <SettingsNav to="/settings/storage"><Icon name="hdd" /> Speicherorte</SettingsNav>
           <SettingsNav to="/settings/templates"><Icon name="file-text" /> Dokumentvorlagen</SettingsNav>
-          <SettingsNav to="/settings/cad"><Icon name="cad" /> {t('Speichermaske')} (CAD)</SettingsNav>
-          <SettingsNav to="/settings/resources"><Icon name="car" /> Ressourcen</SettingsNav>
-          <SettingsNav to="/settings/calc"><Icon name="euro" /> Kalkulationssätze</SettingsNav>
-          <SettingsNav to="/settings/time"><Icon name="timer" /> Zeiterfassung &amp; Regeln</SettingsNav>
+          {(can('cad') || can('pcb')) && <SettingsNav to="/settings/cad"><Icon name="cad" /> {t('Speichermaske')} (CAD)</SettingsNav>}
+          {can('resources') && <SettingsNav to="/settings/resources"><Icon name="car" /> Ressourcen</SettingsNav>}
+          {can('calculation') && <SettingsNav to="/settings/calc"><Icon name="euro" /> Kalkulationssätze</SettingsNav>}
+          {can('crm') && <SettingsNav to="/settings/invoicing"><Icon name="file-text" /> Rechnungen</SettingsNav>}
+          {can('time') && <SettingsNav to="/settings/time"><Icon name="timer" /> Zeiterfassung &amp; Regeln</SettingsNav>}
           <SettingsNav to="/settings/holidays"><Icon name="holiday" /> Feiertage</SettingsNav>
           <SettingsNav to="/settings/ldap"><Icon name="building" /> {t('Firmen-Login')} (LDAP)</SettingsNav>
           <SettingsNav to="/settings/mail"><Icon name="mail" /> E-Mail-Versand (System)</SettingsNav>
@@ -85,6 +88,7 @@ export default function SettingsPage() {
             <Route path="time" element={<TimeRulesSettings />} />
             <Route path="resources" element={<ResourcesSettings />} />
             <Route path="calc" element={<CalcRatesSettings />} />
+            <Route path="invoicing" element={<Suspense fallback={null}><InvoicingSettings /></Suspense>} />
             <Route path="ldap" element={<Ldap />} />
             <Route path="mail" element={<MailSettings />} />
             <Route path="ai" element={<AiSettings />} />

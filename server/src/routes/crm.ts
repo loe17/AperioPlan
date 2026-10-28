@@ -31,6 +31,9 @@ const accountBody = z.object({
   phone: z.string().max(60).default(''),
   email: z.string().max(200).default(''),
   vatId: z.string().max(40).default(''),
+  leitwegId: z.string().max(60).default(''),
+  invoiceEmail: z.string().max(200).default(''),
+  eInvoice: z.enum(['zugferd', 'xrechnung', 'pdf']).nullable().default(null),
   ownerId: z.string().uuid().nullable().default(null),
   notes: z.string().max(20000).default(''),
   custom: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).default({}),
@@ -120,7 +123,8 @@ export default async function crmRoutes(app: FastifyInstance, ctx: AppContext) {
   const deny = (u: AuthUser) => { if (u.role === 'guest') throw forbidden(); };
 
   const accountCols = sql`a.id, a.number, a.kind, a.status, a.name, a.street, a.zip, a.city, a.country, a.industry, a.payment_terms as "paymentTerms",
-    a.website, a.phone, a.email, a.vat_id as "vatId", a.owner_id as "ownerId", o.display_name as "ownerName", a.notes, a.custom,
+    a.website, a.phone, a.email, a.vat_id as "vatId", a.leitweg_id as "leitwegId", a.invoice_email as "invoiceEmail", a.e_invoice as "eInvoice",
+    a.owner_id as "ownerId", o.display_name as "ownerName", a.notes, a.custom,
     a.last_contact_at as "lastContactAt", a.created_at as "createdAt", a.updated_at as "updatedAt"`;
   const contactCols = sql`c.id, c.account_id as "accountId", c.salutation, c.first_name as "firstName", c.last_name as "lastName", c.position, c.department,
     c.phone, c.mobile, c.email, c.birthday::text as birthday, c.preferred_channel as "preferredChannel", c.is_primary as "isPrimary", c.notes`;
@@ -165,9 +169,9 @@ export default async function crmRoutes(app: FastifyInstance, ctx: AppContext) {
     if (b.number && (await sql`select 1 from crm_accounts where number = ${b.number}`).length) throw badRequest(`Nummer ${b.number} ist bereits vergeben`);
     const number = b.number || (await newAccountNumber(b.kind));
     const [a] = await sql<{ id: string; number: string }[]>`insert into crm_accounts (number, kind, status, name, street, zip, city, country, industry, payment_terms,
-        website, phone, email, vat_id, owner_id, notes, custom, created_by)
+        website, phone, email, vat_id, leitweg_id, invoice_email, e_invoice, owner_id, notes, custom, created_by)
       values (${number}, ${b.kind}, ${b.status}, ${b.name}, ${b.street}, ${b.zip}, ${b.city}, ${b.country}, ${b.industry}, ${b.paymentTerms},
-        ${b.website}, ${b.phone}, ${b.email}, ${b.vatId}, ${b.ownerId ?? u.id}, ${b.notes}, ${sql.json(b.custom)}, ${u.id}) returning id, number`;
+        ${b.website}, ${b.phone}, ${b.email}, ${b.vatId}, ${b.leitwegId}, ${b.invoiceEmail}, ${b.eInvoice}, ${b.ownerId ?? u.id}, ${b.notes}, ${sql.json(b.custom)}, ${u.id}) returning id, number`;
     await audit(sql, u, { action: 'crm.account.create', entityType: 'crm_account', entityId: a!.id, summary: `${b.kind === 'supplier' ? 'Lieferant' : 'Kunde'} ${a!.number} „${b.name}“ angelegt` });
     return { ...a, name: b.name };
   });
@@ -196,6 +200,8 @@ export default async function crmRoutes(app: FastifyInstance, ctx: AppContext) {
       country = coalesce(${b.country ?? null}, country), industry = coalesce(${b.industry ?? null}, industry),
       payment_terms = coalesce(${b.paymentTerms ?? null}, payment_terms), website = coalesce(${b.website ?? null}, website),
       phone = coalesce(${b.phone ?? null}, phone), email = coalesce(${b.email ?? null}, email), vat_id = coalesce(${b.vatId ?? null}, vat_id),
+      leitweg_id = coalesce(${b.leitwegId ?? null}, leitweg_id), invoice_email = coalesce(${b.invoiceEmail ?? null}, invoice_email),
+      e_invoice = ${b.eInvoice === undefined ? sql`e_invoice` : b.eInvoice},
       owner_id = ${b.ownerId === undefined ? sql`owner_id` : b.ownerId}, notes = coalesce(${b.notes ?? null}, notes),
       custom = ${b.custom ? sql.json(b.custom) : sql`custom`}, updated_at = now() where id = ${id}`;
     if (b.name && b.name !== a.name) await sql`update projects set customer = ${b.name} where customer_id = ${id}`;

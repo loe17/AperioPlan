@@ -5,7 +5,7 @@
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import type { AppContext } from '../context';
-import { z, parse, idParam } from '../lib/validate';
+import { z, parse, idParam, patchSchema } from '../lib/validate';
 import { requireUser, type AuthUser } from '../lib/auth';
 import { badRequest, forbidden, notFound } from '../lib/errors';
 import { audit } from '../services/audit';
@@ -149,7 +149,7 @@ export default async function boardRoutes(app: FastifyInstance, ctx: AppContext)
     const { id } = parse(idParam, req.params);
     const p = await loadPost(u, id);
     if (p.author_id !== u.id && !mayModerate(u)) throw forbidden();
-    const b = parse(postBody.partial(), req.body);
+    const b = parse(patchSchema(postBody), req.body);
     if ((b.pinned || b.important) && !mayModerate(u)) throw forbidden();
     const att = b.attachments ? await keep('posts', id, b.attachments) : null;
     await sql`update board_posts set title = coalesce(${b.title ?? null}, title), body = coalesce(${b.body ?? null}, body), category = coalesce(${b.category ?? null}, category),
@@ -256,7 +256,7 @@ export default async function boardRoutes(app: FastifyInstance, ctx: AppContext)
     const { id } = parse(idParam, req.params);
     const m = await loadItem(id);
     if (m.seller_id !== u.id && !(m.company && mayModerate(u)) && u.role !== 'admin') throw forbidden();
-    const b = parse(itemBody.partial().extend({ status: z.enum(['available', 'reserved', 'sold']).optional(), reservedFor: z.string().uuid().nullable().optional() }), req.body);
+    const b = parse(patchSchema(itemBody).extend({ status: z.enum(['available', 'reserved', 'sold']).optional(), reservedFor: z.string().uuid().nullable().optional() }), req.body);
     const imgs = b.images ? await keep('market', id, b.images) : null;
     await sql`update market_items set title = coalesce(${b.title ?? null}, title), description = coalesce(${b.description ?? null}, description),
       category = coalesce(${b.category ?? null}, category), condition = coalesce(${b.condition ?? null}, condition),

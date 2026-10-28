@@ -10,3 +10,4 @@ export * from './apps';
 export * from './forms';
 export * from './knowledge';
 export * from './inventory';
+export * from './invoice';

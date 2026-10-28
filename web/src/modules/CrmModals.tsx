@@ -1,3 +1,4 @@
+import { InvoicePanel, QuoteInvoiceButtons } from './Invoices';
 import { useState } from 'react';
 import { del, patch, post } from '../lib/api';
 import { useApi } from '../lib/hooks';
@@ -151,6 +152,7 @@ export function QuoteEditor({ quote, accountId, opportunityId, projectId, initia
     vatRate: quote?.vatRate ?? 19, positions: (quote?.positions ?? initialPositions ?? [{ text: '', description: '', qty: 1, unit: 'Stk', price: 0, discount: 0, optional: false }]) as Pos[],
   });
   const contacts = useContacts(q.account?.id);
+  const [invoice, setInvoice] = useState<string | null>(null);
   const net = q.positions.reduce((s, p) => s + posTotal(p), 0);
   const setPos = (i: number, p: Partial<Pos>) => setQ({ ...q, positions: q.positions.map((x, j) => (j === i ? { ...x, ...p } : x)) });
   const move = (i: number, d: -1 | 1) => { const n = [...q.positions]; const j = i + d; if (j < 0 || j >= n.length) return; [n[i], n[j]] = [n[j]!, n[i]!]; setQ({ ...q, positions: n }); };
@@ -164,6 +166,7 @@ export function QuoteEditor({ quote, accountId, opportunityId, projectId, initia
   return (
     <Modal size="lg" title={quote ? `Angebot ${quote.number}` : 'Neues Angebot'} onClose={onClose} footer={<>
       {quote && <a className="btn" href={`/api/crm/quotes/${quote.id}/pdf`} target="_blank" rel="noreferrer"><Icon name="file-pdf" /> PDF ansehen</a>}
+      {quote && <QuoteInvoiceButtons quoteId={quote.id} onCreated={setInvoice} />}
       <span className="grow" /><span className="muted">Summe netto <b>{fmtEuro2(net)}</b> · brutto {fmtEuro2(net * (1 + Number(q.vatRate) / 100))}</span>
       <button className="btn" onClick={onClose}>Abbrechen</button><button className="btn primary" disabled={!q.title.trim() || !q.account} onClick={save}>Speichern</button></>}>
       {!quote && !accountId && <Field label="Kunde" required><CustomerPicker value={q.account} onChange={(account) => setQ({ ...q, account })} /></Field>}
@@ -201,6 +204,7 @@ export function QuoteEditor({ quote, accountId, opportunityId, projectId, initia
         {q.intro === undefined && <button className="btn sm ghost" onClick={() => setQ({ ...q, intro: quote?.intro ?? '', outro: quote?.outro ?? '' })}>Einleitung und Schluss bearbeiten</button>}
       </div>
       {q.outro !== undefined && <Field label="Schlusstext"><textarea rows={2} value={q.outro} onChange={(e) => setQ({ ...q, outro: e.target.value })} /></Field>}
+      {invoice && <InvoicePanel id={invoice} onClose={() => setInvoice(null)} onOpen={setInvoice} />}
     </Modal>
   );
 }

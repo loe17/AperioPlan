@@ -5,7 +5,7 @@
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import type { AppContext } from '../context';
-import { z, parse, idParam } from '../lib/validate';
+import { z, parse, idParam, patchSchema } from '../lib/validate';
 import { requireUser } from '../lib/auth';
 import { badRequest, forbidden, notFound } from '../lib/errors';
 import { projectAccess } from '../lib/access';
@@ -68,7 +68,7 @@ export default async function warehouseRoutes(app: FastifyInstance, ctx: AppCont
   app.patch('/warehouse/locations/:id', async (req) => {
     staff(req);
     const { id } = parse(idParam, req.params);
-    const b = parse(locBody.partial(), req.body);
+    const b = parse(patchSchema(locBody), req.body);
     if (b.parentId) {
       if ((await locationSubtree(sql, id)).includes(b.parentId)) throw badRequest('Ein Lagerort kann nicht in sich selbst liegen.');
     }
@@ -166,7 +166,7 @@ export default async function warehouseRoutes(app: FastifyInstance, ctx: AppCont
   app.patch('/warehouse/articles/:id', async (req) => {
     staff(req);
     const { id } = parse(idParam, req.params);
-    const b = parse(articleBody.partial(), req.body);
+    const b = parse(patchSchema(articleBody), req.body);
     const [cur] = await sql<{ tracking: string; number: string }[]>`select tracking, number from wh_articles where id = ${id}`;
     if (!cur) throw notFound();
     if (b.tracking && b.tracking !== cur.tracking) {
