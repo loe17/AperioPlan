@@ -25,6 +25,7 @@ const MeetingsPage = lazy(() => import('./pages/Meetings'));
 const MeetPage = lazy(() => import('./pages/Meet'));
 const PhonePage = lazy(() => import('./pages/Phone'));
 const FormsPage = lazy(() => import('./pages/Forms'));
+const BoardPage = lazy(() => import('./pages/Board'));
 const PublicFormPage = lazy(() => import('./pages/Forms').then((m) => ({ default: m.PublicFormPage })));
 const TimePage = lazy(() => import('./pages/Time'));
 const AbsencesPage = lazy(() => import('./pages/Absences'));
@@ -75,6 +76,7 @@ export function App() {
             <Route path="/meetings" element={<MeetingsPage />} />
             <Route path="/meetings/:id" element={<MeetingsPage />} />
             <Route path="/phone" element={<PhonePage />} />
+            <Route path="/board" element={<BoardPage />} />
             <Route path="/forms" element={<FormsPage />} />
             <Route path="/forms/:id" element={<FormsPage />} />
             <Route path="/forms/:id/:mode" element={<FormsPage />} />

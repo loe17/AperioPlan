@@ -104,6 +104,7 @@ export interface SettingsMap {
   /** App-Store: eingeschaltete mitgelieferte Anwendungen */
   apps: { installed: Tool[] };
   phone: PhoneSettings;
+  board: { categories: string[]; marketCategories: string[]; employeesMayPost: boolean };
   cadMask: { fields: MaskField[]; catalogs: Catalog[]; askCreateDrawing: boolean; drawingTemplate: string; subassemblies: { code: string; label: string }[] };
   ldap: LdapSettings;
   mail: MailSettings;
@@ -132,6 +133,11 @@ export const DEFAULT_SETTINGS: SettingsMap = {
   storage: { mode: 'local', networkPath: '', projectFolders: DEFAULT_PROJECT_FOLDERS, locations: [], defaultLocation: 'main' },
   pcbMask: DEFAULT_PCB_MASK,
   apps: { installed: PREINSTALLED_APPS },
+  board: {
+    categories: ['Allgemein', 'Personal', 'Arbeitssicherheit', 'Veranstaltungen', 'IT', 'Kantine', 'Gesucht und gefunden'],
+    marketCategories: ['Elektronik', 'Möbel', 'Werkzeug', 'Fahrzeuge und Zubehör', 'Freizeit und Sport', 'Haus und Garten', 'Kinder', 'Firmen-Restposten', 'Sonstiges'],
+    employeesMayPost: true,
+  },
   phone: {
     provider: 'none', countryCode: '49', areaCode: '', outsideLinePrefix: '', webhookSecret: '', popupForAll: true, dialMethod: 'tel',
     fritzHost: 'fritz.box', fritzMonitorPort: 1012, fritzUser: '', fritzPassword: '',

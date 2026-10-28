@@ -151,6 +151,8 @@ export function Layout({ children }: { children: ReactNode }) {
   const unread = notifications?.filter((n) => !n.readAt).length ?? 0;
   const { data: channels } = useChannels();
   const chatUnread = channels?.reduce((s, c) => s + (c.unread ?? 0), 0) ?? 0;
+  const { data: boardUnread, reload: reloadBoard } = useApi<{ n: number }>(can('board') ? '/board/unread' : null, [can('board')]);
+  useEffect(() => realtime.subscribe('global', (e) => { if (e === 'board.changed') void reloadBoard(); }), [reloadBoard]);
   const location = useLocation();
 
   useEffect(() => realtime.onStatus(setConnected), []);
@@ -198,7 +200,7 @@ export function Layout({ children }: { children: ReactNode }) {
               <div className="nav-title"><Icon name="tools" /> {t('Werkzeuge')}</div>
               {isGuest && <NavItem to="/cad" ico="cad" label={t('CAD-Bridge')} />}
               {APPS.filter((a) => a.route && !DESK_APPS.includes(a.id) && can(a.id)).map((a) => (
-                <NavItem key={a.id} to={NAV_ROUTE[a.id] ?? a.route!} ico={a.icon} label={t(NAV_LABEL[a.id] ?? a.name)} count={a.id === 'chat' ? chatUnread : undefined} />
+                <NavItem key={a.id} to={NAV_ROUTE[a.id] ?? a.route!} ico={a.icon} label={t(NAV_LABEL[a.id] ?? a.name)} count={a.id === 'chat' ? chatUnread : a.id === 'board' ? boardUnread?.n : undefined} />
               ))}
               {plugins?.filter((p) => p.enabled && p.page).map((p) => <NavItem key={p.id} to={`/plugin/${p.id}`} ico={p.page.icon ?? 'puzzle'} label={p.page.label} />)}
               {!isGuest && <NavItem to="/apps" ico="puzzle" label={t('App-Store')} />}

@@ -470,6 +470,27 @@ await step('14.3 Formular anlegen, öffentlich ausfüllen, Auswertung', async ()
   await page.waitForSelector('.bar-row:has-text("Gut") >> text=1 · 100 %');
 });
 
+await step('14.4 Schwarzes Brett: Mitteilung mit Lesebestätigung, Marktplatz-Angebot', async () => {
+  await api('POST', '/apps/board/install', {});
+  await page.goto(`${BASE}/board`);
+  await page.click('button.primary:has-text("Mitteilung")');
+  await page.fill('.modal input >> nth=0', 'Neue Parkplatzregelung');
+  await page.fill('.modal textarea', 'Ab Montag gilt: Besucherparkplätze freihalten. Details: https://example.com');
+  await page.check('label:has-text("Lesebestätigung") input');
+  await page.click('.modal button:has-text("Veröffentlichen")');
+  await page.click('.board-card:has-text("Neue Parkplatzregelung")');
+  await page.waitForSelector('.board-body a[href="https://example.com"]');
+  await page.click('.modal button:has-text("Wer hat gelesen?")');
+  await page.waitForSelector('text=von');
+  await page.click('.modal button[aria-label="Schließen"]');
+  await page.click('.tab:visible:has-text("Marktplatz")');
+  await page.click('button:has-text("Etwas anbieten")');
+  await page.fill('.modal input[placeholder^="z. B. Kinderfahrrad"]', 'Bürostuhl, ergonomisch');
+  await page.selectOption('.modal select >> nth=0', 'free');
+  await page.click('.modal button:has-text("Veröffentlichen")');
+  await page.waitForSelector('.market-card:has-text("Bürostuhl") >> text=zu verschenken');
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);
