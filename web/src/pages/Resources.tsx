@@ -10,11 +10,19 @@ import { Avatar, Confirm, Empty, Field, Modal, Pill, Tabs, useAction } from '../
 import { Icon } from '../components/Icon';
 
 export interface Resource { id: string; name: string; kind: string; location: string; capacity: number | null; description: string; color: string; requiresApproval: boolean; approverId: string | null; approverName: string | null; allowedTeamIds: string[]; active: boolean; canBook: boolean }
-export interface Booking { id: string; resourceId: string; resourceName: string; resourceKind: string; color: string; userId: string; userName: string; startsAt: string; endsAt: string; status: string; seriesId: string | null; title: string | null; note: string | null; mine: boolean; projectNumber: string | null }
+export interface Booking { extra?: Record<string, string | number | null>; returnedAt?: string | null; id: string; resourceId: string; resourceName: string; resourceKind: string; color: string; userId: string; userName: string; startsAt: string; endsAt: string; status: string; seriesId: string | null; title: string | null; note: string | null; mine: boolean; projectNumber: string | null }
 
+export interface ResourceType { key: string; name: string; icon: string; color: string; fields: { key: string; label: string; type: 'text' | 'number' | 'date'; when: 'resource' | 'return' }[]; sort: number; resourceCount?: number }
+
+/** Ressourcenarten – vom Administrator angelegt; wird von useResourceTypes() aktuell gehalten */
 export const KIND_META: Record<string, { label: string; icon: string }> = {
   room: { label: 'Raum', icon: 'door' }, vehicle: { label: 'Fahrzeug', icon: 'car' }, equipment: { label: 'Gerät', icon: 'equipment' }, other: { label: 'Sonstiges', icon: 'box' },
 };
+export function useResourceTypes() {
+  const r = useApi<ResourceType[]>('/resource-types');
+  if (r.data) for (const t of r.data) KIND_META[t.key] = { label: t.name, icon: t.icon };
+  return r;
+}
 
 const DAY = 86400000;
 const START_H = 7, END_H = 20, HOUR_W = 64;
@@ -25,6 +33,7 @@ const toLocalInput = (d: Date) => { const x = new Date(d); x.setMinutes(x.getMin
 /** Ressourcen buchen: Belegungsplan, eigene Buchungen, Genehmigungen */
 export default function ResourcesPage() {
   useCrumbs([{ label: 'Ressourcen' }]);
+  useResourceTypes();
   const [params, setParams] = useSearchParams();
   const tab = (params.get('tab') ?? rememberedTab('resources') ?? 'plan') as 'plan' | 'mine' | 'review';
   const { data: review } = useApi<Booking[]>('/resources/bookings/review');
@@ -292,22 +301,44 @@ function MyBookings() {
   const { data, reload } = useApi<Booking[]>(`/resources/bookings?mine=1&from=${from.toISOString()}&to=${to.toISOString()}`);
   useResourceUpdates(reload);
   const [detail, setDetail] = useState<Booking | null>(null);
+  const [giveBack, setGiveBack] = useState<Booking | null>(null);
+  const { data: types } = useResourceTypes();
+  const returnFields = (b: Booking) => (types ?? []).find((t) => t.key === b.resourceKind)?.fields.filter((f) => f.when === 'return') ?? [];
   if (!data?.length) return <Empty icon="calendar" title="Keine anstehenden Buchungen" />;
   return (
     <>
       <div className="table-wrap"><table className="table">
-        <thead><tr><th>Ressource</th><th>Zeitraum</th><th>Anlass</th><th>Status</th></tr></thead>
+        <thead><tr><th>Ressource</th><th>Zeitraum</th><th>Anlass</th><th>Status</th><th /></tr></thead>
         <tbody>{data.map((b) => (
           <tr key={b.id} className="click" onClick={() => setDetail(b)}>
             <td><span className="row" style={{ gap: 6 }}><Icon name={KIND_META[b.resourceKind]?.icon ?? 'box'} style={{ color: b.color }} />{b.resourceName}</span></td>
             <td>{fmtDateTime(b.startsAt)} – {fmtTime(b.endsAt)}{b.seriesId && <Icon name="repeat" size={13} style={{ marginLeft: 6 }} />}</td>
             <td>{b.title || <span className="muted">–</span>}</td>
             <td>{b.status === 'pending' ? <Pill tone="amber">wartet auf Genehmigung</Pill> : <Pill tone="green">bestätigt</Pill>}</td>
+            <td onClick={(e) => e.stopPropagation()}>{b.status === 'approved' && returnFields(b).length > 0 && new Date(b.startsAt) < new Date() && (
+              b.returnedAt ? <span className="small muted">zurückgegeben</span> : <button className="btn sm" onClick={() => setGiveBack(b)}>Rückgabe melden</button>)}</td>
           </tr>
         ))}</tbody>
       </table></div>
       {detail && <BookingDetail booking={detail} onClose={() => setDetail(null)} onChanged={() => { setDetail(null); reload(); }} />}
+      {giveBack && <ReturnModal booking={giveBack} fields={returnFields(giveBack)} onClose={() => setGiveBack(null)} onDone={() => { setGiveBack(null); reload(); }} />}
     </>
+  );
+}
+
+function ReturnModal({ booking, fields, onClose, onDone }: { booking: Booking; fields: ResourceType['fields']; onClose: () => void; onDone: () => void }) {
+  const act = useAction();
+  const [v, setV] = useState<Record<string, string>>({});
+  return (
+    <Modal title={`Rückgabe: ${booking.resourceName}`} onClose={onClose} footer={<>
+      <button className="btn" onClick={onClose}>Abbrechen</button>
+      <button className="btn primary" disabled={fields.some((f) => !v[f.key])} onClick={async () => {
+        const extra = Object.fromEntries(fields.map((f) => [f.key, f.type === 'number' ? Number(v[f.key]) : v[f.key]!]));
+        if (await act(() => post(`/resources/bookings/${booking.id}/return`, { extra }), 'Rückgabe gespeichert')) onDone();
+      }}>Speichern</button>
+    </>}>
+      {fields.map((f) => <Field key={f.key} label={f.label} required><input type={f.type} value={v[f.key] ?? ''} onChange={(e) => setV({ ...v, [f.key]: e.target.value })} /></Field>)}
+    </Modal>
   );
 }
 

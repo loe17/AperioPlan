@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { validateNumberPattern } from '@aperio/shared';
 import type { AppContext } from '../context';
 import { z, parse } from '../lib/validate';
 import { requireRole, requireUser } from '../lib/auth';
@@ -45,6 +46,11 @@ export default async function settingsRoutes(app: FastifyInstance, ctx: AppConte
     const body = parse(z.record(z.string(), z.unknown()).or(z.array(z.unknown())), req.body);
     const defaults = DEFAULT_SETTINGS[k];
     const value = Array.isArray(defaults) ? body : { ...(defaults as object), ...(await settings.get(k) as object), ...(body as object) };
+    if (k === 'projectNumbers') {
+      const v = value as { format?: string; pattern?: string };
+      const err = v.format === 'pattern' ? validateNumberPattern(v.pattern ?? '') : null;
+      if (err) throw badRequest(err);
+    }
     const merged = await settings.mergeSecrets(k, value as SettingsMap[typeof k]);
     await settings.set(k, merged);
     await audit(sql, u, { action: 'settings.update', entityType: 'settings', entityId: key, summary: `Einstellung "${key}" geändert`,

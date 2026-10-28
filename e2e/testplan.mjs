@@ -247,6 +247,34 @@ await step('7.2 Oberfläche ohne Emojis', async () => {
   }
 });
 
+// ------------------------------------------------------------ 8. Projekte und Kalender (1.2)
+await step('8.1 Eigene Kanban-Spalte anlegen', async () => {
+  await page.goto(`${BASE}/projects/${projectId}?tab=kanban`);
+  await page.click('button:has-text("Spalte hinzufügen")');
+  await page.fill('.modal input[placeholder*="Wartet"]', 'Wartet auf Kunde');
+  await page.click('.modal button:has-text("Speichern")');
+  await page.waitForSelector('.kanban-col-head:has-text("Wartet auf Kunde")');
+});
+
+await step('8.2 Termin mit Einladung im Kalender anlegen', async () => {
+  await page.goto(`${BASE}/calendar`);
+  await page.click('.page-head button:has-text("Termin")');
+  await page.fill('.modal input[placeholder*="Abstimmung"]', 'Projektbesprechung');
+  await page.click('.modal button:has-text("Anlegen")');
+  await page.waitForSelector('.cal-ev.event:has-text("Projektbesprechung")');
+});
+
+await step('8.3 Abgeschlossenes Projekt ist nur lesbar', async () => {
+  const p = await api('POST', '/projects', { name: 'Altprojekt' });
+  await api('PATCH', `/projects/${p.id}`, { status: 'done' });
+  await page.goto(`${BASE}/projects/${p.id}?tab=kanban`);
+  await page.waitForSelector('.locked-banner');
+  const canAdd = await page.locator('button:has-text("Neue Aufgabe")').count();
+  expect(canAdd === 0, 'Neue Aufgabe trotz Sperre sichtbar');
+  await page.selectOption('.locked-banner select', 'active');
+  await page.waitForSelector('.locked-banner', { state: 'detached' });
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);

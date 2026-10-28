@@ -19,6 +19,8 @@ const taskBody = z.object({
   dueDate: z.string().date().nullable().default(null),
   estimateHours: z.number().min(0).nullable().default(null),
   milestone: z.boolean().default(false),
+  /** eigene Kanban-Spalte; leer = Grundspalte des Status */
+  columnId: z.string().uuid().nullable().default(null),
 });
 
 const STATUS_LABEL: Record<string, string> = { todo: 'Zu erledigen', in_progress: 'In Arbeit', review: 'Prüfung', done: 'Fertig' };
@@ -26,7 +28,7 @@ const STATUS_LABEL: Record<string, string> = { todo: 'Zu erledigen', in_progress
 export const taskSelect = (sql: AppContext['sql']) => sql`
   t.id, t.project_id as "projectId", t.number, t.title, t.description, t.status, t.priority,
   t.assignee_id as "assigneeId", a.display_name as "assigneeName", t.team_id as "teamId", tm.name as "teamName",
-  t.start_date as "startDate", t.due_date as "dueDate", t.estimate_hours::float as "estimateHours", t.milestone, t.sort,
+  t.start_date as "startDate", t.due_date as "dueDate", t.estimate_hours::float as "estimateHours", t.milestone, t.sort, t.column_id as "columnId",
   t.created_at as "createdAt", t.updated_at as "updatedAt", t.completed_at as "completedAt",
   (select count(*)::int from comments c where c.entity_type = 'task' and c.entity_id = t.id) as "commentCount",
   (select coalesce(sum(extract(epoch from (coalesce(e.ended_at, now()) - e.started_at)) / 3600), 0)::float
@@ -71,10 +73,15 @@ export default async function taskRoutes(app: FastifyInstance, ctx: AppContext) 
     const task = await sql.begin(async (tx) => {
       const task_seq = (await tx<{ task_seq: number }[]>`update projects set task_seq = task_seq + 1 where id = ${id} returning task_seq`)[0]!.task_seq;
       const s = (await tx<{ s: number }[]>`select coalesce(max(sort), 0) + 1000 as s from tasks where project_id = ${id} and status = ${b.status}`)[0]!.s;
+      if (b.columnId) {
+        const [col] = await tx<{ base_status: string }[]>`select base_status from project_columns where id = ${b.columnId} and project_id = ${id}`;
+        if (!col) throw badRequest('Spalte gehört nicht zu diesem Projekt');
+        b.status = col.base_status as typeof b.status;
+      }
       const [t] = await tx`insert into tasks (project_id, number, title, description, status, priority, assignee_id, team_id,
-        start_date, due_date, estimate_hours, milestone, sort, created_by, completed_at)
+        start_date, due_date, estimate_hours, milestone, sort, created_by, completed_at, column_id)
         values (${id}, ${task_seq}, ${b.title}, ${b.description}, ${b.status}, ${b.priority}, ${b.assigneeId}, ${b.teamId},
-        ${b.startDate}, ${b.dueDate}, ${b.estimateHours}, ${b.milestone}, ${s}, ${u.id}, ${b.status === 'done' ? new Date() : null})
+        ${b.startDate}, ${b.dueDate}, ${b.estimateHours}, ${b.milestone}, ${s}, ${u.id}, ${b.status === 'done' ? new Date() : null}, ${b.columnId})
         returning id`;
       return t!;
     });
@@ -99,7 +106,16 @@ export default async function taskRoutes(app: FastifyInstance, ctx: AppContext) 
     const { id } = parse(idParam, req.params);
     const { t, p } = await loadTask(u, id, 'edit');
     const b = parse(patchSchema(taskBody).extend({ sort: z.number().optional() }), req.body);
+    // Eigene Spalte bestimmt den Status (Grundstufe); ein reiner Statuswechsel landet in der Grundspalte
+    let columnSql = sql`column_id`;
+    if (b.columnId) {
+      const [col] = await sql<{ base_status: string }[]>`select base_status from project_columns where id = ${b.columnId} and project_id = ${t.project_id}`;
+      if (!col) throw badRequest('Spalte gehört nicht zu diesem Projekt');
+      b.status = col.base_status as typeof b.status;
+      columnSql = sql`${b.columnId}::uuid`;
+    } else if (b.columnId === null || (b.status && b.status !== t.status)) columnSql = sql`null`;
     await sql`update tasks set
+      column_id = ${columnSql},
       title = coalesce(${b.title ?? null}, title), description = coalesce(${b.description ?? null}, description),
       status = coalesce(${b.status ?? null}, status), priority = coalesce(${b.priority ?? null}, priority),
       assignee_id = ${b.assigneeId === undefined ? sql`assignee_id` : b.assigneeId},
@@ -131,6 +147,67 @@ export default async function taskRoutes(app: FastifyInstance, ctx: AppContext) 
       await notify(ctx, leads.map((l) => l.user_id), { kind: 'task.review', title: `Zur Prüfung: ${full!.title}`, body: `${p.number} ${p.name}`, link: `/projects/${t.project_id}?task=${id}` }, u.id);
     }
     return full;
+  });
+
+  // ------------------------------------------------ Eigene Kanban-Spalten
+  const columnBody = z.object({
+    name: z.string().trim().min(1).max(60),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#6b7280'),
+    baseStatus: z.enum(TASK_STATUSES),
+  });
+  const columnCols = sql`id, name, color, base_status as "baseStatus", sort`;
+
+  app.get('/projects/:id/columns', async (req) => {
+    const u = requireUser(req);
+    const { id } = parse(idParam, req.params);
+    await projectAccess(sql, u, id);
+    return sql`select ${columnCols} from project_columns where project_id = ${id} order by sort, created_at`;
+  });
+
+  app.post('/projects/:id/columns', async (req) => {
+    const u = requireUser(req);
+    const { id } = parse(idParam, req.params);
+    await projectAccess(sql, u, id, 'manage');
+    const b = parse(columnBody, req.body);
+    // Grundspalten stehen bei 100/200/300/400 – eine neue Spalte kommt hinter die letzte ihrer Stufe
+    const base = { todo: 100, in_progress: 200, review: 300, done: 400 }[b.baseStatus];
+    const last = (await sql<{ n: number | null }[]>`select max(sort)::float as n from project_columns where project_id = ${id} and sort > ${base} and sort < ${base + 100}`)[0]?.n;
+    const n = last ? last + (base + 100 - last) / 2 : base + 50;
+    const [c] = await sql`insert into project_columns (project_id, name, color, base_status, sort) values (${id}, ${b.name}, ${b.color}, ${b.baseStatus}, ${n})
+      returning ${columnCols}`;
+    ctx.hub.publish(`project:${id}`, 'columns.changed', {});
+    return c;
+  });
+
+  async function loadColumn(u: AuthUser, colId: string) {
+    const [c] = await sql<{ project_id: string; base_status: string }[]>`select project_id, base_status from project_columns where id = ${colId}`;
+    if (!c) throw notFound('Spalte nicht gefunden');
+    await projectAccess(sql, u, c.project_id, 'manage');
+    return c;
+  }
+
+  app.patch('/columns/:id', async (req) => {
+    const u = requireUser(req);
+    const { id } = parse(idParam, req.params);
+    const c = await loadColumn(u, id);
+    const b = parse(patchSchema(columnBody).extend({ sort: z.number().optional() }), req.body);
+    await sql`update project_columns set name = coalesce(${b.name ?? null}, name), color = coalesce(${b.color ?? null}, color),
+      base_status = coalesce(${b.baseStatus ?? null}, base_status), sort = coalesce(${b.sort ?? null}, sort) where id = ${id}`;
+    if (b.baseStatus && b.baseStatus !== c.base_status)
+      await sql`update tasks set status = ${b.baseStatus}, updated_at = now(),
+        completed_at = case when ${b.baseStatus}::text = 'done' then coalesce(completed_at, now()) else null end where column_id = ${id}`;
+    ctx.hub.publish(`project:${c.project_id}`, 'columns.changed', {});
+    return { ok: true };
+  });
+
+  app.delete('/columns/:id', async (req) => {
+    const u = requireUser(req);
+    const { id } = parse(idParam, req.params);
+    const c = await loadColumn(u, id);
+    // Aufgaben wandern in die Grundspalte ihrer Stufe
+    await sql`delete from project_columns where id = ${id}`;
+    ctx.hub.publish(`project:${c.project_id}`, 'columns.changed', {});
+    return { ok: true };
   });
 
   /** Personen, die bei Änderungen und Kommentaren dieser Aufgabe benachrichtigt werden */
@@ -186,12 +263,16 @@ export default async function taskRoutes(app: FastifyInstance, ctx: AppContext) 
   });
 
   // ------------------------------------------------ Kommentare (Aufgaben, KVP, CAD, Dateien)
-  async function checkEntity(u: AuthUser, type: string, id: string) {
-    if (type === 'task') return (await loadTask(u, id)).t.project_id;
+  async function checkEntity(u: AuthUser, type: string, id: string, need: 'read' | 'write' = 'read') {
+    if (type === 'task') {
+      const { t } = await loadTask(u, id);
+      if (need === 'write') await projectAccess(sql, u, t.project_id, 'write');
+      return t.project_id;
+    }
     if (type === 'cad_item') {
       const [c] = await sql<{ project_id: string }[]>`select project_id from cad_items where id = ${id}`;
       if (!c) throw notFound();
-      await projectAccess(sql, u, c.project_id);
+      await projectAccess(sql, u, c.project_id, need);
       return c.project_id;
     }
     if (type === 'kvp') {
@@ -214,7 +295,7 @@ export default async function taskRoutes(app: FastifyInstance, ctx: AppContext) 
   app.post('/comments/:type/:id', async (req) => {
     const u = requireUser(req);
     const p = parse(z.object({ type: z.enum(['task', 'cad_item', 'kvp']), id: z.string().uuid() }), req.params);
-    const projectId = await checkEntity(u, p.type, p.id);
+    const projectId = await checkEntity(u, p.type, p.id, 'write');
     const b = parse(z.object({ body: z.string().trim().min(1).max(20000), notify: z.array(z.string().uuid()).max(200).default([]) }), req.body);
     const [c] = await sql`insert into comments (entity_type, entity_id, user_id, body) values (${p.type}, ${p.id}, ${u.id}, ${b.body})
       returning id, body, user_id as "userId", created_at as "createdAt"`;

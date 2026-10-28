@@ -6,7 +6,7 @@ import type { Db as Sql } from '../db';
 import { badRequest, notFound } from '../lib/errors';
 
 /** Vergibt die nächste Projektnummer (fortlaufend oder mit Jahreszahl) bzw. Teilprojektnummer. */
-export async function allocateProjectNumber(tx: Sql, ctx: AppContext, parentId: string | null, override?: string) {
+export async function allocateProjectNumber(tx: Sql, ctx: AppContext, parentId: string | null, override?: string, info: { teamId?: string | null; customer?: string | null } = {}) {
   await tx`select pg_advisory_xact_lock(4711)`;
   if (override) {
     const [exists] = await tx`select 1 from projects where number = ${override}`;
@@ -14,32 +14,36 @@ export async function allocateProjectNumber(tx: Sql, ctx: AppContext, parentId: 
     const seq = Number(/(\d+)$/.exec(override)?.[1] ?? 0);
     return { number: override, seq, year: null as number | null };
   }
+  const s = await ctx.settings.get('projectNumbers');
   if (parentId) {
     const [parent] = await tx<{ number: string }[]>`select number from projects where id = ${parentId}`;
     if (!parent) throw notFound('Hauptprojekt nicht gefunden');
     const n = (await tx<{ n: number }[]>`select count(*)::int as n from projects where parent_id = ${parentId}`)[0]!.n;
     let idx = n;
-    let number = formatSubprojectNumber(parent.number, idx);
-    while ((await tx`select 1 from projects where number = ${number}`).length) number = formatSubprojectNumber(parent.number, ++idx);
+    let number = formatSubprojectNumber(parent.number, idx, s.subStyle);
+    while ((await tx`select 1 from projects where number = ${number}`).length) number = formatSubprojectNumber(parent.number, ++idx, s.subStyle);
     return { number, seq: idx, year: null as number | null };
   }
-  const s = await ctx.settings.get('projectNumbers');
   const year = new Date().getFullYear();
-  const rows = s.format === 'year'
+  const perYear = s.format === 'year' || (s.format === 'pattern' && s.yearlyReset);
+  const team = info.teamId ? (await tx<{ short_code: string; name: string }[]>`select short_code, name from teams where id = ${info.teamId}`)[0] : undefined;
+  const nctx = { team: team ? team.short_code || team.name.slice(0, 3) : '', customer: info.customer ?? '' };
+  const rows = perYear
     ? await tx<{ seq: number }[]>`select seq from projects where parent_id is null and year = ${year}`
     : await tx<{ seq: number }[]>`select seq from projects where parent_id is null and year is null`;
   let seq = nextProjectSequence(rows.map((r) => r.seq), s);
-  let number = formatProjectNumber(seq, s, year);
+  let number = formatProjectNumber(seq, s, year, nctx);
   while ((await tx`select 1 from projects where number = ${number}`).length) {
     seq = nextProjectSequence([seq], s);
-    number = formatProjectNumber(seq, s, year);
+    number = formatProjectNumber(seq, s, year, nctx);
   }
-  return { number, seq, year: s.format === 'year' ? year : null };
+  return { number, seq, year: perYear ? year : null };
 }
 
 /** Legt die Standard-Ordnerstruktur an (01_CAD, 02_Zeichnungen, ...). */
 export async function createProjectFolders(ctx: AppContext, tx: Sql, projectId: string, number: string, name: string, parentId: string | null) {
   let base = 'Projekte';
+  const s = await ctx.settings.get('projectNumbers');
   if (parentId) {
     const [parent] = await tx<{ folder_path: string | null }[]>`select folder_path from projects where id = ${parentId}`;
     if (parent?.folder_path) base = parent.folder_path;

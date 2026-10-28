@@ -13,8 +13,6 @@ import { badRequest, conflict, forbidden, HttpError, notFound } from '../lib/err
 import { audit } from '../services/audit';
 import { notify } from '../services/notify';
 
-const KINDS = ['room', 'vehicle', 'equipment', 'other'] as const;
-const KIND_LABEL: Record<string, string> = { room: 'Raum', vehicle: 'Fahrzeug', equipment: 'Gerät', other: 'Ressource' };
 
 interface Resource {
   id: string; name: string; kind: string; requires_approval: boolean; approver_id: string | null; allowed_team_ids: string[]; active: boolean;
@@ -22,7 +20,8 @@ interface Resource {
 
 const resourceBody = z.object({
   name: z.string().trim().min(1).max(120),
-  kind: z.enum(KINDS).default('room'),
+  kind: z.string().min(1).max(40).default('room'),
+  extra: z.record(z.string(), z.union([z.string(), z.number(), z.null()])).default({}),
   location: z.string().default(''),
   capacity: z.number().int().min(0).nullable().default(null),
   description: z.string().default(''),
@@ -39,7 +38,64 @@ const fmt = (d: Date | string) => new Date(d).toLocaleString('de-DE', { timeZone
 export default async function resourceRoutes(app: FastifyInstance, ctx: AppContext) {
   const { sql } = ctx;
 
-  const resSelect = sql`r.id, r.name, r.kind, r.location, r.capacity, r.description, r.color, r.requires_approval as "requiresApproval",
+  const typeFieldSchema = z.object({
+    key: z.string().regex(/^[a-z0-9_]{1,30}$/, 'Schlüssel nur aus Kleinbuchstaben, Ziffern und _'),
+    label: z.string().trim().min(1).max(60),
+    type: z.enum(['text', 'number', 'date']).default('text'),
+    when: z.enum(['resource', 'return']).default('resource'),
+  });
+  const typeBody = z.object({
+    name: z.string().trim().min(1).max(60),
+    icon: z.string().max(40).default('box'),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#4f46e5'),
+    fields: z.array(typeFieldSchema).max(20).default([]),
+    sort: z.number().int().default(0),
+  });
+  const kindLabel = async (key: string) => (await sql<{ name: string }[]>`select name from resource_types where key = ${key}`)[0]?.name;
+  async function checkKind(key: string) {
+    if (!(await kindLabel(key))) throw badRequest(`Unbekannte Ressourcenart „${key}“`);
+  }
+
+  // ------------------------------------------------ Ressourcenarten (vom Administrator angelegt)
+  app.get('/resource-types', async (req) => {
+    requireUser(req);
+    return sql`select t.key, t.name, t.icon, t.color, t.fields, t.sort, (select count(*)::int from resources r where r.kind = t.key) as "resourceCount"
+      from resource_types t order by t.sort, t.name`;
+  });
+
+  app.post('/resource-types', async (req) => {
+    const u = requireRole(req, 'admin');
+    const b = parse(typeBody, req.body);
+    let key = b.name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'art';
+    for (let i = 2; (await sql`select 1 from resource_types where key = ${key}`).length; i++) key = `${key.replace(/_\d+$/, '')}_${i}`;
+    await sql`insert into resource_types (key, name, icon, color, fields, sort) values (${key}, ${b.name}, ${b.icon}, ${b.color}, ${sql.json(b.fields)}, ${b.sort})`;
+    await audit(sql, u, { action: 'resource.type', entityType: 'resource_type', entityId: key, summary: `Ressourcenart „${b.name}“ angelegt` });
+    return { key };
+  });
+
+  app.patch('/resource-types/:key', async (req) => {
+    const u = requireRole(req, 'admin');
+    const { key } = parse(z.object({ key: z.string() }), req.params);
+    await checkKind(key);
+    const b = parse(patchSchema(typeBody), req.body);
+    await sql`update resource_types set name = coalesce(${b.name ?? null}, name), icon = coalesce(${b.icon ?? null}, icon),
+      color = coalesce(${b.color ?? null}, color), fields = ${b.fields ? sql.json(b.fields) : sql`fields`}, sort = coalesce(${b.sort ?? null}, sort)
+      where key = ${key}`;
+    await audit(sql, u, { action: 'resource.type', entityType: 'resource_type', entityId: key, summary: `Ressourcenart „${b.name ?? key}“ geändert` });
+    return { ok: true };
+  });
+
+  app.delete('/resource-types/:key', async (req) => {
+    const u = requireRole(req, 'admin');
+    const { key } = parse(z.object({ key: z.string() }), req.params);
+    const [used] = await sql<{ n: number }[]>`select count(*)::int as n from resources where kind = ${key}`;
+    if (used && used.n > 0) throw badRequest(`Diese Art wird noch von ${used.n} Ressourcen verwendet`);
+    await sql`delete from resource_types where key = ${key}`;
+    await audit(sql, u, { action: 'resource.type', entityType: 'resource_type', entityId: key, summary: `Ressourcenart „${key}“ gelöscht` });
+    return { ok: true };
+  });
+
+  const resSelect = sql`r.id, r.name, r.kind, r.extra, r.location, r.capacity, r.description, r.color, r.requires_approval as "requiresApproval",
     r.approver_id as "approverId", a.display_name as "approverName", r.allowed_team_ids as "allowedTeamIds", r.active, r.sort`;
 
   async function loadResource(id: string) {
@@ -75,10 +131,11 @@ export default async function resourceRoutes(app: FastifyInstance, ctx: AppConte
   app.post('/resources', async (req) => {
     const u = requireRole(req, 'admin');
     const b = parse(resourceBody, req.body);
-    const [r] = await sql<{ id: string }[]>`insert into resources (name, kind, location, capacity, description, color, requires_approval, approver_id, allowed_team_ids, active, sort)
-      values (${b.name}, ${b.kind}, ${b.location}, ${b.capacity}, ${b.description}, ${b.color}, ${b.requiresApproval}, ${b.approverId}, ${b.allowedTeamIds}, ${b.active}, ${b.sort})
+    await checkKind(b.kind);
+    const [r] = await sql<{ id: string }[]>`insert into resources (name, kind, extra, location, capacity, description, color, requires_approval, approver_id, allowed_team_ids, active, sort)
+      values (${b.name}, ${b.kind}, ${sql.json(b.extra)}, ${b.location}, ${b.capacity}, ${b.description}, ${b.color}, ${b.requiresApproval}, ${b.approverId}, ${b.allowedTeamIds}, ${b.active}, ${b.sort})
       returning id`;
-    await audit(sql, u, { action: 'resource.create', entityType: 'resource', entityId: r!.id, summary: `${KIND_LABEL[b.kind]} „${b.name}“ angelegt` });
+    await audit(sql, u, { action: 'resource.create', entityType: 'resource', entityId: r!.id, summary: `${await kindLabel(b.kind)} „${b.name}“ angelegt` });
     return r;
   });
 
@@ -87,8 +144,9 @@ export default async function resourceRoutes(app: FastifyInstance, ctx: AppConte
     const { id } = parse(idParam, req.params);
     const cur = await loadResource(id);
     const b = parse(patchSchema(resourceBody), req.body);
+    if (b.kind) await checkKind(b.kind);
     await sql`update resources set
-      name = coalesce(${b.name ?? null}, name), kind = coalesce(${b.kind ?? null}, kind), location = coalesce(${b.location ?? null}, location),
+      name = coalesce(${b.name ?? null}, name), kind = coalesce(${b.kind ?? null}, kind), extra = ${b.extra ? sql.json(b.extra) : sql`extra`}, location = coalesce(${b.location ?? null}, location),
       capacity = ${b.capacity === undefined ? sql`capacity` : b.capacity}, description = coalesce(${b.description ?? null}, description),
       color = coalesce(${b.color ?? null}, color), requires_approval = coalesce(${b.requiresApproval ?? null}, requires_approval),
       approver_id = ${b.approverId === undefined ? sql`approver_id` : b.approverId},
@@ -114,7 +172,7 @@ export default async function resourceRoutes(app: FastifyInstance, ctx: AppConte
   // ------------------------------------------------ Buchungen ansehen
   const bookingSelect = (u: AuthUser) => sql`b.id, b.resource_id as "resourceId", r.name as "resourceName", r.kind as "resourceKind", r.color,
     b.user_id as "userId", us.display_name as "userName", b.starts_at as "startsAt", b.ends_at as "endsAt", b.status, b.series_id as "seriesId",
-    b.project_id as "projectId", p.number as "projectNumber",
+    b.project_id as "projectId", p.number as "projectNumber", b.extra, b.returned_at as "returnedAt",
     case when b.user_id = ${u.id} or ${u.role === 'admin'} or r.approver_id = ${u.id} then b.title end as title,
     case when b.user_id = ${u.id} or ${u.role === 'admin'} or r.approver_id = ${u.id} then b.note end as note,
     (b.user_id = ${u.id}) as mine, dc.display_name as "decidedByName"`;
@@ -151,7 +209,7 @@ export default async function resourceRoutes(app: FastifyInstance, ctx: AppConte
 
   app.post('/resources/availability', async (req) => {
     const u = requireUser(req);
-    const b = parse(z.object({ startsAt: z.string().datetime({ offset: true }), endsAt: z.string().datetime({ offset: true }), kind: z.enum(KINDS).optional() }), req.body);
+    const b = parse(z.object({ startsAt: z.string().datetime({ offset: true }), endsAt: z.string().datetime({ offset: true }), kind: z.string().max(40).optional() }), req.body);
     return freeResources(u, new Date(b.startsAt), new Date(b.endsAt), b.kind);
   });
 
@@ -267,6 +325,22 @@ export default async function resourceRoutes(app: FastifyInstance, ctx: AppConte
     if (status === 'pending' && moved) await notify(ctx, await approvers(target), { kind: 'resource.request', title: `Geänderte Buchungsanfrage: ${target.name}`, body: `${u.displayName}, ${fmt(start)} – ${fmt(end)}`, link: '/calendar/resources?tab=review' }, u.id);
     ctx.hub.publish('global', 'resources.changed', { resourceId: target.id });
     return { ok: true, status };
+  });
+
+  /** Rückgabe melden, z. B. Kilometerstand beim Firmenwagen (Zusatzfelder „bei Rückgabe“ der Ressourcenart) */
+  app.post('/resources/bookings/:id/return', async (req) => {
+    const u = requireUser(req);
+    const { id } = parse(idParam, req.params);
+    const bk = await loadBooking(id);
+    if (bk.user_id !== u.id && u.role !== 'admin') throw forbidden('Nur eigene Buchungen');
+    const r = await loadResource(bk.resource_id);
+    const b = parse(z.object({ extra: z.record(z.string(), z.union([z.string(), z.number(), z.null()])).default({}) }), req.body);
+    const [type] = await sql<{ fields: { key: string; label: string; when: string }[] }[]>`select fields from resource_types where key = ${r.kind}`;
+    const missing = (type?.fields ?? []).filter((f) => f.when === 'return' && (b.extra[f.key] === undefined || b.extra[f.key] === '' || b.extra[f.key] === null));
+    if (missing.length) throw badRequest(`Bitte ausfüllen: ${missing.map((f) => f.label).join(', ')}`);
+    await sql`update resource_bookings set extra = extra || ${sql.json(b.extra)}, returned_at = now(), updated_at = now() where id = ${id}`;
+    await audit(sql, u, { action: 'resource.return', entityType: 'resource_booking', entityId: id, summary: `${r.name} zurückgegeben`, details: b.extra });
+    return { ok: true };
   });
 
   app.post('/resources/bookings/:id/cancel', async (req) => {

@@ -69,3 +69,24 @@ describe('Feiertage und Urlaubstage', () => {
     expect(countWorkingDays('2026-11-02', '2026-11-06', h, true, true)).toBe(4);
   });
 });
+
+import { formatNumberPattern, validateNumberPattern, nextProjectSequence as nextSeq, formatSubprojectNumber as subNo } from '../src';
+describe('Projektnummern aus Bausteinen', () => {
+  it('setzt das Muster zusammen', () => {
+    expect(formatNumberPattern('PRJ-{JJ}{NNN}', 42, { year: 2026 })).toBe('PRJ-26042');
+    expect(formatNumberPattern('{TEAM}-{JJJJ}-{MM}-{NNNN}', 7, { year: 2026, month: 3, team: 'Kon' })).toBe('KON-2026-03-0007');
+    expect(formatNumberPattern('{KUNDE}/{NN}', 3, { customer: 'K0042' })).toBe('K0042/03');
+  });
+  it('prüft das Muster', () => {
+    expect(validateNumberPattern('PRJ-{JJ}')).toMatch(/genau einen/);
+    expect(validateNumberPattern('{NNN}{XY}')).toMatch(/Unbekannter/);
+    expect(validateNumberPattern('A/{NNN}')).toMatch(/Ordnernamen/);
+    expect(validateNumberPattern('P-{NNN}')).toBeNull();
+  });
+  it('Startwert und Schrittweite', () => {
+    const s = { format: 'pattern' as const, prefix: '', digits: 4, step: 1, start: 500 };
+    expect(nextSeq([], s)).toBe(500);
+    expect(nextSeq([500, 501], s)).toBe(502);
+    expect(subNo('0100', 0, 'digits')).toBe('0100-01');
+  });
+});

@@ -35,7 +35,7 @@ export default async function timeRoutes(app: FastifyInstance, ctx: AppContext) 
       if (projectId && projectId !== t.project_id) throw badRequest('Aufgabe gehört nicht zum Projekt');
       projectId = t.project_id;
     }
-    if (projectId) await projectAccess(sql, u, projectId);
+    if (projectId) await projectAccess(sql, u, projectId, 'write');
     return projectId ?? null;
   }
 

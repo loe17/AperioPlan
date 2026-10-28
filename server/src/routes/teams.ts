@@ -10,7 +10,7 @@ export default async function teamRoutes(app: FastifyInstance, ctx: AppContext) 
 
   app.get('/teams', async (req) => {
     requireUser(req);
-    return sql`select t.id, t.name, t.icon, t.description, t.parent_id as "parentId", t.sort, t.default_tools as "defaultTools",
+    return sql`select t.id, t.name, t.icon, t.description, t.parent_id as "parentId", t.sort, t.default_tools as "defaultTools", t.short_code as "shortCode",
       coalesce(json_agg(json_build_object('userId', tm.user_id, 'isLead', tm.is_lead, 'displayName', u.display_name))
         filter (where tm.user_id is not null), '[]') as members
       from teams t left join team_members tm on tm.team_id = t.id left join users u on u.id = tm.user_id and u.deleted_at is null
@@ -24,13 +24,14 @@ export default async function teamRoutes(app: FastifyInstance, ctx: AppContext) 
     parentId: z.string().uuid().nullable().default(null),
     sort: z.number().int().default(0),
     defaultTools: z.array(z.enum(TOOLS)).nullable().default(null),
+    shortCode: z.string().trim().max(10).regex(/^[A-Za-z0-9]*$/, 'Kürzel nur aus Buchstaben und Ziffern').default(''),
   });
 
   app.post('/teams', async (req) => {
     const u = requireRole(req, 'admin');
     const b = parse(teamBody, req.body);
-    const [t] = await sql`insert into teams (name, icon, description, parent_id, sort, default_tools)
-      values (${b.name}, ${b.icon}, ${b.description}, ${b.parentId}, ${b.sort}, ${b.defaultTools}) returning id`;
+    const [t] = await sql`insert into teams (name, icon, description, parent_id, sort, default_tools, short_code)
+      values (${b.name}, ${b.icon}, ${b.description}, ${b.parentId}, ${b.sort}, ${b.defaultTools}, ${b.shortCode.toUpperCase()}) returning id`;
     await audit(sql, u, { action: 'team.create', entityType: 'team', entityId: t!.id, summary: `Team ${b.name} angelegt` });
     return t;
   });
@@ -41,6 +42,7 @@ export default async function teamRoutes(app: FastifyInstance, ctx: AppContext) 
     const b = parse(patchSchema(teamBody), req.body);
     await sql`update teams set name = coalesce(${b.name ?? null}, name), icon = coalesce(${b.icon ?? null}, icon),
       description = coalesce(${b.description ?? null}, description), sort = coalesce(${b.sort ?? null}, sort),
+      short_code = coalesce(${b.shortCode?.toUpperCase() ?? null}, short_code),
       parent_id = ${b.parentId === undefined ? sql`parent_id` : b.parentId},
       default_tools = ${b.defaultTools === undefined ? sql`default_tools` : b.defaultTools} where id = ${id}`;
     if (b.defaultTools !== undefined) {

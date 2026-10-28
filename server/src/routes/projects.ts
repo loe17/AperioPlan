@@ -3,8 +3,8 @@ import { PROJECT_MODULES } from '@aperio/shared';
 import type { AppContext } from '../context';
 import { z, parse, idParam, patchSchema } from '../lib/validate';
 import { requireUser, requireRole } from '../lib/auth';
-import { projectAccess, visibleProjects } from '../lib/access';
-import { badRequest } from '../lib/errors';
+import { projectAccess, visibleProjects, LOCKED_MESSAGE } from '../lib/access';
+import { badRequest, forbidden } from '../lib/errors';
 import { audit } from '../services/audit';
 import { allocateProjectNumber, createProjectFolders, normalizeModules } from '../services/projects';
 
@@ -56,13 +56,17 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
     if (b.number && u.role !== 'admin') throw badRequest('Nur Administratoren dürfen Projektnummern frei vergeben');
     const defaults = await ctx.settings.get('defaultModules');
     const project = await sql.begin(async (tx) => {
-      const { number, seq, year } = await allocateProjectNumber(tx, ctx, b.parentId, b.number);
+      const { number, seq, year } = await allocateProjectNumber(tx, ctx, b.parentId, b.number, { teamId: b.teamId, customer: b.customer });
       const [p] = await tx<{ id: string; number: string }[]>`insert into projects
         (number, seq, year, name, description, icon, parent_id, team_id, status, visibility, modules, customer, start_date, due_date, created_by)
         values (${number}, ${seq}, ${year}, ${b.name}, ${b.description}, ${b.icon}, ${b.parentId}, ${b.teamId}, ${b.status}, ${b.visibility},
           ${tx.json(normalizeModules(b.modules, defaults))}, ${b.customer}, ${b.startDate}, ${b.dueDate}, ${u.id})
         returning id, number`;
       await tx`insert into project_members (project_id, user_id, role) values (${p!.id}, ${u.id}, 'owner')`;
+      const columns = await ctx.settings.get('kanbanTemplate');
+      for (const [i, c] of columns.entries())
+        await tx`insert into project_columns (project_id, name, color, base_status, sort) values (${p!.id}, ${c.name}, ${c.color}, ${c.baseStatus},
+          ${{ todo: 100, in_progress: 200, review: 300, done: 400 }[c.baseStatus] + 50 + i * 0.01})`;
       await tx`insert into chat_channels (kind, project_id, name) values ('project', ${p!.id}, ${number + ' ' + b.name})`;
       const folder = await createProjectFolders(ctx, tx, p!.id, number, b.name, b.parentId);
       return { ...p!, folderPath: folder };
@@ -85,15 +89,23 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
     const parent = p!.parentId ? (await sql`select id, number, name, icon from projects where id = ${p!.parentId}`)[0] ?? null : null;
     const [chat] = await sql`select id from chat_channels where project_id = ${id} and kind = 'project'`;
     const storage = await ctx.settings.get('storage');
-    return { ...p, members, children, parent, chatChannelId: chat?.id ?? null, canEdit: access.canEdit, canManage: access.canManage,
+    return { ...p, members, children, parent, chatChannelId: chat?.id ?? null, canEdit: access.canEdit, canManage: access.canManage, locked: access.locked,
       networkPath: storage.networkPath && p!.folderPath ? `${storage.networkPath.replace(/[\\/]$/, '')}\\${String(p!.folderPath).replace(/\//g, '\\')}` : null };
   });
 
   app.patch('/projects/:id', async (req) => {
     const u = requireUser(req);
     const { id } = parse(idParam, req.params);
-    await projectAccess(sql, u, id, 'manage');
+    const acc = await projectAccess(sql, u, id, 'manage', { allowLocked: true });
     const b = parse(patchSchema(projectBody).omit({ number: true, parentId: true }), req.body);
+    if (acc.locked) {
+      // Gesperrt: nur ein Administrator darf den Status zurücksetzen – sonst nichts
+      if (u.role !== 'admin') throw forbidden(LOCKED_MESSAGE);
+      const other = Object.entries(b).filter(([k, v]) => k !== 'status' && v !== undefined);
+      if (other.length || !b.status) throw forbidden('Bei abgeschlossenen oder archivierten Projekten lässt sich nur der Status ändern.');
+      if (b.status !== acc.status) await audit(sql, u, { action: 'project.unlock', entityType: 'project', entityId: id, projectId: id,
+        summary: `Status von „${acc.status === 'done' ? 'Abgeschlossen' : 'Archiviert'}“ auf „${b.status}“ zurückgesetzt` });
+    }
     await sql`update projects set
       name = coalesce(${b.name ?? null}, name), description = coalesce(${b.description ?? null}, description),
       icon = coalesce(${b.icon ?? null}, icon), team_id = ${b.teamId === undefined ? sql`team_id` : b.teamId},
@@ -125,7 +137,9 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
   app.put('/projects/:id/report', async (req) => {
     const u = requireUser(req);
     const { id } = parse(idParam, req.params);
-    await projectAccess(sql, u, id, 'edit');
+    // Der Abschlussbericht entsteht meist erst beim Abschluss – deshalb auch bei „Abgeschlossen“ (nicht archiviert) änderbar
+    const acc = await projectAccess(sql, u, id, 'edit', { allowLocked: true });
+    if (acc.status === 'archived') throw forbidden(LOCKED_MESSAGE);
     const b = parse(z.object({
       goals: z.string().default(''), result: z.string().default(''), costsPlanned: z.number().nullable().default(null),
       costsActual: z.number().nullable().default(null), lessons: z.string().default(''),

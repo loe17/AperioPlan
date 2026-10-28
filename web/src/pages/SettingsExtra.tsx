@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useApi } from '../lib/hooks';
 import { post, put, patch, invalidate } from '../lib/api';
-import { Icon } from '../components/Icon';
-import { ResourceLabel } from './Resources';
+import { Icon, IconPicker } from '../components/Icon';
+import { ResourceLabel, useResourceTypes, type ResourceType } from './Resources';
 import { fmtBytes, fmtDate, fmtDateTime } from '../lib/format';
 import { Confirm, Modal, Pill } from '../components/ui';
 import { del, upload } from '../lib/api';
@@ -471,7 +471,6 @@ export function ExtensionSettings() {
   );
 }
 
-const RES_KINDS: [string, string][] = [['room', 'Raum'], ['vehicle', 'Fahrzeug'], ['equipment', 'Gerät'], ['other', 'Sonstiges']];
 const RES_COLORS = ['#4f46e5', '#0e9f6e', '#d97706', '#db2777', '#0891b2', '#7c3aed', '#dc2626', '#65a30d'];
 
 /** Ressourcen (Räume, Fahrzeuge, Geräte) anlegen und verwalten */
@@ -479,9 +478,12 @@ export function ResourcesSettings() {
   const act = useAction();
   const { users, teams } = useSession();
   const { data, reload } = useApi<any[]>('/resources');
+  const { data: types, reload: reloadTypes } = useResourceTypes();
   const [edit, setEdit] = useState<any | null>(null);
   const [remove, setRemove] = useState<any | null>(null);
-  const blank = { name: '', kind: 'room', location: '', capacity: '', description: '', color: RES_COLORS[0], requiresApproval: false, approverId: '', allowedTeamIds: [] as string[], active: true };
+  const [typeEdit, setTypeEdit] = useState<Partial<ResourceType> | null>(null);
+  const typeOf = (k: string) => types?.find((t) => t.key === k);
+  const blank = { extra: {}, name: '', kind: 'room', location: '', capacity: '', description: '', color: RES_COLORS[0], requiresApproval: false, approverId: '', allowedTeamIds: [] as string[], active: true };
   return (
     <div style={{ maxWidth: 900 }}>
       <div className="page-head"><div><h1>Ressourcen</h1><div className="sub">Räume, Firmenwagen und Geräte, die Mitarbeiter im Kalender buchen können.</div></div>
@@ -492,7 +494,7 @@ export function ResourcesSettings() {
           <tbody>{data.map((r) => (
             <tr key={r.id} className="click" onClick={() => setEdit({ ...r, capacity: r.capacity ?? '', approverId: r.approverId ?? '' })}>
               <td><ResourceLabel r={r} /></td>
-              <td>{RES_KINDS.find(([k]) => k === r.kind)?.[1]}</td>
+              <td>{typeOf(r.kind)?.name ?? r.kind}</td>
               <td>{r.requiresApproval ? (r.approverName ?? 'Administratoren') : <span className="muted">nein</span>}</td>
               <td className="small">{r.allowedTeamIds.length ? teams.filter((t) => r.allowedTeamIds.includes(t.id)).map((t) => t.name).join(', ') : 'alle'}</td>
               <td>{r.active ? <Pill tone="green">buchbar</Pill> : <Pill tone="red">gesperrt</Pill>}</td>
@@ -508,7 +510,7 @@ export function ResourcesSettings() {
         <Modal title={edit.id ? 'Ressource bearbeiten' : 'Ressource anlegen'} onClose={() => setEdit(null)} footer={<>
           <button className="btn" onClick={() => setEdit(null)}>Abbrechen</button>
           <button className="btn primary" disabled={!edit.name.trim()} onClick={async () => {
-            const body = { name: edit.name, kind: edit.kind, location: edit.location, capacity: edit.capacity === '' ? null : Number(edit.capacity), description: edit.description,
+            const body = { extra: edit.extra ?? {}, name: edit.name, kind: edit.kind, location: edit.location, capacity: edit.capacity === '' ? null : Number(edit.capacity), description: edit.description,
               color: edit.color, requiresApproval: edit.requiresApproval, approverId: edit.approverId || null, allowedTeamIds: edit.allowedTeamIds, active: edit.active };
             const ok = await act(() => (edit.id ? patch(`/resources/${edit.id}`, body) : post('/resources', body)), 'Gespeichert');
             if (ok) { setEdit(null); reload(); }
@@ -516,10 +518,15 @@ export function ResourcesSettings() {
         </>}>
           <div className="grid2">
             <Field label="Name" required><input autoFocus value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="z. B. Besprechungsraum 1, VW Caddy KN-AP 123" /></Field>
-            <Field label="Art"><select value={edit.kind} onChange={(e) => setEdit({ ...edit, kind: e.target.value })}>{RES_KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
+            <Field label="Art"><select value={edit.kind} onChange={(e) => setEdit({ ...edit, kind: e.target.value })}>{types?.map((t) => <option key={t.key} value={t.key}>{t.name}</option>)}</select></Field>
             <Field label="Ort"><input value={edit.location} onChange={(e) => setEdit({ ...edit, location: e.target.value })} placeholder="z. B. Erdgeschoss, Parkplatz 3" /></Field>
             <Field label={edit.kind === 'vehicle' ? 'Sitze' : 'Plätze'}><input type="number" min={0} value={edit.capacity} onChange={(e) => setEdit({ ...edit, capacity: e.target.value })} /></Field>
           </div>
+          {(typeOf(edit.kind)?.fields ?? []).filter((f) => f.when === 'resource').length > 0 && (
+            <div className="grid2">{typeOf(edit.kind)!.fields.filter((f) => f.when === 'resource').map((f) => (
+              <Field key={f.key} label={f.label}><input type={f.type} value={edit.extra?.[f.key] ?? ''} onChange={(e) => setEdit({ ...edit, extra: { ...edit.extra, [f.key]: f.type === 'number' ? (e.target.value === '' ? null : Number(e.target.value)) : e.target.value } })} /></Field>
+            ))}</div>
+          )}
           <Field label="Beschreibung"><input value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} placeholder="z. B. Beamer und Videokonferenz vorhanden" /></Field>
           <Field label="Farbe">
             <div className="row">{RES_COLORS.map((c) => <button key={c} className="btn sm" onClick={() => setEdit({ ...edit, color: c })} style={{ width: 28, height: 28, padding: 0, background: c, outline: edit.color === c ? '2px solid var(--text)' : undefined, outlineOffset: 2 }} aria-label={c} />)}</div>
@@ -537,6 +544,56 @@ export function ResourcesSettings() {
         </Modal>
       )}
       {remove && <Confirm danger text={`„${remove.name}“ löschen? Das geht nur, wenn keine künftigen Buchungen bestehen – sonst bitte sperren.`} onClose={() => setRemove(null)} onConfirm={async () => { await act(() => del(`/resources/${remove.id}`), 'Gelöscht'); reload(); }} />}
+
+      <div className="page-head" style={{ marginTop: 32 }}><div><h2>Ressourcenarten</h2><div className="sub">Eigene Arten mit Symbol und Zusatzfeldern, z. B. Kennzeichen oder Kilometerstand bei Rückgabe.</div></div>
+        <div className="actions"><button className="btn" onClick={() => setTypeEdit({ name: '', icon: 'box', color: RES_COLORS[0], fields: [] })}><Icon name="plus" /> Art anlegen</button></div></div>
+      <div className="card-grid">
+        {types?.map((t) => (
+          <div key={t.key} className="card click" onClick={() => setTypeEdit({ ...t })}>
+            <div className="card-title"><span className="resource-icon" style={{ color: t.color, background: `${t.color}1f` }}><Icon name={t.icon} /></span><h3>{t.name}</h3></div>
+            <div className="small muted">{t.resourceCount ?? 0} Ressourcen{t.fields.length ? ` · Felder: ${t.fields.map((f) => f.label).join(', ')}` : ''}</div>
+          </div>
+        ))}
+      </div>
+      {typeEdit && <ResourceTypeModal type={typeEdit} onClose={() => setTypeEdit(null)} onSaved={() => { setTypeEdit(null); void reloadTypes(); }} />}
     </div>
+  );
+}
+
+function ResourceTypeModal({ type, onClose, onSaved }: { type: Partial<ResourceType>; onClose: () => void; onSaved: () => void }) {
+  const act = useAction();
+  const [t, setT] = useState(type);
+  const [confirm, setConfirm] = useState(false);
+  const fields = t.fields ?? [];
+  const setField = (i: number, patchF: Partial<ResourceType['fields'][number]>) => setT({ ...t, fields: fields.map((f, j) => (j === i ? { ...f, ...patchF } : f)) });
+  const slug = (s: string) => s.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'feld';
+  return (
+    <Modal title={t.key ? `Art „${t.name}“` : 'Neue Ressourcenart'} onClose={onClose} footer={<>
+      {t.key && <button className="btn danger" onClick={() => setConfirm(true)}>Löschen</button>}<span className="grow" />
+      <button className="btn" onClick={onClose}>Abbrechen</button>
+      <button className="btn primary" disabled={!t.name?.trim()} onClick={async () => {
+        const body = { name: t.name, icon: t.icon, color: t.color, fields: fields.filter((f) => f.label.trim()).map((f) => ({ ...f, key: f.key || slug(f.label) })) };
+        if (await act(() => (t.key ? patch(`/resource-types/${t.key}`, body) : post('/resource-types', body)), 'Gespeichert')) onSaved();
+      }}>Speichern</button>
+    </>}>
+      <div className="grid2">
+        <Field label="Name" required><input autoFocus value={t.name ?? ''} onChange={(e) => setT({ ...t, name: e.target.value })} placeholder="z. B. Stapler, Messtechnik, Laptop" /></Field>
+        <Field label="Symbol"><IconPicker value={t.icon} onChange={(icon) => setT({ ...t, icon })} /></Field>
+      </div>
+      <Field label="Farbe"><div className="row">{RES_COLORS.map((c) => <button key={c} className="btn sm" onClick={() => setT({ ...t, color: c })} style={{ width: 28, height: 28, padding: 0, background: c, outline: t.color === c ? '2px solid var(--text)' : undefined, outlineOffset: 2 }} aria-label={c} />)}</div></Field>
+      <Field label="Zusatzfelder" hint="„an der Ressource“ trägt der Administrator ein, „bei Rückgabe“ der Buchende">
+        {fields.map((f, i) => (
+          <div key={i} className="row" style={{ marginBottom: 6 }}>
+            <input value={f.label} placeholder="Bezeichnung" onChange={(e) => setField(i, { label: e.target.value })} />
+            <select value={f.type} style={{ width: 'auto' }} onChange={(e) => setField(i, { type: e.target.value as 'text' })}><option value="text">Text</option><option value="number">Zahl</option><option value="date">Datum</option></select>
+            <select value={f.when} style={{ width: 'auto' }} onChange={(e) => setField(i, { when: e.target.value as 'resource' })}><option value="resource">an der Ressource</option><option value="return">bei Rückgabe</option></select>
+            <button className="btn ghost sm" onClick={() => setT({ ...t, fields: fields.filter((_, j) => j !== i) })}><Icon name="x" /></button>
+          </div>
+        ))}
+        <button className="btn sm" onClick={() => setT({ ...t, fields: [...fields, { key: '', label: '', type: 'text', when: 'resource' }] })}><Icon name="plus" /> Feld</button>
+      </Field>
+      {confirm && <Confirm danger text={`Art „${t.name}“ löschen? Das geht nur, wenn keine Ressource sie verwendet.`} confirmLabel="Löschen" onClose={() => setConfirm(false)}
+        onConfirm={async () => { if (await act(() => del(`/resource-types/${t.key}`), 'Gelöscht')) onSaved(); }} />}
+    </Modal>
   );
 }

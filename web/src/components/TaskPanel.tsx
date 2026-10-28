@@ -14,7 +14,7 @@ export interface Task {
   id: string; projectId: string; number: number; title: string; description: string; status: string; priority: string;
   assigneeId: string | null; assigneeName: string | null; teamId: string | null; teamName: string | null;
   startDate: string | null; dueDate: string | null; estimateHours: number | null; milestone: boolean; sort: number;
-  commentCount: number; hoursBooked: number; dependsOn: string[]; watchers?: string[]; createdAt: string; completedAt: string | null;
+  commentCount: number; hoursBooked: number; dependsOn: string[]; watchers?: string[]; columnId?: string | null; createdAt: string; completedAt: string | null;
   projectNumber?: string; projectName?: string;
 }
 

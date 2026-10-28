@@ -44,7 +44,7 @@ export function ProjectSettings({ project }: { project: any }) {
       <div className="grid2">
         <Field label="Name" required><input value={p.name} onChange={set('name')} /></Field>
         <Field label="Symbol"><IconPicker value={p.icon} onChange={(icon) => setP({ ...p, icon })} /></Field>
-        <Field label="Status"><select value={p.status} onChange={set('status')}>{STATUS_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
+        <Field label="Status" hint="Abgeschlossen oder Archiviert: danach nur noch lesbar"><select value={p.status} onChange={set('status')}>{STATUS_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
         <Field label="Team / Abteilung"><select value={p.teamId ?? ''} onChange={set('teamId')}><option value="">–</option>{teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
         <Field label="Sichtbarkeit">
           <select value={p.visibility} onChange={set('visibility')}>

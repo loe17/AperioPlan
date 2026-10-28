@@ -56,6 +56,8 @@ export interface SettingsMap {
   presence: { idleMinutes: number };
   projectNumbers: ProjectNumberSettings;
   defaultModules: ProjectModule[];
+  /** Vorlage eigener Kanban-Spalten für neue Projekte */
+  kanbanTemplate: { name: string; color: string; baseStatus: 'todo' | 'in_progress' | 'review' | 'done' }[];
   storage: StorageSettings;
   cadMask: { fields: MaskField[]; catalogs: Catalog[]; askCreateDrawing: boolean; drawingTemplate: string; subassemblies: { code: string; label: string }[] };
   ldap: LdapSettings;
@@ -73,6 +75,7 @@ export const DEFAULT_SETTINGS: SettingsMap = {
   presence: { idleMinutes: 10 },
   projectNumbers: DEFAULT_PROJECT_NUMBER_SETTINGS,
   defaultModules: DEFAULT_PROJECT_MODULES,
+  kanbanTemplate: [],
   storage: { mode: 'local', networkPath: '', projectFolders: DEFAULT_PROJECT_FOLDERS },
   cadMask: {
     fields: DEFAULT_MASK_FIELDS,

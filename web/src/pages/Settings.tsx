@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Route, Routes, Navigate, useLocation } from 'react-router-dom';
-import { APP_VERSION, PROJECT_MODULES, ROLES, TOOLS, TOOL_LABELS } from '@aperio/shared';
+import { APP_VERSION, PROJECT_MODULES, ROLES, TOOLS, TOOL_LABELS, NUMBER_TOKENS, formatNumberPattern, validateNumberPattern, TASK_STATUSES } from '@aperio/shared';
 import { useApi, rememberedTab, rememberTab } from '../lib/hooks';
 import { api, del, get, patch, post, put, invalidate } from '../lib/api';
 import { useCrumbs } from '../components/Layout';
-import { useSession } from '../session';
+import { useSession, useCan } from '../session';
+import { CalendarSyncSettings } from './CalendarSync';
 import { useT, LANGUAGES } from '../i18n';
 import { fmtDateTime } from '../lib/format';
 import { Avatar, Confirm, Empty, Field, Modal, Pill, useAction } from '../components/ui';
@@ -24,6 +25,7 @@ function SettingsNav({ to, children }: { to: string; children: ReactNode }) {
 export default function SettingsPage() {
   const t = useT();
   const { me } = useSession();
+  const can = useCan();
   useCrumbs([{ label: `${t('Einstellungen')}` }]);
   const admin = me?.role === 'admin';
   const loc = useLocation();
@@ -36,6 +38,7 @@ export default function SettingsPage() {
         <SettingsNav to="/settings/profile"><Icon name="user" /> {t('Profil')}</SettingsNav>
         <SettingsNav to="/settings/security"><Icon name="shield" /> Sicherheit</SettingsNav>
         <SettingsNav to="/settings/notifications"><Icon name="bell" /> Benachrichtigungen</SettingsNav>
+        {can('calendar') && <SettingsNav to="/settings/calendar"><Icon name="calendar" /> Kalender verbinden</SettingsNav>}
         <SettingsNav to="/settings/tokens"><Icon name="key" /> API-Schlüssel</SettingsNav>
         {admin && <>
           <div className="nav-title" style={{ marginTop: 14 }}>{t('Administration')}</div>
@@ -64,6 +67,7 @@ export default function SettingsPage() {
           <Route path="tokens" element={<Tokens />} />
           <Route path="security" element={<Security />} />
           <Route path="notifications" element={<NotificationPrefs />} />
+          <Route path="calendar" element={<CalendarSyncSettings />} />
           {admin && <>
             <Route path="users" element={<Users />} />
             <Route path="templates" element={<DocumentTemplateSettings />} />
@@ -250,7 +254,7 @@ function Teams() {
           {edit.id && <button className="btn danger" style={{ marginRight: 'auto' }} onClick={() => setDelId(edit.id)}>{t('Löschen')}</button>}
           <button className="btn" onClick={() => setEdit(null)}>{t('Abbrechen')}</button>
           <button className="btn primary" onClick={async () => {
-            const body = { name: edit.name, icon: edit.icon, description: edit.description, parentId: edit.parentId || null, defaultTools: edit.defaultTools ?? null };
+            const body = { name: edit.name, icon: edit.icon, description: edit.description, parentId: edit.parentId || null, defaultTools: edit.defaultTools ?? null, shortCode: edit.shortCode ?? '' };
             const r = await act(() => (edit.id ? patch(`/teams/${edit.id}`, body).then(() => ({ id: edit.id })) : post('/teams', body)));
             if (!r) return;
             await act(() => put(`/teams/${r.id}/members`, { members: edit.members.map((m: any) => ({ userId: m.userId, isLead: m.isLead })) }));
@@ -261,7 +265,10 @@ function Teams() {
             <Field label="Name" required><input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
             <Field label="Symbol"><IconPicker value={edit.icon} onChange={(icon) => setEdit({ ...edit, icon })} /></Field>
           </div>
-          <Field label="Beschreibung"><input value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} /></Field>
+          <div className="grid2">
+            <Field label="Beschreibung"><input value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} /></Field>
+            <Field label="Kürzel" hint="für Projektnummern mit {TEAM}, z. B. KON"><input value={edit.shortCode ?? ''} maxLength={10} onChange={(e) => setEdit({ ...edit, shortCode: e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase() })} /></Field>
+          </div>
           <Field label="Werkzeuge für Mitglieder dieser Abteilung (Voreinstellung)" hint="Gilt für alle, deren Werkzeuge nicht einzeln festgelegt sind">
             <ToolChecks value={edit.defaultTools ?? null} onChange={(defaultTools) => setEdit({ ...edit, defaultTools })} inheritLabel="Alle Werkzeuge" />
           </Field>
@@ -302,9 +309,9 @@ function General() {
   const modules = useAdminSettings('defaultModules');
   const time = useAdminSettings('time');
   const presence = useAdminSettings('presence');
-  if (!company.value || !numbers.value || !modules.value || !time.value || !presence.value) return null;
+  const kanban = useAdminSettings('kanbanTemplate');
+  if (!company.value || !numbers.value || !modules.value || !time.value || !presence.value || !kanban.value) return null;
   const n = numbers.value;
-  const preview = n.format === 'year' ? `${n.prefix}-${new Date().getFullYear()}-${'1'.padStart(n.digits, '0')}` : String(n.step).padStart(n.digits, '0');
   return (
     <div style={{ maxWidth: 720 }}>
       <h1 style={{ marginBottom: 16 }}>Allgemein & Nummern</h1>
@@ -316,14 +323,9 @@ function General() {
       <button className="btn primary" onClick={async () => { await act(() => company.save(company.value), 'Gespeichert'); refreshLists(); }}>Speichern</button>
 
       <h2 style={{ margin: '28px 0 10px' }}>Projektnummern</h2>
-      <div className="grid2">
-        <Field label="Format"><select value={n.format} onChange={(e) => numbers.setValue({ ...n, format: e.target.value })}><option value="sequential">Fortlaufend (0100, 0200, …)</option><option value="year">Mit Jahreszahl (PRJ-2026-0042)</option></select></Field>
-        <Field label="Stellen"><input type="number" min={3} max={6} value={n.digits} onChange={(e) => numbers.setValue({ ...n, digits: Number(e.target.value) })} /></Field>
-        {n.format === 'year' ? <Field label="Präfix"><input value={n.prefix} onChange={(e) => numbers.setValue({ ...n, prefix: e.target.value })} /></Field>
-          : <Field label="Schrittweite" hint="100 ergibt 0100, 0200, 0300 …"><input type="number" min={1} value={n.step} onChange={(e) => numbers.setValue({ ...n, step: Number(e.target.value) })} /></Field>}
-        <Field label="Vorschau"><div className="mono" style={{ padding: '6px 0' }}>{preview}  ·  Teilprojekt {preview}-A  ·  Dokument {preview}-DOK-001</div></Field>
-      </div>
+      <ProjectNumberEditor value={n} onChange={numbers.setValue} />
       <button className="btn primary" onClick={async () => { await act(() => numbers.save(n), 'Gespeichert'); refreshLists(); }}>Speichern</button>
+      <div className="hint" style={{ marginTop: 6 }}>Bereits vergebene Nummern bleiben unverändert.</div>
 
       <h2 style={{ margin: '28px 0 10px' }}>Standard-Werkzeuge für neue Projekte</h2>
       <div className="row wrap">
@@ -336,6 +338,23 @@ function General() {
       </div>
       <div className="spacer" />
       <button className="btn primary" onClick={async () => { await act(() => modules.save(modules.value), 'Gespeichert'); refreshLists(); }}>Speichern</button>
+
+      <h2 style={{ margin: '28px 0 10px' }}>Eigene Kanban-Spalten für neue Projekte</h2>
+      <p className="muted">Diese Spalten bekommt jedes neue Projekt zusätzlich zu den vier Grundspalten. Jede gehört zu einer Stufe.</p>
+      {kanban.value.map((c: any, i: number) => (
+        <div key={i} className="row" style={{ marginBottom: 6 }}>
+          <input type="color" value={c.color} onChange={(e) => kanban.setValue(kanban.value.map((x: any, j: number) => (j === i ? { ...x, color: e.target.value } : x)))} style={{ width: 40, padding: 2 }} />
+          <input value={c.name} placeholder="Name der Spalte" onChange={(e) => kanban.setValue(kanban.value.map((x: any, j: number) => (j === i ? { ...x, name: e.target.value } : x)))} />
+          <select value={c.baseStatus} style={{ width: 'auto' }} onChange={(e) => kanban.setValue(kanban.value.map((x: any, j: number) => (j === i ? { ...x, baseStatus: e.target.value } : x)))}>
+            {TASK_STATUSES.map((st) => <option key={st} value={st}>gehört zu: {({ todo: 'Zu erledigen', in_progress: 'In Arbeit', review: 'Prüfung', done: 'Fertig' } as Record<string, string>)[st]}</option>)}
+          </select>
+          <button className="btn ghost sm" title="Entfernen" onClick={() => kanban.setValue(kanban.value.filter((_: any, j: number) => j !== i))}><Icon name="x" /></button>
+        </div>
+      ))}
+      <div className="row">
+        <button className="btn" onClick={() => kanban.setValue([...kanban.value, { name: '', color: '#f59e0b', baseStatus: 'in_progress' }])}><Icon name="plus" /> Spalte</button>
+        <button className="btn primary" onClick={() => act(() => kanban.save(kanban.value.filter((c: any) => c.name.trim())), 'Gespeichert')}>Speichern</button>
+      </div>
 
       <h2 style={{ margin: '28px 0 10px' }}>Zeiterfassung</h2>
       <div className="grid2">
@@ -350,6 +369,50 @@ function General() {
         <Field label="Orange nach Minuten ohne Eingabe" hint="Standard: 10"><input type="number" min={1} max={240} value={presence.value.idleMinutes} onChange={(e) => presence.setValue({ ...presence.value, idleMinutes: Number(e.target.value) })} /></Field>
       </div>
       <button className="btn primary" onClick={async () => { await act(() => presence.save(presence.value), 'Gespeichert'); refreshLists(); }}>Speichern</button>
+    </div>
+  );
+}
+
+/** Nummernformat: fest (fortlaufend, mit Jahr) oder frei aus Bausteinen */
+function ProjectNumberEditor({ value: n, onChange }: { value: any; onChange: (v: any) => void }) {
+  const year = new Date().getFullYear();
+  const example = (seq: number) => n.format === 'pattern' ? formatNumberPattern(n.pattern || '', seq, { year, team: 'KON', customer: 'K0042' })
+    : n.format === 'year' ? `${n.prefix}-${year}-${String(seq).padStart(n.digits, '0')}` : String(seq).padStart(n.digits, '0');
+  const first = n.format === 'pattern' ? n.start ?? 1 : n.format === 'year' ? 1 : n.step;
+  const err = n.format === 'pattern' ? validateNumberPattern(n.pattern || '') : null;
+  const sub = (i: number) => n.subStyle === 'digits' ? String(i + 1).padStart(2, '0') : String.fromCharCode(65 + i);
+  return (
+    <div>
+      <div className="grid2">
+        <Field label="Format"><select value={n.format} onChange={(e) => onChange({ ...n, format: e.target.value })}>
+          <option value="sequential">Fortlaufend (0100, 0200, …)</option><option value="year">Mit Jahreszahl (PRJ-2026-0042)</option><option value="pattern">Eigenes Muster aus Bausteinen</option>
+        </select></Field>
+        <Field label="Teilprojekte"><select value={n.subStyle ?? 'letters'} onChange={(e) => onChange({ ...n, subStyle: e.target.value })}>
+          <option value="letters">mit Buchstaben (…-A, …-B)</option><option value="digits">mit Ziffern (…-01, …-02)</option>
+        </select></Field>
+        {n.format === 'pattern' ? <>
+          <Field label="Muster" hint="Bausteine anklicken oder eintippen"><input className="mono" value={n.pattern ?? ''} onChange={(e) => onChange({ ...n, pattern: e.target.value })} placeholder="PRJ-{JJ}{NNN}" /></Field>
+          <Field label="Startwert"><input type="number" min={0} value={n.start ?? 1} onChange={(e) => onChange({ ...n, start: Number(e.target.value) })} /></Field>
+          <Field label="Schrittweite"><input type="number" min={1} value={n.step} onChange={(e) => onChange({ ...n, step: Number(e.target.value) })} /></Field>
+          <Field label="Zählung"><label className="row"><input type="checkbox" checked={Boolean(n.yearlyReset)} onChange={(e) => onChange({ ...n, yearlyReset: e.target.checked })} /> jedes Jahr wieder beim Startwert beginnen</label></Field>
+        </> : <>
+          <Field label="Stellen"><input type="number" min={3} max={6} value={n.digits} onChange={(e) => onChange({ ...n, digits: Number(e.target.value) })} /></Field>
+          {n.format === 'year' ? <Field label="Präfix"><input value={n.prefix} onChange={(e) => onChange({ ...n, prefix: e.target.value })} /></Field>
+            : <Field label="Schrittweite" hint="100 ergibt 0100, 0200, 0300 …"><input type="number" min={1} value={n.step} onChange={(e) => onChange({ ...n, step: Number(e.target.value) })} /></Field>}
+        </>}
+      </div>
+      {n.format === 'pattern' && (
+        <div className="token-list">
+          {NUMBER_TOKENS.map((tk) => <button key={tk.token} type="button" className="btn sm" title={tk.label} onClick={() => onChange({ ...n, pattern: `${n.pattern ?? ''}${tk.token}` })}><span className="mono">{tk.token}</span> <span className="muted small">{tk.label}</span></button>)}
+        </div>
+      )}
+      {err ? <div className="error-text">{err}</div> : (
+        <div className="card" style={{ margin: '8px 0 12px' }}>
+          <div className="small muted">Beispiel</div>
+          <div className="mono">{example(first)}  ·  {example(first + (n.format === 'sequential' ? n.step : n.step || 1))}  ·  Teilprojekt {example(first)}-{sub(0)}</div>
+          {n.format === 'pattern' && /\{(TEAM|KUNDE)\}/.test(n.pattern ?? '') && <div className="small muted" style={{ marginTop: 4 }}>{'{TEAM}'} = Kürzel der Abteilung des Projekts (unter Abteilungen &amp; Teams), {'{KUNDE}'} = Kundennummer</div>}
+        </div>
+      )}
     </div>
   );
 }

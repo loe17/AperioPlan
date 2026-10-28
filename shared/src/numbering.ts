@@ -11,7 +11,7 @@
  *               └ Hauptbaugruppe = Projektnummer
  */
 
-export type ProjectNumberFormat = 'sequential' | 'year';
+export type ProjectNumberFormat = 'sequential' | 'year' | 'pattern';
 
 export interface ProjectNumberSettings {
   format: ProjectNumberFormat;
@@ -21,6 +21,14 @@ export interface ProjectNumberSettings {
   digits: number;
   /** Schrittweite beim sequenziellen Format, z. B. 100 -> 0100, 0200 */
   step: number;
+  /** Eigenes Muster aus Bausteinen, z. B. "PRJ-{JJ}{NNN}" (nur bei format = 'pattern') */
+  pattern?: string;
+  /** erste vergebene laufende Nummer */
+  start?: number;
+  /** jedes Jahr wieder bei der Startnummer beginnen */
+  yearlyReset?: boolean;
+  /** Teilprojekte: Buchstaben (0100-A) oder Ziffern (0100-01) */
+  subStyle?: 'letters' | 'digits';
 }
 
 export const DEFAULT_PROJECT_NUMBER_SETTINGS: ProjectNumberSettings = {
@@ -28,7 +36,49 @@ export const DEFAULT_PROJECT_NUMBER_SETTINGS: ProjectNumberSettings = {
   prefix: 'PRJ',
   digits: 4,
   step: 100,
+  pattern: 'PRJ-{JJ}{NNN}',
+  start: 1,
+  yearlyReset: false,
+  subStyle: 'letters',
 };
+
+/** Bausteine für eigene Nummernmuster */
+export const NUMBER_TOKENS: { token: string; label: string; example: string }[] = [
+  { token: '{NNNN}', label: 'laufende Nummer (so viele Stellen wie N)', example: '0042' },
+  { token: '{JJJJ}', label: 'Jahr vierstellig', example: '2026' },
+  { token: '{JJ}', label: 'Jahr zweistellig', example: '26' },
+  { token: '{MM}', label: 'Monat', example: '10' },
+  { token: '{TEAM}', label: 'Kürzel der Abteilung', example: 'KON' },
+  { token: '{KUNDE}', label: 'Kundennummer aus dem CRM', example: 'K0042' },
+];
+
+export interface NumberContext { year?: number; month?: number; team?: string; customer?: string }
+
+/** Prüft ein Muster: genau ein Baustein für die laufende Nummer, nur bekannte Bausteine */
+export function validateNumberPattern(pattern: string): string | null {
+  const tokens = pattern.match(/\{[^}]*\}/g) ?? [];
+  const seq = tokens.filter((t) => /^\{N+\}$/.test(t));
+  if (seq.length !== 1) return 'Das Muster braucht genau einen Baustein für die laufende Nummer, z. B. {NNNN}';
+  const bad = tokens.find((t) => !/^\{(N+|JJJJ|JJ|MM|TEAM|KUNDE)\}$/.test(t));
+  if (bad) return `Unbekannter Baustein ${bad}`;
+  if (/[/\\:*?"<>|]/.test(pattern.replace(/\{[^}]*\}/g, ''))) return 'Das Muster enthält Zeichen, die in Ordnernamen nicht erlaubt sind';
+  return null;
+}
+
+/** Setzt ein Muster wie "PRJ-{JJ}{NNN}" zusammen */
+export function formatNumberPattern(pattern: string, seq: number, c: NumberContext = {}): string {
+  const now = new Date();
+  const year = c.year ?? now.getFullYear();
+  const month = c.month ?? now.getMonth() + 1;
+  return pattern.replace(/\{(N+|JJJJ|JJ|MM|TEAM|KUNDE)\}/g, (_, t: string) => {
+    if (t.startsWith('N')) return String(seq).padStart(t.length, '0');
+    if (t === 'JJJJ') return String(year);
+    if (t === 'JJ') return String(year % 100).padStart(2, '0');
+    if (t === 'MM') return String(month).padStart(2, '0');
+    if (t === 'TEAM') return sanitizeName(c.team ?? '').toUpperCase() || 'XX';
+    return sanitizeName(c.customer ?? '') || 'K0000';
+  });
+}
 
 export const pad = (n: number, digits: number): string => {
   if (!Number.isInteger(n) || n < 0) throw new Error(`Ungültige Zahl: ${n}`);
@@ -38,7 +88,8 @@ export const pad = (n: number, digits: number): string => {
 };
 
 /** Formatiert die laufende Nummer eines Projekts gemäß Einstellung. */
-export function formatProjectNumber(seq: number, settings: ProjectNumberSettings, year = new Date().getFullYear()): string {
+export function formatProjectNumber(seq: number, settings: ProjectNumberSettings, year = new Date().getFullYear(), ctx: NumberContext = {}): string {
+  if (settings.format === 'pattern') return formatNumberPattern(settings.pattern || 'PRJ-{JJ}{NNN}', seq, { ...ctx, year });
   if (settings.format === 'year') return `${settings.prefix}-${year}-${pad(seq, settings.digits)}`;
   return pad(seq, settings.digits);
 }
@@ -46,6 +97,10 @@ export function formatProjectNumber(seq: number, settings: ProjectNumberSettings
 /** Nächste laufende Nummer aus den bereits vergebenen Nummern. */
 export function nextProjectSequence(existing: number[], settings: ProjectNumberSettings): number {
   const max = existing.length ? Math.max(...existing) : 0;
+  if (settings.format === 'pattern') {
+    const start = Math.max(0, settings.start ?? 1);
+    return max >= start ? max + Math.max(1, settings.step || 1) : start;
+  }
   if (settings.format === 'year') return max + 1;
   return (Math.floor(max / settings.step) + 1) * settings.step;
 }
@@ -61,7 +116,8 @@ export function subprojectLetter(index: number): string {
   return s;
 }
 
-export const formatSubprojectNumber = (parent: string, index: number) => `${parent}-${subprojectLetter(index)}`;
+export const formatSubprojectNumber = (parent: string, index: number, style: 'letters' | 'digits' = 'letters') =>
+  `${parent}-${style === 'digits' ? String(index + 1).padStart(2, '0') : subprojectLetter(index)}`;
 
 export const formatDocumentNumber = (projectNumber: string, seq: number) => `${projectNumber}-DOK-${pad(seq, 3)}`;
 

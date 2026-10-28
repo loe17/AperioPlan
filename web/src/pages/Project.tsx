@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { TASK_PRIORITIES, TASK_STATUSES } from '@aperio/shared';
 import { useApi, rememberedTab, rememberTab } from '../lib/hooks';
-import { del, put, invalidate } from '../lib/api';
+import { del, patch, put, invalidate } from '../lib/api';
 import { realtime } from '../lib/realtime';
 import { useCrumbs } from '../components/Layout';
 import { useSession } from '../session';
@@ -31,7 +31,7 @@ export default function ProjectPage() {
   const { id } = useParams();
   const t = useT();
   const act = useAction();
-  const { users, teams, settings } = useSession();
+  const { users, teams, settings, me } = useSession();
   const [params, setParams] = useSearchParams();
   const [ai, setAi] = useState(false);
   const { data: project, error } = useApi<any>(`/projects/${id}`);
@@ -108,6 +108,19 @@ export default function ProjectPage() {
         </div>
       </div>
 
+      {project.locked && (
+        <div className="locked-banner">
+          <Icon name="lock" />
+          <span className="grow">Dieses Projekt ist <b>{statusLabel}</b> und nur noch lesbar.{me?.role === 'admin' ? '' : ' Nur ein Administrator kann den Status zurücksetzen.'}</span>
+          {me?.role === 'admin' && (
+            <select value="" onChange={async (e) => { if (!e.target.value) return; await act(() => patch(`/projects/${project.id}`, { status: e.target.value }), 'Status zurückgesetzt'); invalidate(`/projects/${project.id}`); }} style={{ width: 'auto' }}>
+              <option value="">Status zurücksetzen …</option>
+              {STATUS_OPTIONS.filter(([v]) => v !== project.status).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          )}
+        </div>
+      )}
+
       <Tabs value={tab} onChange={setTab} tabs={tabs} />
 
       {isTaskView && tab !== 'gantt' && (
@@ -132,7 +145,7 @@ export default function ProjectPage() {
       )}
 
       {tab === 'overview' && <Overview project={project} tasks={tasks ?? []} onOpen={openTask} />}
-      {tab === 'kanban' && <Kanban projectId={project.id} tasks={filtered} onOpen={openTask} canEdit={project.canEdit} />}
+      {tab === 'kanban' && <Kanban projectId={project.id} tasks={filtered} onOpen={openTask} canEdit={project.canEdit} canManage={project.canManage} />}
       {tab === 'list' && <TaskTable tasks={filtered} onOpen={openTask} />}
       {tab === 'gantt' && <Gantt projectId={project.id} tasks={tasks ?? []} onOpen={openTask} canEdit={project.canEdit} />}
       {tab === 'whiteboard' && <Whiteboards projectId={project.id} canEdit={project.canEdit} />}
