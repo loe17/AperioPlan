@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { APP_VERSION } from '@aperio/shared';
+import { APP_VERSION, APPS } from '@aperio/shared';
 import { useCan, useSession } from '../session';
 import { useApi, useHotkey, useLocalState } from '../lib/hooks';
 import { post, invalidate } from '../lib/api';
@@ -128,6 +128,11 @@ function UserMenu() {
   );
 }
 
+/** Anwendungen, die unter „Mein Schreibtisch“ stehen */
+const DESK_APPS = ['time', 'absences', 'notes'];
+const NAV_ROUTE: Record<string, string> = { calendar: '/calendar/team', resources: '/calendar/resources' };
+const NAV_LABEL: Record<string, string> = { crm: 'Kunden (CRM)', calendar: 'Teamkalender', kvp: 'KVP-Ideenbox' };
+
 export function Layout({ children }: { children: ReactNode }) {
   const t = useT();
   const can = useCan();
@@ -188,17 +193,12 @@ export function Layout({ children }: { children: ReactNode }) {
 
             <div className="nav-section">
               <div className="nav-title"><Icon name="tools" /> {t('Werkzeuge')}</div>
-              {(can('cad') || isGuest) && <NavItem to="/cad" ico="cad" label={t('CAD-Bridge')} />}
-              {can('pcb') && <NavItem to="/pcb" ico="bolt" label={t('PCB-Bridge')} />}
-              {can('crm') && <NavItem to="/crm" ico="building" label="Kunden (CRM)" />}
-              {can('purchasing') && <NavItem to="/purchasing" ico="truck" label="Einkauf" />}
-              {can('calculation') && <NavItem to="/calculations" ico="euro" label="Kalkulation" />}
-              {can('chat') && <NavItem to="/chat" ico="chat" label={t('Chat')} count={chatUnread} />}
-              {can('mail') && settings?.mailEnabled && <NavItem to="/mail" ico="mail" label={t('E-Mail')} />}
-              {can('kvp') && <NavItem to="/kvp" ico="lightbulb" label={t('KVP-Ideenbox')} />}
-              {can('calendar') && <NavItem to="/calendar/team" ico="calendar-team" label={t('Teamkalender')} />}
-              {can('resources') && <NavItem to="/calendar/resources" ico="car" label={t('Ressourcen')} />}
+              {isGuest && <NavItem to="/cad" ico="cad" label={t('CAD-Bridge')} />}
+              {APPS.filter((a) => a.route && !DESK_APPS.includes(a.id) && can(a.id)).map((a) => (
+                <NavItem key={a.id} to={NAV_ROUTE[a.id] ?? a.route!} ico={a.icon} label={t(NAV_LABEL[a.id] ?? a.name)} count={a.id === 'chat' ? chatUnread : undefined} />
+              ))}
               {plugins?.filter((p) => p.enabled && p.page).map((p) => <NavItem key={p.id} to={`/plugin/${p.id}`} ico={p.page.icon ?? 'puzzle'} label={p.page.label} />)}
+              {!isGuest && <NavItem to="/apps" ico="puzzle" label={t('App-Store')} />}
               <NavItem to="/settings" ico="settings" label={t('Einstellungen')} />
             </div>
           </div>

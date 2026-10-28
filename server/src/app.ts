@@ -63,12 +63,17 @@ export async function buildApp(opts: BuildOptions = {}): Promise<{ app: FastifyI
   app.addHook('onRequest', async (req) => {
     if (!req.url.startsWith('/api/')) return;
     req.user = await resolveUser(sql, req);
-    // Werkzeugrechte zentral prüfen: nicht freigeschaltete Werkzeuge sind auch über die Schnittstelle gesperrt
+    // Werkzeugrechte zentral prüfen: nicht freigeschaltete Werkzeuge sind auch über die Schnittstelle gesperrt.
+    // Anwendungen, die im App-Store ausgeschaltet sind, stehen niemandem zur Verfügung.
     const u = req.user;
-    if (u && u.role !== 'admin') {
+    if (u) {
+      const { installed } = await ctx.settings.get('apps');
+      u.tools = u.tools.filter((t) => installed.includes(t));
       const path = req.url.slice(4).split('?')[0]!;
       const hit = TOOL_ROUTES.find(([prefix]) => path === prefix || path.startsWith(prefix + '/'));
-      if (hit && !u.tools.includes(hit[1])) throw forbidden('Dieses Werkzeug ist für Sie nicht freigeschaltet');
+      if (hit && !u.tools.includes(hit[1])) {
+        throw forbidden(installed.includes(hit[1]) ? 'Dieses Werkzeug ist für Sie nicht freigeschaltet' : 'Diese Anwendung ist nicht installiert (App-Store)');
+      }
     }
   });
 

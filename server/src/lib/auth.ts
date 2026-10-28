@@ -61,7 +61,7 @@ export const userSelect = (sql: Sql) => sql`
        else coalesce(tools, (select default_tools from teams where id = users.department_id), ${ALL_TOOLS}::text[]) end as tools`;
 
 /** Darf der Benutzer dieses Werkzeug verwenden? */
-export const hasTool = (u: AuthUser, tool: Tool) => u.role === 'admin' || u.tools.includes(tool);
+export const hasTool = (u: AuthUser, tool: Tool) => u.tools.includes(tool);
 export function requireTool(req: FastifyRequest, tool: Tool): AuthUser {
   const u = requireUser(req);
   if (!hasTool(u, tool)) throw forbidden('Dieses Werkzeug ist für Sie nicht freigeschaltet');

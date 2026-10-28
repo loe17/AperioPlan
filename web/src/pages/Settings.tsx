@@ -128,13 +128,16 @@ function Tokens() {
 function ToolChecks({ value, onChange, inheritLabel, inherited }: { value: string[] | null; onChange: (v: string[] | null) => void; inheritLabel?: string; inherited?: string[] | null }) {
   const custom = value !== null;
   const effective = value ?? inherited ?? [...TOOLS];
+  const { me } = useSession();
+  // nur Anwendungen zeigen, die im App-Store installiert sind
+  const shown = TOOLS.filter((t) => me?.tools?.includes(t));
   return (
     <div>
       {inheritLabel && <label className="row small" style={{ marginBottom: 6 }}>
         <input type="checkbox" checked={!custom} onChange={(e) => onChange(e.target.checked ? null : [...effective])} /> {inheritLabel}
       </label>}
       <div className="tool-grid">
-        {TOOLS.map((tool) => (
+        {shown.map((tool) => (
           <label key={tool} className={`row small ${!custom && inheritLabel ? 'muted' : ''}`} style={{ gap: 6 }}>
             <input type="checkbox" disabled={!custom && Boolean(inheritLabel)} checked={effective.includes(tool)}
               onChange={(e) => onChange(e.target.checked ? [...effective, tool] : effective.filter((x) => x !== tool))} />
@@ -142,6 +145,7 @@ function ToolChecks({ value, onChange, inheritLabel, inherited }: { value: strin
           </label>
         ))}
       </div>
+      <div className="hint">Weitere Anwendungen schalten Sie im <a href="/apps">App-Store</a> ein.</div>
     </div>
   );
 }

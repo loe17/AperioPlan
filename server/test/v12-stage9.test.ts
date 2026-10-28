@@ -119,7 +119,7 @@ describe('Wächter-Arbeitsplätze und Einrichtung', () => {
     expect(ps).toContain('${env:ProgramFiles(x86)}');
 
     // mit dem Schlüssel aus dem Paket meldet sich der Wächter
-    const hello = await env.app.inject({ method: 'POST', url: '/api/bridge/hello', payload: { kind: 'pcb', host: 'PC-ELEKTRO', os: 'Windows 11', version: '1.0.0', appVersion: 'KiCad 9.0.2' }, headers: { authorization: `Bearer ${cfg.token}` } });
+    const hello = await env.app.inject({ method: 'POST', url: '/api/bridge/hello', payload: { kind: 'pcb', host: 'PC-ELEKTRO', os: 'Windows 11', version: '0.0.1', appVersion: 'KiCad 9.0.2' }, headers: { authorization: `Bearer ${cfg.token}` } });
     expect(hello.statusCode).toBe(200);
     expect(JSON.parse(hello.body)).toMatchObject({ updateAvailable: true });
     const clients = await admin.get('/api/bridge/clients');

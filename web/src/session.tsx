@@ -66,7 +66,7 @@ export const useMe = () => useContext(Ctx).me!;
 /** Ist ein Werkzeug für den angemeldeten Benutzer freigeschaltet? */
 export function useCan() {
   const { me } = useContext(Ctx);
-  return (tool: string) => Boolean(me) && me!.role !== 'guest' && (me!.role === 'admin' || (me!.tools ?? []).includes(tool));
+  return (tool: string) => Boolean(me) && me!.role !== 'guest' && (me!.tools ?? []).includes(tool);
 }
 
 function applyTheme(t: 'system' | 'light' | 'dark') {
@@ -130,7 +130,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => realtime.subscribe('global', (event, data) => {
     if (event === 'presence') setUsers((us) => us.map((u) => (u.id === data.userId ? { ...u, online: data.online, ...(data.status ? { status: data.status, lastSeenAt: data.lastSeenAt } : {}) } : u)));
     if (event === 'user.changed') void refreshLists();
-  }), []);
+    // App-Store: Anwendung ein- oder ausgeschaltet → Rechte und Seitenleiste neu laden
+    if (event === 'apps.changed') { void refresh(); invalidate('/apps'); invalidate('/plugins'); }
+  }), []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!me) return;
     return realtime.subscribe(`user:${me.id}`, (event) => {

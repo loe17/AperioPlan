@@ -2,7 +2,8 @@
  * Werkzeuge, die der Administrator je Benutzer (bzw. als Voreinstellung je Abteilung) freischaltet.
  * Nicht freigeschaltete Werkzeuge fehlen in der Seitenleiste und sind auch über die Schnittstelle gesperrt.
  */
-export const TOOLS = ['chat', 'mail', 'calendar', 'resources', 'time', 'absences', 'notes', 'kvp', 'cad', 'pcb', 'crm', 'purchasing', 'calculation', 'ai'] as const;
+export const TOOLS = ['chat', 'mail', 'calendar', 'resources', 'time', 'absences', 'notes', 'kvp', 'cad', 'pcb', 'crm', 'purchasing', 'calculation', 'ai',
+  'meetings', 'phone', 'forms', 'board', 'viewer3d', 'mindmap', 'knowledge', 'inventory', 'warehouse', 'finance', 'payroll'] as const;
 export type Tool = (typeof TOOLS)[number];
 
 export const TOOL_LABELS: Record<Tool, string> = {
@@ -20,6 +21,17 @@ export const TOOL_LABELS: Record<Tool, string> = {
   purchasing: 'Einkauf',
   calculation: 'Kalkulation',
   ai: 'KI-Assistent',
+  meetings: 'Meetings (Videokonferenzen)',
+  phone: 'Telefonie',
+  forms: 'Formulare und Umfragen',
+  board: 'Schwarzes Brett und Marktplatz',
+  viewer3d: '3D-Viewer',
+  mindmap: 'Mindmaps',
+  knowledge: 'Wissensdatenbank',
+  inventory: 'Inventar',
+  warehouse: 'Lager',
+  finance: 'Finanzbuchhaltung',
+  payroll: 'Lohnabrechnung',
 };
 
 /** Schnittstellen-Bereiche, die zu einem Werkzeug gehören (Präfix nach /api) */
@@ -27,6 +39,8 @@ export const TOOL_ROUTES: [string, Tool][] = [
   ['/chat', 'chat'], ['/calls', 'chat'], ['/mail', 'mail'], ['/mailbox', 'mail'], ['/calendar/team', 'calendar'], ['/calendar/events', 'calendar'], ['/calendar/accounts', 'calendar'],
   ['/resources', 'resources'], ['/time', 'time'], ['/absences', 'absences'], ['/notes', 'notes'], ['/kvp', 'kvp'],
   ['/cad', 'cad'], ['/pcb', 'pcb'], ['/crm', 'crm'], ['/purchasing', 'purchasing'], ['/calculations', 'calculation'], ['/ai', 'ai'],
+  ['/meetings', 'meetings'], ['/phone', 'phone'], ['/forms', 'forms'], ['/board', 'board'], ['/mindmaps', 'mindmap'], ['/knowledge', 'knowledge'],
+  ['/inventory', 'inventory'], ['/warehouse', 'warehouse'], ['/finance', 'finance'], ['/payroll', 'payroll'], ['/crm/invoices', 'crm'],
 ];
 
 /** Anlässe für Benachrichtigungen; jeder Benutzer schaltet sie für AperioPlan und E-Mail einzeln */

@@ -2,7 +2,7 @@ import type { Sql } from '../db';
 import {
   DEFAULT_PROJECT_NUMBER_SETTINGS, DEFAULT_CALC_RATES, type CalcRates, DEFAULT_TIME_RULES, type TimeRuleSettings, DEFAULT_PROJECT_MODULES, DEFAULT_PROJECT_FOLDERS,
   DEFAULT_MASK_FIELDS, DEFAULT_CATALOGS, type ProjectNumberSettings, type ProjectModule,
-  type MaskField, type Catalog, type PcbMaskSettings, DEFAULT_PCB_MASK,
+  type MaskField, type Catalog, type PcbMaskSettings, DEFAULT_PCB_MASK, PREINSTALLED_APPS, type Tool,
 } from '@aperio/shared';
 
 export interface LdapSettings {
@@ -36,7 +36,7 @@ export interface AiProvider {
 }
 export interface AiSettings {
   enabled: boolean;
-  /** frühere Einzel-Einstellung (vor 1.2) – wird als Anbieter übernommen */
+  /** frühere Einzel-Einstellung (vor 0.2.0) – wird als Anbieter übernommen */
   provider: 'openai' | 'anthropic';
   baseUrl: string;
   apiKey: string;
@@ -83,6 +83,8 @@ export interface SettingsMap {
   letterhead: { address: string; footer: string; vatRate: number; paymentTerms: string; quoteValidityDays: number; quoteIntro: string; quoteOutro: string };
   storage: StorageSettings;
   pcbMask: PcbMaskSettings;
+  /** App-Store: eingeschaltete mitgelieferte Anwendungen */
+  apps: { installed: Tool[] };
   cadMask: { fields: MaskField[]; catalogs: Catalog[]; askCreateDrawing: boolean; drawingTemplate: string; subassemblies: { code: string; label: string }[] };
   ldap: LdapSettings;
   mail: MailSettings;
@@ -110,6 +112,7 @@ export const DEFAULT_SETTINGS: SettingsMap = {
   },
   storage: { mode: 'local', networkPath: '', projectFolders: DEFAULT_PROJECT_FOLDERS, locations: [], defaultLocation: 'main' },
   pcbMask: DEFAULT_PCB_MASK,
+  apps: { installed: PREINSTALLED_APPS },
   cadMask: {
     fields: DEFAULT_MASK_FIELDS,
     catalogs: DEFAULT_CATALOGS,

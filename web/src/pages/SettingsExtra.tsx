@@ -628,20 +628,13 @@ function AiProviderModal({ init, kind, onClose, onSave }: { init: any; kind: AiK
 /** Entwickler-Schnittstelle: Plugins und Webhooks */
 export function ExtensionSettings() {
   const act = useAction();
-  const { data: plugins, reload } = useApi<any[]>('/plugins');
   const hooks = useAdminSettings('webhooks');
   return (
     <div style={{ maxWidth: 860 }}>
       <h1 style={{ marginBottom: 8 }}>Erweiterungen</h1>
-      <p className="muted">Drittentwickler können neue Werkzeuge als Plugin ergänzen (Ordner im Plugin-Verzeichnis mit manifest.json) oder über Webhooks und die REST-API (API-Schlüssel) anbinden. Details im Entwickler-Handbuch.</p>
+      <p className="muted">Drittentwickler können neue Anwendungen als Plugin ergänzen (Ordner mit manifest.json, als ZIP im App-Store hochladen) oder über Webhooks und die REST-API (API-Schlüssel) anbinden. Details im Entwickler-Handbuch.</p>
       <h2 style={{ margin: '16px 0 8px' }}>Plugins</h2>
-      {!plugins?.length ? <div className="card muted">Keine Plugins installiert. Plugin-Ordner nach <span className="mono">data/plugins/&lt;id&gt;/</span> kopieren.</div> : (
-        <div className="table-wrap"><table className="table"><tbody>{plugins.map((p) => (
-          <tr key={p.id}><td><b>{p.name}</b> <span className="muted small">{p.version}</span><div className="small muted">{p.description}</div></td>
-            <td className="small">{p.projectTab && `Projekt-Reiter „${p.projectTab.label}“`}{p.page && ` Seite „${p.page.label}“`}</td>
-            <td><label className="row small"><input type="checkbox" checked={p.enabled} onChange={async (e) => { await act(() => put(`/plugins/${p.id}`, { enabled: e.target.checked })); reload(); }} /> aktiv</label></td></tr>
-        ))}</tbody></table></div>
-      )}
+      <div className="card flat row"><Icon name="puzzle" /> <span className="grow">Plugins installieren, hochladen und ausschalten Sie im App-Store. Vorlage für eigene Plugins und das Plugin-SDK beschreibt das Entwickler-Handbuch.</span><a className="btn" href="/apps">Zum App-Store</a></div>
       <h2 style={{ margin: '24px 0 8px' }}>Webhooks</h2>
       <p className="muted small">Bei jedem Ereignis des Änderungsprotokolls (z. B. <span className="mono">task.update</span>, <span className="mono">cad.state</span>, <span className="mono">project.*</span>) sendet AperioPlan eine signierte POST-Anfrage (Header X-Aperio-Signature = HMAC-SHA256).</p>
       {hooks.value && <>

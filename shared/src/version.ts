@@ -1,6 +1,7 @@
 /**
  * Versionsnummer und Änderungsprotokoll ("Was ist neu?", Kapitel 4).
  * Bei jeder neuen Version oben einen Eintrag ergänzen und APP_VERSION anheben.
+ * Zählung: 0.x = Entwicklungsstand vor der ersten offiziellen Fassung (1.0.0).
  */
 export interface ChangelogEntry {
   version: string;
@@ -11,7 +12,7 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '1.1.1',
+    version: '0.1.3',
     date: '2026-10-27',
     title: 'Installation und Deinstallation zuverlässiger',
     changes: [
@@ -22,7 +23,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.1.0',
+    version: '0.1.2',
     date: '2026-10-27',
     title: 'Ressourcen, neues Erscheinungsbild und sichere Installation',
     changes: [
@@ -37,7 +38,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.0.0',
+    version: '0.1.1',
     date: '2026-10-27',
     title: 'Erste vollständige Version',
     changes: [
@@ -51,7 +52,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '0.5.0',
+    version: '0.1.0',
     date: '2026-10-27',
     title: 'Kommunikation, KVP, KI, Sicherung & Erweiterungen',
     changes: [
@@ -67,7 +68,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '0.4.0',
+    version: '0.0.4',
     date: '2026-10-27',
     title: 'Zeiterfassung & Urlaub',
     changes: [
@@ -81,7 +82,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '0.3.0',
+    version: '0.0.3',
     date: '2026-10-27',
     title: 'CAD-Zentrale, PDM & Dateiverwaltung',
     changes: [
@@ -96,7 +97,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '0.2.0',
+    version: '0.0.2',
     date: '2026-10-27',
     title: 'Web-Oberfläche, Projekte & Aufgaben',
     changes: [
@@ -110,7 +111,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '0.1.0',
+    version: '0.0.1',
     date: '2026-10-27',
     title: 'Grundgerüst',
     changes: [

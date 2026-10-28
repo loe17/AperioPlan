@@ -20,6 +20,7 @@ const NotesPage = lazy(() => import('./pages/Notes'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
 const CadPage = lazy(() => import('./pages/Cad'));
 const PcbPage = lazy(() => import('./pages/Pcb'));
+const AppStorePage = lazy(() => import('./pages/AppStore'));
 const TimePage = lazy(() => import('./pages/Time'));
 const AbsencesPage = lazy(() => import('./pages/Absences'));
 const CalendarPage = lazy(() => import('./pages/Calendar'));
@@ -58,6 +59,7 @@ export function App() {
             <Route path="/cad" element={<CadPage />} />
             <Route path="/cad-bridge" element={<Navigate to="/cad" replace />} />
             <Route path="/pcb" element={<PcbPage />} />
+            <Route path="/apps" element={<AppStorePage />} />
             <Route path="/time" element={<TimePage />} />
             <Route path="/absences" element={<AbsencesPage />} />
             <Route path="/crm" element={<CrmPage />} />
