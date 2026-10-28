@@ -24,6 +24,9 @@ export interface Me {
   onboarded: boolean;
   statusMode: 'auto' | 'online' | 'idle' | 'away' | 'offline';
   showLastSeen: boolean;
+  /** Lohnabrechnung: darf abrechnen / hat eigene Lohnzettel */
+  payrollManager?: boolean;
+  payslips?: boolean;
 }
 
 export interface UserLite { id: string; displayName: string; username: string; email?: string | null; role: string; online?: boolean; avatarColor?: string | null; avatarVersion?: number; hasAvatar?: boolean; phone?: string; departmentId?: string | null; status?: string; lastSeenAt?: string | null }

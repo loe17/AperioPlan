@@ -32,6 +32,8 @@ const KnowledgePage = lazy(() => import('./pages/Knowledge'));
 const WarehousePage = lazy(() => import('./pages/Warehouse'));
 const InventoryPage = lazy(() => import('./pages/Inventory'));
 const FinancePage = lazy(() => import('./pages/Finance'));
+const PayrollPage = lazy(() => import('./pages/Payroll'));
+const MyPayslipsPage = lazy(() => import('./pages/Payroll').then((m) => ({ default: m.MyPayslipsPage })));
 const PublicKbPage = lazy(() => import('./pages/Knowledge').then((m) => ({ default: m.PublicKbPage })));
 const PublicFormPage = lazy(() => import('./pages/Forms').then((m) => ({ default: m.PublicFormPage })));
 const TimePage = lazy(() => import('./pages/Time'));
@@ -93,6 +95,8 @@ export function App() {
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/inventory/:id" element={<InventoryPage />} />
             <Route path="/finance" element={<FinancePage />} />
+            <Route path="/payroll" element={<PayrollPage />} />
+            <Route path="/payslips" element={<MyPayslipsPage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="/knowledge/:id" element={<KnowledgePage />} />
             <Route path="/mindmaps" element={<MindmapsPage />} />

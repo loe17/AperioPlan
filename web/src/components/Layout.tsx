@@ -182,6 +182,7 @@ export function Layout({ children }: { children: ReactNode }) {
             {can('time') && <NavItem to="/time" ico="timer" label={t('Stempeluhr')} />}
             {can('absences') && <NavItem to="/absences" ico="palm" label={t('Urlaubskonto')} />}
             {can('notes') && <NavItem to="/notes" ico="lock" label={t('Private Notizen')} />}
+            {me?.payslips && <NavItem to="/payslips" ico="file-text" label={t('Meine Lohnzettel')} />}
 
             {favorites && favorites.length > 0 && (
               <div className="nav-section">
@@ -199,7 +200,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <div className="nav-section">
               <div className="nav-title"><Icon name="tools" /> {t('Werkzeuge')}</div>
               {isGuest && <NavItem to="/cad" ico="cad" label={t('CAD-Bridge')} />}
-              {APPS.filter((a) => a.route && !DESK_APPS.includes(a.id) && can(a.id)).map((a) => (
+              {APPS.filter((a) => a.route && !DESK_APPS.includes(a.id) && can(a.id) && (a.id !== 'payroll' || me?.payrollManager)).map((a) => (
                 <NavItem key={a.id} to={NAV_ROUTE[a.id] ?? a.route!} ico={a.icon} label={t(NAV_LABEL[a.id] ?? a.name)} count={a.id === 'chat' ? chatUnread : a.id === 'board' ? boardUnread?.n : undefined} />
               ))}
               {plugins?.filter((p) => p.enabled && p.page).map((p) => <NavItem key={p.id} to={`/plugin/${p.id}`} ico={p.page.icon ?? 'puzzle'} label={p.page.label} />)}

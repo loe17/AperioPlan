@@ -859,3 +859,13 @@ fieldset.plain { border: 0; padding: 0; margin: 0; min-width: 0; }
 .fin-sugg label { gap: 10px; cursor: pointer; padding: 8px 10px; }
 .fin-sugg label.on { border-color: var(--accent); }
 @media (max-width: 900px) { .fin-bill { flex-direction: column; } .fin-preview { position: static; width: 100%; height: 50vh; flex: none; } }
+
+/* Lohnabrechnung */
+.pay-layout { display: flex; gap: 18px; align-items: flex-start; }
+.pay-runs { flex: 0 0 230px; display: flex; flex-direction: column; gap: 4px; }
+.pay-run { display: flex; align-items: center; gap: 8px; text-align: left; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); cursor: pointer; color: var(--text); font: inherit; }
+.pay-run:hover { border-color: var(--line-strong); }
+.pay-run.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.pay-lines input, .pay-lines select { padding: 4px 6px; }
+h3.pay-h { margin: 16px 0 6px; font-size: 14px; color: var(--text-2, var(--text)); }
+@media (max-width: 900px) { .pay-layout { flex-direction: column; } .pay-runs { flex: none; width: 100%; } }

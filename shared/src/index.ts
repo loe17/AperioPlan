@@ -11,3 +11,5 @@ export * from './forms';
 export * from './knowledge';
 export * from './inventory';
 export * from './invoice';
+export * from './lohnsteuer';
+export * from './payroll';

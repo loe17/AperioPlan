@@ -683,6 +683,28 @@ await step('14.11 Finanzen: Eingangsrechnung freigeben, Kontoauszug einlesen, Za
   if (b.status !== 'paid') throw new Error(`Eingangsrechnung nicht bezahlt: ${b.status}`);
 });
 
+await step('14.12 Lohnabrechnung: Personalstamm, Monat abrechnen, Prämie, festschreiben, eigener Lohnzettel', async () => {
+  await api('POST', '/apps/payroll/install', {});
+  await api('POST', '/payroll/employees/from-users', {});
+  const meId = (await api('GET', '/auth/me')).id;
+  for (const e of await api('GET', '/payroll/employees')) await api('PATCH', `/payroll/employees/${e.id}`, e.userId === meId ? { salary: 4200, healthInsurer: 'AOK BW', iban: 'DE89370400440532013000' } : { active: false });
+  await page.goto(`${BASE}/payroll`);
+  await page.click('button.primary:has-text("abrechnen")');
+  await page.locator('.modal').last().locator('button.primary:has-text("Anlegen")').click();
+  await page.waitForSelector('td:has-text("4.200,00")');
+  await page.locator('tbody tr.click').first().click();
+  await page.click('.slideover button:has-text("Einmalzahlung")');
+  await page.locator('.slideover .pay-lines tbody tr').last().locator('input[type=number]').nth(1).fill('500');
+  await page.click('.slideover button:has-text("Speichern und berechnen")');
+  await page.waitForSelector('.slideover >> text=davon einmalig');
+  await page.click('.slideover button[aria-label="Schließen"]');
+  await page.click('button:has-text("Festschreiben")');
+  await page.locator('.modal').last().locator('button.primary').click();
+  await page.waitForSelector('text=festgeschrieben');
+  await page.goto(`${BASE}/payslips`);
+  await page.waitForSelector('a:has-text("PDF")');
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);

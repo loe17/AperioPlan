@@ -101,6 +101,8 @@ export interface SettingsMap {
   invoicing: InvoicingSettings;
   /** Finanzbuchhaltung: Freigaben, Mahnstufen, Konten */
   finance: FinanceSettings;
+  /** Lohnabrechnung: Berechtigte, Konten, Zuschläge */
+  payroll: PayrollSettings;
   /** Firmendaten für Angebote und Bestellungen */
   letterhead: { address: string; footer: string; vatRate: number; paymentTerms: string; quoteValidityDays: number; quoteIntro: string; quoteOutro: string };
   storage: StorageSettings;
@@ -138,6 +140,22 @@ export interface FinanceSettings {
   expenseAccounts: { account: string; label: string; rate: number }[];
 }
 
+export interface PayrollSettings {
+  /** Wer Löhne sehen und abrechnen darf (zusätzlich zu Administratoren) */
+  managerIds: string[];
+  firstPersonnelNo: number;
+  /** Betriebsnummer und Bundesland der Betriebsstätte */
+  companyNo: string; state: string;
+  /** Umlagesätze der Krankenkasse (Voreinstellung für neue Mitarbeiter) */
+  u1: number; u2: number;
+  /** Zuschläge aus der Zeiterfassung in Prozent */
+  surcharges: { night: number; sunday: number; holiday: number };
+  /** Zahltag (Tag im Folgemonat, 0 = letzter Tag des Monats) */
+  payDay: number;
+  /** Sachkonten für die Buchung (SKR03) */
+  accounts: { wages: string; salaries: string; minijob: string; social: string; flatTax: string; taxFree: string; liabilityNet: string; liabilityTax: string; liabilitySv: string; liabilityMini: string };
+}
+
 export const DEFAULT_SETTINGS: SettingsMap = {
   company: { name: 'AperioPlan', logoText: 'AperioPlan' },
   presence: { idleMinutes: 10 },
@@ -171,6 +189,11 @@ export const DEFAULT_SETTINGS: SettingsMap = {
       { account: '4920', label: 'Telefon, Internet', rate: 19 }, { account: '4930', label: 'Bürobedarf', rate: 19 }, { account: '4940', label: 'Zeitschriften, Bücher', rate: 7 },
       { account: '4950', label: 'Rechts- und Beratungskosten', rate: 19 }, { account: '4970', label: 'Nebenkosten des Geldverkehrs', rate: 0 }, { account: '0420', label: 'Technische Anlagen und Maschinen', rate: 19 },
     ],
+  },
+  payroll: {
+    managerIds: [], firstPersonnelNo: 1001, companyNo: '', state: 'BW', u1: 1.6, u2: 0.44,
+    surcharges: { night: 25, sunday: 50, holiday: 125 }, payDay: 0,
+    accounts: { wages: '4110', salaries: '4120', minijob: '4190', social: '4130', flatTax: '4199', taxFree: '4145', liabilityNet: '1740', liabilityTax: '1741', liabilitySv: '1742', liabilityMini: '1742' },
   },
   letterhead: {
     address: '', footer: '', vatRate: 19, paymentTerms: '30 Tage netto', quoteValidityDays: 30,

@@ -97,7 +97,11 @@ export default async function authRoutes(app: FastifyInstance, ctx: AppContext) 
     if (!req.user) throw unauthorized();
     const teams = await sql`select t.id, t.name, t.icon, tm.is_lead as "isLead" from team_members tm
       join teams t on t.id = tm.team_id where tm.user_id = ${req.user.id} order by t.sort, t.name`;
-    return { ...req.user, teams };
+    // Lohnabrechnung: nur Lohnbuchhalter sehen das Werkzeug; Mitarbeiter mit Personalstammsatz ihre Lohnzettel
+    const installed = (await ctx.settings.get('apps')).installed.includes('payroll');
+    const payrollManager = installed && req.user.tools.includes('payroll') && (req.user.role === 'admin' || (await ctx.settings.get('payroll')).managerIds.includes(req.user.id));
+    const payslips = installed && (await sql`select 1 from pay_employees where user_id = ${req.user.id}`).length > 0;
+    return { ...req.user, teams, payrollManager, payslips };
   });
 
   /** Passwort ändern – beim Erstzugang (admin/admin) erzwungen */
