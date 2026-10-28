@@ -598,3 +598,33 @@ ol.steps { padding-left: 20px; margin: 0; display: grid; gap: 12px; }
 .provider input { grid-row: span 2; margin-top: 3px; }
 .provider.on { border-color: var(--accent); background: var(--accent-soft); }
 @media (max-width: 900px) { .phone-layout { flex-direction: column; } .dialpad-card { width: 100%; position: static; } }
+/* Formulare */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.form-card { color: inherit; display: block; }
+.form-card:hover { border-color: var(--accent); }
+.form-title-input { font-size: 24px; font-weight: 650; border: 0; background: transparent; padding: 0; width: 100%; color: var(--text); }
+.form-title-input:focus { outline: none; border-bottom: 2px solid var(--accent); }
+.form-desc-input { width: 100%; margin-bottom: 12px; }
+.form-editor { max-width: 820px; }
+.form-q { margin-bottom: 10px; border-left: 3px solid var(--accent); }
+.form-q.section { border-left-color: var(--amber); background: var(--bg-soft); }
+.form-q-text { font-size: 16px; font-weight: 550; }
+.form-add { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 12px; border: 1px dashed var(--line); border-radius: 12px; }
+.form-fill { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.form-head { border-top: 6px solid var(--accent); }
+.form-head h1 { margin: 0 0 6px; }
+.form-fill-q.error { border-color: var(--red); }
+.form-q-title { font-weight: 600; margin-bottom: 6px; }
+.form-q-title .req { color: var(--red); }
+.form-choices { display: flex; flex-direction: column; gap: 6px; }
+.form-scale { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.form-section h2 { margin: 12px 0 2px; }
+.form-done { text-align: center; padding: 30px; }
+.form-texts { max-height: 260px; overflow-y: auto; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.form-texts > div { background: var(--bg-soft); border-radius: 6px; padding: 6px 8px; font-size: 13px; white-space: pre-wrap; }
+.bar-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.bar-label { width: 220px; flex: none; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track { flex: 1; height: 14px; background: var(--bg-soft); border-radius: 7px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; background: var(--accent); border-radius: 7px; }
+.public-form { min-height: 100vh; background: var(--bg-soft); padding: 24px 16px; }
+@media (max-width: 640px) { .bar-label { width: 110px; } }

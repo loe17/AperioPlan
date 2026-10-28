@@ -38,9 +38,10 @@ export async function api<T = any>(url: string, opts: { method?: string; body?: 
   if (!res.ok) {
     let msg = res.statusText;
     let code: string | undefined;
-    try { const j = await res.json(); msg = j.error ?? msg; code = j.code; } catch { /* leer */ }
+    let details: unknown;
+    try { const j = await res.json(); msg = j.error ?? msg; code = j.code; details = j.details; } catch { /* leer */ }
     report(method, url, startedAt, false, msg, opts.quiet);
-    throw new ApiError(res.status, msg, code);
+    throw Object.assign(new ApiError(res.status, msg, code), { details });
   }
   report(method, url, startedAt, true, undefined, opts.quiet);
   if (opts.raw) return res as unknown as T;

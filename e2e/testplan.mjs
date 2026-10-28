@@ -440,6 +440,36 @@ await step('14.2 Meeting mit Gast-Link: Gast wartet, wird eingelassen, beide seh
   await gctx.close();
 });
 
+await step('14.3 Formular anlegen, öffentlich ausfüllen, Auswertung', async () => {
+  await api('POST', '/apps/forms/install', {});
+  await page.goto(`${BASE}/forms`);
+  await page.click('button:has-text("Neues Formular")');
+  await page.fill('.form-title-input', 'Kantinen-Umfrage');
+  await page.locator('.form-title-input').blur();
+  await page.click('.form-add button:has-text("Einfachauswahl")');
+  await page.fill('.form-q-text', 'Wie schmeckt das Essen?');
+  await page.fill('.form-q input[placeholder="Möglichkeit 1"]', 'Gut');
+  await page.press('.form-q input[placeholder="Möglichkeit 1"]', 'Enter');
+  await page.fill('.form-q input[placeholder="Möglichkeit 2"]', 'Geht so');
+  await page.check('.form-q label:has-text("Pflicht") input');
+  await page.waitForTimeout(1200);
+  await page.click('.tab:visible:has-text("Einstellungen und Teilen")');
+  await page.check('label:has-text("Öffentlicher Link") input');
+  await page.waitForSelector('input.mono[readonly]');
+  const link = (await page.inputValue('input.mono[readonly]')).replace(/^https?:\/\/[^/]+/, BASE);
+  const pctx = await browser.newContext();
+  const pp = await pctx.newPage();
+  await pp.goto(link);
+  await pp.click('button:has-text("Absenden")');
+  await pp.waitForSelector('text=Bitte beantworten');
+  await pp.check('label:has-text("Gut") input');
+  await pp.click('button:has-text("Absenden")');
+  await pp.waitForSelector('text=Vielen Dank');
+  await pctx.close();
+  await page.click('.tab:visible:has-text("Ergebnisse")');
+  await page.waitForSelector('.bar-row:has-text("Gut") >> text=1 · 100 %');
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);
