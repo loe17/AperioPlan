@@ -815,3 +815,20 @@ ol.steps { padding-left: 20px; margin: 0; display: grid; gap: 12px; }
   .kb-doc { padding: 0; max-width: none; }
   .kb-main, .content, .kb-layout { overflow: visible !important; height: auto !important; }
 }
+
+/* Lager & Inventar */
+.link { background: none; border: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.text-red { color: var(--red); }
+.text-green { color: var(--green); }
+.wh-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.wh-facts > div { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+.wh-facts b { font-size: 17px; }
+.wh-img { width: 110px; height: 110px; flex-shrink: 0; border: 1px dashed var(--line-strong); border-radius: 8px; display: grid; place-items: center; overflow: hidden; cursor: pointer; color: var(--text-3); background: var(--bg-soft); }
+.wh-img img { width: 100%; height: 100%; object-fit: cover; }
+.scan-video { position: relative; border-radius: 10px; overflow: hidden; background: #000; aspect-ratio: 4 / 3; }
+.scan-video video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scan-frame { position: absolute; inset: 18% 12%; border: 3px solid rgba(255,255,255,.85); border-radius: 12px; box-shadow: 0 0 0 999px rgba(0,0,0,.35); pointer-events: none; }
+.inv-head { display: flex; gap: 16px; align-items: flex-start; }
+.inv-status { display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 720px) { .wh-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.table tr.row-current td { background: var(--accent-soft); }

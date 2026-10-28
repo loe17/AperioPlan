@@ -129,6 +129,28 @@ export async function deliveryReminders(ctx: AppContext) {
   }
 }
 
+/** Wareneingang zu einer Einkaufsposition buchen (auch aus dem Lager heraus) */
+export async function bookPurchaseReceipt(ctx: AppContext, u: AuthUser, id: string, b: { qty: number; receivedAt?: string; note: string }) {
+  const { sql } = ctx;
+  const [cur] = await sql<{ id: string; project_id: string; designation: string; qty: string; delivered_qty: string; created_by: string | null }[]>`
+    select id, project_id, designation, qty, delivered_qty, created_by from purchase_items where id = ${id}`;
+  if (!cur) throw notFound('Position nicht gefunden');
+  await projectAccess(sql, u, cur.project_id, 'write');
+  const delivered = Number(cur.delivered_qty) + b.qty;
+  const status = delivered >= Number(cur.qty) ? 'delivered' : 'partial';
+  const day = b.receivedAt ?? new Date().toISOString().slice(0, 10);
+  await sql`insert into purchase_receipts (item_id, qty, received_at, note, user_id) values (${id}, ${b.qty}, ${day}, ${b.note}, ${u.id})`;
+  await sql`update purchase_items set delivered_qty = ${delivered}, status = ${status}, delivered_at = ${status === 'delivered' ? day : null},
+    updated_at = now() where id = ${id}`;
+  const [p] = await sql<{ number: string }[]>`select number from projects where id = ${cur.project_id}`;
+  const leads = await sql<{ user_id: string }[]>`select user_id from project_members where project_id = ${cur.project_id} and role = 'owner'`;
+  await notify(ctx, [...leads.map((l) => l.user_id), cur.created_by], { kind: 'purchasing.received', title: `${status === 'delivered' ? 'Geliefert' : 'Teillieferung'}: ${cur.designation}`,
+    body: `${p!.number} · ${num(b.qty)} angekommen${status === 'partial' ? ` (insgesamt ${num(delivered)} von ${num(Number(cur.qty))})` : ''}`, link: `/projects/${cur.project_id}?tab=purchasing` }, u.id);
+  await audit(sql, u, { action: 'purchasing.receipt', entityType: 'purchase_item', entityId: id, projectId: cur.project_id, summary: `Wareneingang ${cur.designation}: ${num(b.qty)}` });
+  ctx.hub.publish(`project:${cur.project_id}`, 'purchasing.changed', {});
+  return { ok: true, status };
+}
+
 export default async function purchasingRoutes(app: FastifyInstance, ctx: AppContext) {
   const { sql } = ctx;
   const cols = itemCols(sql), from = itemFrom(sql);
@@ -240,20 +262,8 @@ export default async function purchasingRoutes(app: FastifyInstance, ctx: AppCon
   app.post('/purchasing/items/:id/receipts', async (req) => {
     const u = requireUser(req);
     const { id } = parse(idParam, req.params);
-    const cur = await loadItem(u, id);
     const b = parse(z.object({ qty: z.number().positive(), receivedAt: z.string().date().optional(), note: z.string().max(2000).default('') }), req.body);
-    const delivered = Number(cur.delivered_qty) + b.qty;
-    const status = delivered >= Number(cur.qty) ? 'delivered' : 'partial';
-    await sql`insert into purchase_receipts (item_id, qty, received_at, note, user_id) values (${id}, ${b.qty}, ${b.receivedAt ?? new Date().toISOString().slice(0, 10)}, ${b.note}, ${u.id})`;
-    await sql`update purchase_items set delivered_qty = ${delivered}, status = ${status}, delivered_at = ${status === 'delivered' ? b.receivedAt ?? new Date().toISOString().slice(0, 10) : null},
-      updated_at = now() where id = ${id}`;
-    const [p] = await sql<{ number: string }[]>`select number from projects where id = ${cur.project_id}`;
-    const leads = await sql<{ user_id: string }[]>`select user_id from project_members where project_id = ${cur.project_id} and role = 'owner'`;
-    await notify(ctx, [...leads.map((l) => l.user_id), cur.created_by], { kind: 'purchasing.received', title: `${status === 'delivered' ? 'Geliefert' : 'Teillieferung'}: ${cur.designation}`,
-      body: `${p!.number} · ${num(b.qty)} angekommen${status === 'partial' ? ` (insgesamt ${num(delivered)} von ${num(Number(cur.qty))})` : ''}`, link: `/projects/${cur.project_id}?tab=purchasing` }, u.id);
-    await audit(sql, u, { action: 'purchasing.receipt', entityType: 'purchase_item', entityId: id, projectId: cur.project_id, summary: `Wareneingang ${cur.designation}: ${num(b.qty)}` });
-    ctx.hub.publish(`project:${cur.project_id}`, 'purchasing.changed', {});
-    return { ok: true, status };
+    return bookPurchaseReceipt(ctx, u, id, b);
   });
 
   app.get('/purchasing/items/:id/receipts', async (req) => {

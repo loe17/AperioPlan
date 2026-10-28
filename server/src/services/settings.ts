@@ -96,7 +96,7 @@ export interface SettingsMap {
   /** Nummernkreise im CRM und Einkauf */
   calcRates: CalcRates;
   timeRules: TimeRuleSettings;
-  numbers: { customer: string; supplier: string; quote: string; case: string; order: string; calculation: string };
+  numbers: { customer: string; supplier: string; quote: string; case: string; order: string; calculation: string; article: string; asset: string; invoice: string };
   /** Firmendaten für Angebote und Bestellungen */
   letterhead: { address: string; footer: string; vatRate: number; paymentTerms: string; quoteValidityDays: number; quoteIntro: string; quoteOutro: string };
   storage: StorageSettings;
@@ -124,7 +124,7 @@ export const DEFAULT_SETTINGS: SettingsMap = {
   kanbanTemplate: [],
   calcRates: DEFAULT_CALC_RATES,
   timeRules: DEFAULT_TIME_RULES,
-  numbers: { customer: 'K{NNNN}', supplier: 'L{NNNN}', quote: 'AN-{JJJJ}-{NNNN}', case: 'RK-{JJJJ}-{NNNN}', order: 'B-{JJJJ}-{NNNN}', calculation: 'KA-{JJJJ}-{NNNN}' },
+  numbers: { customer: 'K{NNNN}', supplier: 'L{NNNN}', quote: 'AN-{JJJJ}-{NNNN}', case: 'RK-{JJJJ}-{NNNN}', order: 'B-{JJJJ}-{NNNN}', calculation: 'KA-{JJJJ}-{NNNN}', article: 'A{NNNNN}', asset: 'INV-{NNNN}', invoice: 'RE-{JJJJ}-{NNNN}' },
   letterhead: {
     address: '', footer: '', vatRate: 19, paymentTerms: '30 Tage netto', quoteValidityDays: 30,
     quoteIntro: 'vielen Dank für Ihre Anfrage. Gerne bieten wir Ihnen wie folgt an:',

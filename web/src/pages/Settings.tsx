@@ -346,7 +346,7 @@ function General() {
       <h2 style={{ margin: '28px 0 10px' }}>Weitere Nummernkreise</h2>
       <p className="muted">Gleiche Bausteine wie bei Projekten. Mit Jahr ({'{JJJJ}'} oder {'{JJ}'}) beginnt die Zählung jedes Jahr neu.</p>
       <div className="grid2">
-        {([['customer', 'Kunden'], ['supplier', 'Lieferanten'], ['quote', 'Angebote'], ['case', 'Reklamationen'], ['order', 'Bestellungen'], ['calculation', 'Kalkulationen']] as const).map(([k, l]) => (
+        {([['customer', 'Kunden'], ['supplier', 'Lieferanten'], ['quote', 'Angebote'], ['case', 'Reklamationen'], ['order', 'Bestellungen'], ['calculation', 'Kalkulationen'], ['invoice', 'Rechnungen'], ['article', 'Lagerartikel'], ['asset', 'Inventarnummern']] as const).map(([k, l]) => (
           <Field key={k} label={l} hint={validateNumberPattern(nums.value[k] ?? '') ?? `z. B. ${formatNumberPattern(nums.value[k] ?? '', 42, { customer: 'K0042' })}`}>
             <input className="mono" value={nums.value[k] ?? ''} onChange={(e) => nums.setValue({ ...nums.value, [k]: e.target.value })} />
           </Field>

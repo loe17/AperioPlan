@@ -1,3 +1,4 @@
+import { inspectionReminders } from '../routes/inventory';
 import cron from 'node-cron';
 import type { FastifyBaseLogger } from 'fastify';
 import type { AppContext } from '../context';
@@ -59,6 +60,7 @@ export function startScheduler(ctx: AppContext, log: FastifyBaseLogger) {
   // Liefertermine im Einkauf (morgens)
   cron.schedule('5 7 * * *', async () => {
     try { await deliveryReminders(ctx); } catch (e) { log.warn(e, 'Liefertermin-Hinweise fehlgeschlagen'); }
+    try { await inspectionReminders(ctx); } catch (e) { log.warn(e, 'Prüftermin-Hinweise fehlgeschlagen'); }
   });
 
   cron.schedule('17 * * * *', async () => {

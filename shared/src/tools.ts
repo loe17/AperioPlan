@@ -63,6 +63,10 @@ export const NOTIFY_KINDS: { kind: string; label: string; app: boolean; mail: bo
   { kind: 'calendar', label: 'Termineinladungen', app: true, mail: true },
   { kind: 'kvp', label: 'KVP-Ideen', app: true, mail: false },
   { kind: 'files', label: 'Dateien von Externen hochgeladen', app: true, mail: true },
+  { kind: 'board', label: 'Schwarzes Brett und Marktplatz', app: true, mail: false },
+  { kind: 'shared', label: 'Mindmap oder Wissensartikel mit mir geteilt', app: true, mail: false },
+  { kind: 'inventory', label: 'Inventar: Prüftermine und Übergaben', app: true, mail: true },
+  { kind: 'warehouse', label: 'Lager: Mindestbestand unterschritten', app: true, mail: false },
   { kind: 'other', label: 'Sonstiges', app: true, mail: false },
 ];
 
@@ -70,6 +74,6 @@ export const NOTIFY_KINDS: { kind: string; label: string; app: boolean; mail: bo
 export function notifyKindOf(kind: string): string {
   if (NOTIFY_KINDS.some((k) => k.kind === kind)) return kind;
   const head = kind.split('.')[0]!;
-  const map: Record<string, string> = { project: 'project.member', absence: 'absence', time: 'time', resource: 'resource', resources: 'resource', cad: 'cad', pcb: 'cad', purchasing: 'purchasing', crm: 'crm', calendar: 'calendar', kvp: 'kvp', link: 'files', upload: 'files', chat: 'chat.message' };
+  const map: Record<string, string> = { project: 'project.member', absence: 'absence', time: 'time', resource: 'resource', resources: 'resource', cad: 'cad', pcb: 'cad', purchasing: 'purchasing', crm: 'crm', calendar: 'calendar', kvp: 'kvp', link: 'files', upload: 'files', chat: 'chat.message', board: 'board', mindmap: 'shared', kb: 'shared', inventory: 'inventory', warehouse: 'warehouse' };
   return map[head] ?? 'other';
 }

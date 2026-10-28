@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { del, patch, post } from '../lib/api';
 import { useApi } from '../lib/hooks';
 import { realtime } from '../lib/realtime';
+import { useCan } from '../session';
 import { fmtDate, fmtEuro2 } from '../lib/format';
 import { Confirm, Empty, Field, Modal, Pill, useAction, useToast } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -31,6 +32,7 @@ export function ProjectPurchasing({ project, canEdit }: { project: any; canEdit:
   const [receive, setReceive] = useState<PurchaseItem | null>(null);
   const [bulk, setBulk] = useState<'order' | null>(null);
   const [filter, setFilter] = useState('active');
+  const can = useCan();
   useEffect(() => realtime.subscribe(`project:${project.id}`, (e) => { if (e === 'purchasing.changed') void reload(); }), [project.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const rows = (data ?? []).filter((i) => filter === 'all' || (filter === 'active' ? !['delivered', 'cancelled'].includes(i.status) : i.status === filter));
   const sum = (f: (i: PurchaseItem) => boolean) => (data ?? []).filter(f).reduce((a, i) => a + i.total, 0);
@@ -92,9 +94,26 @@ export function ProjectPurchasing({ project, canEdit }: { project: any; canEdit:
           ))}</tbody>
         </table></div>
       )}
+      {can('warehouse') && <ProjectMaterial projectId={project.id} />}
       {edit && <ItemModal projectId={project.id} item={edit === 'new' ? null : edit} canEdit={canEdit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); void reload(); }} />}
       {receive && <ReceiptModal item={receive} onClose={() => setReceive(null)} onDone={() => { setReceive(null); void reload(); }} />}
       {bulk && <OrderModal ids={[...sel]} items={(data ?? []).filter((i) => sel.has(i.id))} onClose={() => setBulk(null)} onDone={() => { setBulk(null); setSel(new Set()); void reload(); }} />}
+    </div>
+  );
+}
+
+/** Material aus dem Lager, das für das Projekt entnommen wurde */
+function ProjectMaterial({ projectId }: { projectId: string }) {
+  const { data, reload } = useApi<{ rows: { articleId: string; number: string; name: string; unit: string; qty: number; value: number }[]; total: number }>(`/warehouse/projects/${projectId}/material`);
+  useEffect(() => realtime.subscribe(`project:${projectId}`, (e) => { if (e === 'warehouse.changed') void reload(); }), [projectId, reload]);
+  if (!data?.rows.length) return null;
+  return (
+    <div style={{ marginTop: 24 }}>
+      <h3 style={{ marginBottom: 6 }}>Material aus dem Lager <span className="small muted">· {fmtEuro2(data.total)}</span></h3>
+      <table className="table small"><tbody>{data.rows.filter((r) => r.qty !== 0).map((r) => (
+        <tr key={r.articleId}><td className="mono" style={{ width: 110 }}><Link to={`/warehouse/article/${r.articleId}`}>{r.number}</Link></td><td>{r.name}</td>
+          <td style={{ textAlign: 'right' }}>{r.qty.toLocaleString('de-DE')} {r.unit}</td><td style={{ textAlign: 'right' }}>{fmtEuro2(r.value)}</td></tr>
+      ))}</tbody></table>
     </div>
   );
 }

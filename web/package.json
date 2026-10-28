@@ -23,6 +23,7 @@
     "@tiptap/starter-kit": "3.22.0",
     "jssip": "3.10.1",
     "occt-import-js": "0.0.23",
+    "qrcode-generator": "1.4.4",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-router-dom": "7.18.4",

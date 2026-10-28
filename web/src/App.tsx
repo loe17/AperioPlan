@@ -29,6 +29,8 @@ const BoardPage = lazy(() => import('./pages/Board'));
 const Viewer3DPage = lazy(() => import('./pages/Viewer3DPage'));
 const MindmapsPage = lazy(() => import('./pages/Mindmaps'));
 const KnowledgePage = lazy(() => import('./pages/Knowledge'));
+const WarehousePage = lazy(() => import('./pages/Warehouse'));
+const InventoryPage = lazy(() => import('./pages/Inventory'));
 const PublicKbPage = lazy(() => import('./pages/Knowledge').then((m) => ({ default: m.PublicKbPage })));
 const PublicFormPage = lazy(() => import('./pages/Forms').then((m) => ({ default: m.PublicFormPage })));
 const TimePage = lazy(() => import('./pages/Time'));
@@ -85,6 +87,10 @@ export function App() {
             <Route path="/phone" element={<PhonePage />} />
             <Route path="/board" element={<BoardPage />} />
             <Route path="/viewer3d" element={<Viewer3DPage />} />
+            <Route path="/warehouse" element={<WarehousePage />} />
+            <Route path="/warehouse/:kind/:id" element={<WarehousePage />} />
+            <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/inventory/:id" element={<InventoryPage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="/knowledge/:id" element={<KnowledgePage />} />
             <Route path="/mindmaps" element={<MindmapsPage />} />

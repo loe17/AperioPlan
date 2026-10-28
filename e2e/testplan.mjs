@@ -574,6 +574,64 @@ await step('14.7 Wissensdatenbank: Artikel aus Vorlage, „/“-Befehl, Untersei
   await pctx.close();
 });
 
+await step('14.8 Lager: Lagerort, Artikel, Zugang, Entnahme fürs Projekt, Scan per Eingabe', async () => {
+  await api('POST', '/apps/warehouse/install', {});
+  await page.goto(`${BASE}/warehouse?tab=locations`);
+  await page.click('button.primary:has-text("Lagerort")');
+  await page.fill('.modal input >> nth=0', 'Hauptlager');
+  await page.fill('.modal input.mono', 'HL');
+  await page.click('.modal button:has-text("Speichern")');
+  await page.waitForSelector('td:has-text("Hauptlager")');
+  await page.click('.tab:visible:has-text("Bestand")');
+  await page.click('button.primary:has-text("Artikel")');
+  await page.fill('.modal .field:has-text("Bezeichnung") input', 'Sechskantmutter M8');
+  await page.fill('.modal .field:has-text("Einkaufspreis") input', '0.05');
+  await page.click('.modal button:has-text("Speichern")');
+  await page.waitForSelector('.slideover >> text=Sechskantmutter M8');
+  await page.click('.slideover button:has-text("Zugang")');
+  await page.selectOption('.modal select >> nth=0', { label: 'Hauptlager' });
+  await page.fill('.modal .field:has-text("Menge") input', '500');
+  await page.click('.modal button:has-text("Buchen")');
+  await page.waitForSelector('.wh-facts >> text=500 Stk');
+  await page.click('.slideover button:has-text("Entnahme")');
+  await page.fill('.modal .field:has-text("Menge") input', '120');
+  await page.selectOption('.modal .field:has-text("Für Projekt") select', { index: 1 });
+  await page.click('.modal button:has-text("Buchen")');
+  await page.waitForSelector('.wh-facts >> text=380 Stk');
+  await page.keyboard.press('Escape');
+  // „Scannen“ ohne Kamera: Code eintippen
+  await page.click('.page-head button:has-text("Scannen")');
+  await page.fill('.modal input[placeholder^="Code eintippen"]', 'HL');
+  await page.press('.modal input[placeholder^="Code eintippen"]', 'Enter');
+  await page.waitForSelector('tr:has-text("Sechskantmutter M8")');
+});
+
+await step('14.9 Inventar: Gerät mit Prüftermin, Übergabe, Etikett', async () => {
+  await api('POST', '/apps/inventory/install', {});
+  await page.goto(`${BASE}/inventory`);
+  await page.click('.page-head button:has-text("Inventar")');
+  await page.fill('.modal .field:has-text("Bezeichnung") input', 'Akku-Bohrschrauber');
+  await page.fill('.modal .field:has-text("Anschaffungswert") input', '349');
+  await page.fill('.modal .field:has-text("Anschaffung am") input', '2026-09-01');
+  await page.click('.modal button:has-text("Speichern")');
+  await page.waitForSelector('h1:has-text("Akku-Bohrschrauber")');
+  await page.click('.tab:visible:has-text("Prüfungen")');
+  await page.click('button.primary:has-text("Prüfung")');
+  await page.click('.modal button:has-text("Speichern")');
+  await page.waitForSelector('.card:has-text("DGUV V3")');
+  await page.click('.card:has-text("DGUV V3") button:has-text("Durchgeführt")');
+  await page.click('.modal button:has-text("Speichern")');
+  await page.waitForSelector('.card:has-text("DGUV V3") >> text=bestanden');
+  await page.click('.tab:visible:has-text("Abschreibung")');
+  await page.waitForSelector('td:has-text("349,00")');
+  await page.click('.page-head button:has-text("Übergeben")');
+  await page.click('.modal button:has-text("Übergeben")');
+  await page.waitForSelector('.tab:visible:has-text("Übergaben")');
+  const [popup] = await Promise.all([page.waitForEvent('popup'), (async () => { await page.click('.page-head button:has-text("Etikett")'); await page.click('.modal button:has-text("Vorschau und Drucken")'); })()]);
+  await popup.waitForSelector('.l svg');
+  await popup.close();
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);
