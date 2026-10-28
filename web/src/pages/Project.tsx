@@ -5,7 +5,7 @@ import { useApi, rememberedTab, rememberTab } from '../lib/hooks';
 import { del, patch, put, invalidate } from '../lib/api';
 import { realtime } from '../lib/realtime';
 import { useCrumbs } from '../components/Layout';
-import { useSession } from '../session';
+import { useSession, useCan } from '../session';
 import { useT } from '../i18n';
 import { fmtDate } from '../lib/format';
 import { Tabs, Avatar, ErrorBox, Loading, Modal, Field, PRIORITY_META, Progress, STATUS_META, StatusDot, StatusPill, useAction, UserSelect } from '../components/ui';
@@ -32,6 +32,7 @@ export default function ProjectPage() {
   const t = useT();
   const act = useAction();
   const { users, teams, settings, me } = useSession();
+  const can = useCan();
   const [params, setParams] = useSearchParams();
   const [ai, setAi] = useState(false);
   const { data: project, error } = useApi<any>(`/projects/${id}`);
@@ -96,7 +97,7 @@ export default function ProjectPage() {
           <div className="sub row wrap">
             <span className="mono">{project.number}</span>
             <span className="pill">{statusLabel}</span>
-            {project.customer && <span>Kunde: {project.customer}</span>}
+            {project.customer && (project.customerId && can('crm') ? <Link to={`/crm/${project.customerId}`}><Icon name="building" /> {project.customer}</Link> : <span>Kunde: {project.customer}</span>)}
             {(project.startDate || project.dueDate) && <span><Icon name="calendar" /> {fmtDate(project.startDate)} – {fmtDate(project.dueDate)}</span>}
             {project.networkPath && <span title="Im Windows-Explorer öffnen" className="mono small"><Icon name="folder-open" /> {project.networkPath}</span>}
           </div>

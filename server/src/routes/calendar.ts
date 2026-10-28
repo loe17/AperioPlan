@@ -31,6 +31,9 @@ const eventBody = z.object({
   attendeeIds: z.array(z.string().uuid()).max(200).default([]),
   bookingId: z.string().uuid().nullable().default(null),
   accountId: z.string().uuid().nullable().default(null),
+  /** Termin mit einem Kunden aus dem CRM */
+  crmAccountId: z.string().uuid().nullable().default(null),
+  crmContactIds: z.array(z.string().uuid()).max(50).default([]),
 });
 
 interface EventRow {
@@ -48,7 +51,8 @@ export default async function calendarRoutes(app: FastifyInstance, ctx: AppConte
     e.ends_at as "endsAt", e.all_day as "allDay", e.project_id as "projectId", p.number as "projectNumber", e.private, e.recurrence,
     e.recurrence_until::text as "recurrenceUntil", e.reminder_minutes as "reminderMinutes", e.booking_id as "bookingId", e.account_id as "accountId",
     ca.name as "accountName", coalesce(ca.color, '') as "accountColor", (ca.kind = 'ics') as "readOnly",
-    r.name as "resourceName", b.status as "bookingStatus",
+    r.name as "resourceName", b.status as "bookingStatus", e.crm_account_id as "crmAccountId", e.crm_contact_ids as "crmContactIds",
+    (select name from crm_accounts x where x.id = e.crm_account_id) as "crmAccountName",
     coalesce((select json_agg(json_build_object('userId', a.user_id, 'displayName', u.display_name, 'response', a.response) order by u.display_name)
       from calendar_attendees a join users u on u.id = a.user_id where a.event_id = e.id), '[]') as attendees`;
   const eventFrom = sql`calendar_events e join users o on o.id = e.owner_id left join projects p on p.id = e.project_id
@@ -152,9 +156,10 @@ export default async function calendarRoutes(app: FastifyInstance, ctx: AppConte
     if (accountId) { const acc = await loadAccount(u, accountId); if (acc.kind !== 'caldav') throw badRequest('In einen Abo-Kalender kann nicht geschrieben werden'); }
     else accountId = (await sql<{ id: string }[]>`select id from calendar_accounts where user_id = ${u.id} and kind = 'caldav' and push_new order by created_at limit 1`)[0]?.id ?? null;
     const [e] = await sql<{ id: string }[]>`insert into calendar_events (owner_id, title, description, location, starts_at, ends_at, all_day, project_id, private,
-        recurrence, recurrence_until, reminder_minutes, booking_id, account_id)
+        recurrence, recurrence_until, reminder_minutes, booking_id, account_id, crm_account_id, crm_contact_ids)
       values (${u.id}, ${b.title}, ${b.description}, ${b.location}, ${start}, ${end}, ${b.allDay}, ${b.projectId}, ${b.private},
-        ${b.recurrence}, ${b.recurrenceUntil}, ${b.reminderMinutes}, ${b.bookingId}, ${accountId}) returning id`;
+        ${b.recurrence}, ${b.recurrenceUntil}, ${b.reminderMinutes}, ${b.bookingId}, ${accountId}, ${b.crmAccountId}, ${b.crmContactIds}) returning id`;
+    if (b.crmAccountId) await sql`update crm_accounts set last_contact_at = greatest(coalesce(last_contact_at, ${start}), ${start}) where id = ${b.crmAccountId} and ${start} <= now() + interval '1 day'`;
     await setAttendees(u, e!.id, b.attendeeIds, b.title, start);
     const syncError = await pushIfLinked(u, e!.id);
     return { id: e!.id, syncError };
@@ -179,6 +184,7 @@ export default async function calendarRoutes(app: FastifyInstance, ctx: AppConte
       recurrence = coalesce(${b.recurrence ?? null}, recurrence), recurrence_until = ${b.recurrenceUntil === undefined ? sql`recurrence_until` : b.recurrenceUntil},
       reminder_minutes = ${b.reminderMinutes === undefined ? sql`reminder_minutes` : b.reminderMinutes},
       booking_id = ${b.bookingId === undefined ? sql`booking_id` : b.bookingId},
+      crm_account_id = ${b.crmAccountId === undefined ? sql`crm_account_id` : b.crmAccountId}, crm_contact_ids = coalesce(${b.crmContactIds ?? null}, crm_contact_ids),
       reminded_at = case when ${start} <> starts_at then null else reminded_at end, updated_at = now() where id = ${id}`;
     if (b.attendeeIds) await setAttendees(u, id, b.attendeeIds, b.title ?? e.title, start);
     const moved = start.getTime() !== e.starts_at.getTime() || end.getTime() !== e.ends_at.getTime();

@@ -189,6 +189,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <div className="nav-section">
               <div className="nav-title"><Icon name="tools" /> {t('Werkzeuge')}</div>
               {(can('cad') || isGuest) && <NavItem to="/cad" ico="cad" label={t('CAD-Zentrale')} />}
+              {can('crm') && <NavItem to="/crm" ico="building" label="Kunden (CRM)" />}
               {can('chat') && <NavItem to="/chat" ico="chat" label={t('Chat')} count={chatUnread} />}
               {can('mail') && settings?.mailEnabled && <NavItem to="/mail" ico="mail" label={t('E-Mail')} />}
               {can('kvp') && <NavItem to="/kvp" ico="lightbulb" label={t('KVP-Ideenbox')} />}

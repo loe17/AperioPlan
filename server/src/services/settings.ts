@@ -58,6 +58,10 @@ export interface SettingsMap {
   defaultModules: ProjectModule[];
   /** Vorlage eigener Kanban-Spalten für neue Projekte */
   kanbanTemplate: { name: string; color: string; baseStatus: 'todo' | 'in_progress' | 'review' | 'done' }[];
+  /** Nummernkreise im CRM und Einkauf */
+  numbers: { customer: string; supplier: string; quote: string; case: string; order: string; calculation: string };
+  /** Firmendaten für Angebote und Bestellungen */
+  letterhead: { address: string; footer: string; vatRate: number; paymentTerms: string; quoteValidityDays: number; quoteIntro: string; quoteOutro: string };
   storage: StorageSettings;
   cadMask: { fields: MaskField[]; catalogs: Catalog[]; askCreateDrawing: boolean; drawingTemplate: string; subassemblies: { code: string; label: string }[] };
   ldap: LdapSettings;
@@ -76,6 +80,12 @@ export const DEFAULT_SETTINGS: SettingsMap = {
   projectNumbers: DEFAULT_PROJECT_NUMBER_SETTINGS,
   defaultModules: DEFAULT_PROJECT_MODULES,
   kanbanTemplate: [],
+  numbers: { customer: 'K{NNNN}', supplier: 'L{NNNN}', quote: 'AN-{JJJJ}-{NNNN}', case: 'RK-{JJJJ}-{NNNN}', order: 'B-{JJJJ}-{NNNN}', calculation: 'KA-{JJJJ}-{NNNN}' },
+  letterhead: {
+    address: '', footer: '', vatRate: 19, paymentTerms: '30 Tage netto', quoteValidityDays: 30,
+    quoteIntro: 'vielen Dank für Ihre Anfrage. Gerne bieten wir Ihnen wie folgt an:',
+    quoteOutro: 'Wir freuen uns auf Ihren Auftrag. Bei Fragen sind wir gerne für Sie da.',
+  },
   storage: { mode: 'local', networkPath: '', projectFolders: DEFAULT_PROJECT_FOLDERS },
   cadMask: {
     fields: DEFAULT_MASK_FIELDS,

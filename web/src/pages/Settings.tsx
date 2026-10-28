@@ -310,6 +310,9 @@ function General() {
   const time = useAdminSettings('time');
   const presence = useAdminSettings('presence');
   const kanban = useAdminSettings('kanbanTemplate');
+  const nums = useAdminSettings('numbers');
+  const letter = useAdminSettings('letterhead');
+  if (!nums.value || !letter.value) return null;
   if (!company.value || !numbers.value || !modules.value || !time.value || !presence.value || !kanban.value) return null;
   const n = numbers.value;
   return (
@@ -326,6 +329,29 @@ function General() {
       <ProjectNumberEditor value={n} onChange={numbers.setValue} />
       <button className="btn primary" onClick={async () => { await act(() => numbers.save(n), 'Gespeichert'); refreshLists(); }}>Speichern</button>
       <div className="hint" style={{ marginTop: 6 }}>Bereits vergebene Nummern bleiben unverändert.</div>
+
+      <h2 style={{ margin: '28px 0 10px' }}>Weitere Nummernkreise</h2>
+      <p className="muted">Gleiche Bausteine wie bei Projekten. Mit Jahr ({'{JJJJ}'} oder {'{JJ}'}) beginnt die Zählung jedes Jahr neu.</p>
+      <div className="grid2">
+        {([['customer', 'Kunden'], ['supplier', 'Lieferanten'], ['quote', 'Angebote'], ['case', 'Reklamationen'], ['order', 'Bestellungen'], ['calculation', 'Kalkulationen']] as const).map(([k, l]) => (
+          <Field key={k} label={l} hint={validateNumberPattern(nums.value[k] ?? '') ?? `z. B. ${formatNumberPattern(nums.value[k] ?? '', 42, { customer: 'K0042' })}`}>
+            <input className="mono" value={nums.value[k] ?? ''} onChange={(e) => nums.setValue({ ...nums.value, [k]: e.target.value })} />
+          </Field>
+        ))}
+      </div>
+      <button className="btn primary" onClick={() => act(() => nums.save(nums.value), 'Gespeichert')}>Speichern</button>
+
+      <h2 style={{ margin: '28px 0 10px' }}>Briefkopf für Angebote und Bestellungen</h2>
+      <div className="grid2">
+        <Field label="Anschrift der Firma" hint="erscheint klein über der Empfängeradresse"><textarea rows={3} value={letter.value.address} onChange={(e) => letter.setValue({ ...letter.value, address: e.target.value })} placeholder={'Muster GmbH\nIndustriestr. 1\n78120 Furtwangen'} /></Field>
+        <Field label="Fußzeile" hint="z. B. Bank, Handelsregister, Geschäftsführer"><textarea rows={3} value={letter.value.footer} onChange={(e) => letter.setValue({ ...letter.value, footer: e.target.value })} /></Field>
+        <Field label="Mehrwertsteuer (%)"><input type="number" value={letter.value.vatRate} onChange={(e) => letter.setValue({ ...letter.value, vatRate: Number(e.target.value) })} /></Field>
+        <Field label="Angebote gültig (Tage)"><input type="number" value={letter.value.quoteValidityDays} onChange={(e) => letter.setValue({ ...letter.value, quoteValidityDays: Number(e.target.value) })} /></Field>
+        <Field label="Zahlungsbedingungen (Standard)"><input value={letter.value.paymentTerms} onChange={(e) => letter.setValue({ ...letter.value, paymentTerms: e.target.value })} /></Field>
+      </div>
+      <Field label="Einleitung im Angebot"><textarea rows={2} value={letter.value.quoteIntro} onChange={(e) => letter.setValue({ ...letter.value, quoteIntro: e.target.value })} /></Field>
+      <Field label="Schlusstext im Angebot"><textarea rows={2} value={letter.value.quoteOutro} onChange={(e) => letter.setValue({ ...letter.value, quoteOutro: e.target.value })} /></Field>
+      <button className="btn primary" onClick={() => act(() => letter.save(letter.value), 'Gespeichert')}>Speichern</button>
 
       <h2 style={{ margin: '28px 0 10px' }}>Standard-Werkzeuge für neue Projekte</h2>
       <div className="row wrap">

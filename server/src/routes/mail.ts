@@ -57,6 +57,16 @@ export default async function mailRoutes(app: FastifyInstance, ctx: AppContext) 
   });
 
   /** E-Mail einem Projekt / einer Aufgabe zuordnen; Anhänge werden in den Projektordner übernommen */
+  /** E-Mail einem Kunden im CRM zuordnen (erscheint dann im Verlauf des Kunden) */
+  app.post('/mail/:id/crm', async (req) => {
+    requireUser(req);
+    const { id } = parse(idParam, req.params);
+    const b = parse(z.object({ accountId: z.string().uuid().nullable() }), req.body);
+    await sql`update mail_messages set crm_account_id = ${b.accountId}, updated_at = now() where id = ${id}`;
+    if (b.accountId) await sql`update crm_accounts set last_contact_at = greatest(coalesce(last_contact_at, now()), now()) where id = ${b.accountId}`;
+    return { ok: true };
+  });
+
   app.post('/mail/:id/assign', async (req) => {
     const u = requireUser(req);
     const { id } = parse(idParam, req.params);

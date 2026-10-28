@@ -10,6 +10,7 @@ import { fmtDate } from '../lib/format';
 import { Empty, Field, Modal, Progress, useAction } from '../components/ui';
 import { MODULE_LABELS, STATUS_OPTIONS } from '../modules/ProjectSettings';
 import { EntityIcon, Icon, IconPicker } from '../components/Icon';
+import { CustomerPicker, contactName, useContacts } from '../modules/CrmShared';
 
 export interface ProjectRow {
   id: string; number: string; name: string; icon: string; parentId: string | null; teamId: string | null; teamName: string | null; teamIcon: string | null;
@@ -43,7 +44,7 @@ export function ProjectCards({ projects }: { projects: ProjectRow[] }) {
   );
 }
 
-export function NewProjectDialog({ onClose, parentId, teamId }: { onClose: () => void; parentId?: string; teamId?: string }) {
+export function NewProjectDialog({ onClose, parentId, teamId, customer: preset }: { onClose: () => void; parentId?: string; teamId?: string; customer?: { id: string; name: string; number: string } }) {
   const t = useT();
   const nav = useNavigate();
   const act = useAction();
@@ -53,6 +54,9 @@ export function NewProjectDialog({ onClose, parentId, teamId }: { onClose: () =>
     name: '', description: '', icon: 'rocket', parentId: parentId ?? '', teamId: teamId ?? '', visibility: 'company', customer: '',
     startDate: '', dueDate: '', number: '', modules: settings?.defaultModules ?? [...PROJECT_MODULES],
   });
+  const [customer, setCustomer] = useState<{ id: string; name: string; number?: string } | null>(preset ?? null);
+  const [contactId, setContactId] = useState('');
+  const contacts = useContacts(customer?.id);
   useEffect(() => { if (settings) setD((x) => ({ ...x, modules: settings.defaultModules })); }, [settings]);
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setD({ ...d, [k]: e.target.value });
   return (
@@ -60,7 +64,7 @@ export function NewProjectDialog({ onClose, parentId, teamId }: { onClose: () =>
       <button className="btn" onClick={onClose}>{t('Abbrechen')}</button>
       <button className="btn primary" disabled={!d.name.trim()} onClick={async () => {
         const r = await act(() => post('/projects', {
-          ...d, parentId: d.parentId || null, teamId: d.teamId || null, startDate: d.startDate || null, dueDate: d.dueDate || null, number: d.number || undefined,
+          ...d, customer: customer?.name ?? '', customerId: customer?.id ?? null, customerContactId: contactId || null, parentId: d.parentId || null, teamId: d.teamId || null, startDate: d.startDate || null, dueDate: d.dueDate || null, number: d.number || undefined,
         }));
         if (r) { invalidate('/projects'); onClose(); nav(`/projects/${r.id}`); }
       }}>{t('Anlegen')}</button>
@@ -75,14 +79,15 @@ export function NewProjectDialog({ onClose, parentId, teamId }: { onClose: () =>
           </select>
         </Field>
         <Field label="Team / Abteilung"><select value={d.teamId} onChange={set('teamId')}><option value="">–</option>{teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}</select></Field>
-        <Field label="Kunde"><input value={d.customer} onChange={set('customer')} /></Field>
+        <Field label="Kunde" hint="aus dem CRM"><CustomerPicker value={customer} onChange={(c) => { setCustomer(c); setContactId(''); }} /></Field>
+        {customer && contacts.length > 0 && <Field label="Ansprechpartner beim Kunden"><select value={contactId} onChange={(e) => setContactId(e.target.value)}><option value="">–</option>{contacts.map((c) => <option key={c.id} value={c.id}>{contactName(c)}</option>)}</select></Field>}
         <Field label="Sichtbarkeit"><select value={d.visibility} onChange={set('visibility')}><option value="company">Ganze Firma</option><option value="team">Nur Team</option><option value="members">Nur Projektmitglieder</option></select></Field>
         <Field label="Start"><input type="date" value={d.startDate} onChange={set('startDate')} /></Field>
         <Field label="Ende"><input type="date" value={d.dueDate} onChange={set('dueDate')} /></Field>
       </div>
       <Field label="Beschreibung"><textarea value={d.description} onChange={set('description')} /></Field>
       {me?.role === 'admin' && !d.parentId && (
-        <Field label="Projektnummer (optional)" hint={`Leer lassen für automatische Vergabe (${settings?.projectNumbers.format === 'year' ? 'PRJ-Jahr-Nummer' : 'fortlaufend, z. B. 0100'})`}>
+        <Field label="Projektnummer (optional)" hint="Leer lassen für automatische Vergabe nach dem eingestellten Muster">
           <input value={d.number} onChange={set('number')} className="mono" />
         </Field>
       )}

@@ -10,6 +10,8 @@ import { PluginPage } from './pages/Plugin';
 import { Onboarding } from './components/Onboarding';
 
 const ProjectsPage = lazy(() => import('./pages/Projects'));
+const CrmPage = lazy(() => import('./pages/Crm'));
+const CrmAccountPage = lazy(() => import('./pages/CrmAccount'));
 const ProjectPage = lazy(() => import('./pages/Project'));
 const TeamPage = lazy(() => import('./pages/Team'));
 const InboxPage = lazy(() => import('./pages/Inbox'));
@@ -54,6 +56,8 @@ export function App() {
             <Route path="/cad" element={<CadPage />} />
             <Route path="/time" element={<TimePage />} />
             <Route path="/absences" element={<AbsencesPage />} />
+            <Route path="/crm" element={<CrmPage />} />
+            <Route path="/crm/:id" element={<CrmAccountPage />} />
             <Route path="/calendar" element={<CalendarPage mode="me" />} />
             <Route path="/calendar/team" element={<CalendarPage mode="team" />} />
             <Route path="/calendar/resources" element={<ResourcesPage />} />

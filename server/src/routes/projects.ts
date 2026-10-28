@@ -18,17 +18,29 @@ const projectBody = z.object({
   visibility: z.enum(['company', 'team', 'members']).default('company'),
   modules: z.array(z.enum(PROJECT_MODULES)).optional(),
   customer: z.string().default(''),
+  /** Kunde aus dem CRM (ersetzt das frühere Freitextfeld) */
+  customerId: z.string().uuid().nullable().default(null),
+  customerContactId: z.string().uuid().nullable().default(null),
   startDate: z.string().date().nullable().default(null),
   dueDate: z.string().date().nullable().default(null),
   number: z.string().trim().regex(/^[\w-]+$/).optional(),
 });
 
 const projectCols = (sql: AppContext['sql']) => sql`p.id, p.number, p.name, p.description, p.icon, p.parent_id as "parentId",
-  p.team_id as "teamId", p.status, p.visibility, p.modules, p.customer, p.start_date as "startDate", p.due_date as "dueDate",
+  p.team_id as "teamId", p.status, p.visibility, p.modules, p.customer, p.customer_id as "customerId",
+  p.customer_contact_id as "customerContactId", (select number from crm_accounts ca where ca.id = p.customer_id) as "customerNumber", p.start_date as "startDate", p.due_date as "dueDate",
   p.folder_path as "folderPath", p.created_at as "createdAt", p.updated_at as "updatedAt"`;
 
 export default async function projectRoutes(app: FastifyInstance, ctx: AppContext) {
   const { sql } = ctx;
+
+  async function customerOf(id: string | null | undefined, contactId?: string | null) {
+    if (!id) return null;
+    const [a] = await sql<{ name: string; number: string }[]>`select name, number from crm_accounts where id = ${id}`;
+    if (!a) throw badRequest('Kunde nicht im CRM gefunden');
+    if (contactId && !(await sql`select 1 from crm_contacts where id = ${contactId} and account_id = ${id}`).length) throw badRequest('Ansprechpartner gehört nicht zu diesem Kunden');
+    return a;
+  }
 
   app.get('/projects', async (req) => {
     const u = requireUser(req);
@@ -55,12 +67,14 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
     if (b.parentId) await projectAccess(sql, u, b.parentId, 'manage');
     if (b.number && u.role !== 'admin') throw badRequest('Nur Administratoren dürfen Projektnummern frei vergeben');
     const defaults = await ctx.settings.get('defaultModules');
+    const cust = await customerOf(b.customerId, b.customerContactId);
+    if (cust) b.customer = cust.name;
     const project = await sql.begin(async (tx) => {
-      const { number, seq, year } = await allocateProjectNumber(tx, ctx, b.parentId, b.number, { teamId: b.teamId, customer: b.customer });
+      const { number, seq, year } = await allocateProjectNumber(tx, ctx, b.parentId, b.number, { teamId: b.teamId, customer: cust?.number ?? '' });
       const [p] = await tx<{ id: string; number: string }[]>`insert into projects
-        (number, seq, year, name, description, icon, parent_id, team_id, status, visibility, modules, customer, start_date, due_date, created_by)
+        (number, seq, year, name, description, icon, parent_id, team_id, status, visibility, modules, customer, customer_id, customer_contact_id, start_date, due_date, created_by)
         values (${number}, ${seq}, ${year}, ${b.name}, ${b.description}, ${b.icon}, ${b.parentId}, ${b.teamId}, ${b.status}, ${b.visibility},
-          ${tx.json(normalizeModules(b.modules, defaults))}, ${b.customer}, ${b.startDate}, ${b.dueDate}, ${u.id})
+          ${tx.json(normalizeModules(b.modules, defaults))}, ${b.customer}, ${b.customerId}, ${b.customerContactId}, ${b.startDate}, ${b.dueDate}, ${u.id})
         returning id, number`;
       await tx`insert into project_members (project_id, user_id, role) values (${p!.id}, ${u.id}, 'owner')`;
       const columns = await ctx.settings.get('kanbanTemplate');
@@ -98,6 +112,7 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
     const { id } = parse(idParam, req.params);
     const acc = await projectAccess(sql, u, id, 'manage', { allowLocked: true });
     const b = parse(patchSchema(projectBody).omit({ number: true, parentId: true }), req.body);
+    if (b.customerId !== undefined) { const c = await customerOf(b.customerId, b.customerContactId); b.customer = c?.name ?? ''; if (!b.customerId) b.customerContactId = null; }
     if (acc.locked) {
       // Gesperrt: nur ein Administrator darf den Status zurücksetzen – sonst nichts
       if (u.role !== 'admin') throw forbidden(LOCKED_MESSAGE);
@@ -111,6 +126,8 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
       icon = coalesce(${b.icon ?? null}, icon), team_id = ${b.teamId === undefined ? sql`team_id` : b.teamId},
       status = coalesce(${b.status ?? null}, status), visibility = coalesce(${b.visibility ?? null}, visibility),
       modules = ${b.modules ? sql.json(b.modules) : sql`modules`}, customer = coalesce(${b.customer ?? null}, customer),
+      customer_id = ${b.customerId === undefined ? sql`customer_id` : b.customerId},
+      customer_contact_id = ${b.customerContactId === undefined ? sql`customer_contact_id` : b.customerContactId},
       start_date = ${b.startDate === undefined ? sql`start_date` : b.startDate},
       due_date = ${b.dueDate === undefined ? sql`due_date` : b.dueDate}, updated_at = now()
       where id = ${id}`;

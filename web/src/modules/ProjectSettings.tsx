@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { PROJECT_MODULES } from '@aperio/shared';
 import { patch, put, invalidate } from '../lib/api';
 import { useSession } from '../session';
+import { CustomerPicker } from './CrmShared';
 import { Avatar, Field, useAction } from '../components/ui';
 import { EntityIcon, Icon, IconPicker } from '../components/Icon';
 
@@ -51,7 +52,9 @@ export function ProjectSettings({ project }: { project: any }) {
             <option value="company">Ganze Firma</option><option value="team">Nur Team</option><option value="members">Nur Projektmitglieder</option>
           </select>
         </Field>
-        <Field label="Kunde"><input value={p.customer} onChange={set('customer')} /></Field>
+        <Field label="Kunde" hint="aus dem CRM">{p.customerId || !p.customer ? <CustomerPicker value={p.customerId ? { id: p.customerId, name: p.customer, number: p.customerNumber } : null}
+          onChange={(c) => setP({ ...p, customerId: c?.id ?? null, customer: c?.name ?? '', customerNumber: c?.number, customerContactId: null })} />
+          : <div className="row"><input value={p.customer} onChange={set('customer')} /><span className="small muted">noch nicht im CRM</span></div>}</Field>
         <Field label="Start"><input type="date" value={p.startDate ?? ''} onChange={set('startDate')} /></Field>
         <Field label="Ende"><input type="date" value={p.dueDate ?? ''} onChange={set('dueDate')} /></Field>
       </div>
@@ -73,7 +76,7 @@ export function ProjectSettings({ project }: { project: any }) {
       <div className="spacer" />
       <button className="btn primary" onClick={async () => {
         await act(() => patch(`/projects/${project.id}`, {
-          name: p.name, icon: p.icon, status: p.status, teamId: p.teamId || null, visibility: p.visibility, customer: p.customer,
+          name: p.name, icon: p.icon, status: p.status, teamId: p.teamId || null, visibility: p.visibility, ...(p.customerId !== project.customerId ? { customerId: p.customerId ?? null } : p.customerId ? {} : { customer: p.customer }),
           startDate: p.startDate || null, dueDate: p.dueDate || null, description: p.description, modules: p.modules,
         }), 'Projekt gespeichert');
         invalidate('/projects');

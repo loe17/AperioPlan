@@ -46,6 +46,12 @@ export default async function settingsRoutes(app: FastifyInstance, ctx: AppConte
     const body = parse(z.record(z.string(), z.unknown()).or(z.array(z.unknown())), req.body);
     const defaults = DEFAULT_SETTINGS[k];
     const value = Array.isArray(defaults) ? body : { ...(defaults as object), ...(await settings.get(k) as object), ...(body as object) };
+    if (k === 'numbers') {
+      for (const [name, pat] of Object.entries(value as Record<string, string>)) {
+        const err = typeof pat === 'string' ? validateNumberPattern(pat) : 'Ungültig';
+        if (err) throw badRequest(`Nummernkreis „${name}“: ${err}`);
+      }
+    }
     if (k === 'projectNumbers') {
       const v = value as { format?: string; pattern?: string };
       const err = v.format === 'pattern' ? validateNumberPattern(v.pattern ?? '') : null;

@@ -11,7 +11,7 @@ export interface CalEvent {
   id: string; ownerId: string; ownerName: string; title: string; description: string; location: string; startsAt: string; endsAt: string;
   allDay: boolean; projectId: string | null; projectNumber?: string | null; private: boolean; recurrence: string; recurrenceUntil: string | null;
   reminderMinutes: number | null; bookingId: string | null; accountId: string | null; accountName?: string | null; accountColor?: string;
-  readOnly?: boolean; resourceName?: string | null; bookingStatus?: string | null; mine?: boolean; myResponse?: string | null;
+  readOnly?: boolean; crmAccountId?: string | null; crmAccountName?: string | null; resourceName?: string | null; bookingStatus?: string | null; mine?: boolean; myResponse?: string | null;
   attendees: { userId: string; displayName: string; response: string }[]; occurrence?: string;
 }
 
@@ -24,7 +24,7 @@ const join = (date: string, time: string) => new Date(`${date}T${time || '00:00'
 
 /** Termin anlegen oder bearbeiten – mit Einladungen, Wiederholung, Erinnerung und Raum/Fahrzeug */
 export function EventModal({ event, defaults, onClose, onSaved }: {
-  event?: CalEvent | null; defaults?: { date?: string; projectId?: string | null; title?: string; attendeeIds?: string[] };
+  event?: CalEvent | null; defaults?: { date?: string; projectId?: string | null; title?: string; attendeeIds?: string[]; crmAccountId?: string; location?: string };
   onClose: () => void; onSaved: () => void;
 }) {
   const { me, users } = useSession();
@@ -34,7 +34,7 @@ export function EventModal({ event, defaults, onClose, onSaved }: {
   const start0 = event ? new Date(event.startsAt) : (() => { const d = defaults?.date ? new Date(`${defaults.date}T09:00:00`) : new Date(); if (!defaults?.date) { d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 1); } return d; })();
   const end0 = event ? new Date(event.endsAt) : new Date(start0.getTime() + 3600000);
   const [f, setF] = useState({
-    title: event?.title ?? defaults?.title ?? '', description: event?.description ?? '', location: event?.location ?? '',
+    title: event?.title ?? defaults?.title ?? '', description: event?.description ?? '', location: event?.location ?? defaults?.location ?? '',
     allDay: event?.allDay ?? false, date: isoDate(start0), start: hm(start0),
     endDate: isoDate(event?.allDay ? new Date(end0.getTime() - 86400000) : end0), end: hm(end0),
     projectId: event?.projectId ?? defaults?.projectId ?? '', private: event?.private ?? false,
@@ -78,7 +78,7 @@ export function EventModal({ event, defaults, onClose, onSaved }: {
       startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString(), allDay: f.allDay, projectId: f.projectId || null, private: f.private,
       recurrence: f.recurrence, recurrenceUntil: f.recurrence !== 'none' && f.recurrenceUntil ? f.recurrenceUntil : null,
       reminderMinutes: f.reminder === '' ? null : Number(f.reminder), attendeeIds: f.attendeeIds,
-      ...(bookingId ? { bookingId } : {}), ...(!event ? { accountId: f.accountId || null } : {}),
+      ...(bookingId ? { bookingId } : {}), ...(!event ? { accountId: f.accountId || null, crmAccountId: defaults?.crmAccountId ?? null } : {}),
     };
     const r = await act(() => (event ? patch<{ syncError: string | null }>(`/calendar/events/${event.id}`, body) : post<{ id: string; syncError: string | null }>('/calendar/events', body)), event ? 'Termin gespeichert' : 'Termin angelegt');
     if (!r) return;
@@ -163,6 +163,7 @@ function EventFacts({ e }: { e: CalEvent }) {
       <div><Icon name="clock" /> {e.allDay ? day(s) : `${day(s)}, ${hm(s)} – ${hm(en)}`}{e.recurrence !== 'none' && ` · ${RECURRENCE_LABEL[e.recurrence]}`}</div>
       {e.location && <div><Icon name="location" /> {e.location}</div>}
       {e.resourceName && <div><Icon name="door" /> {e.resourceName}</div>}
+      {e.crmAccountName && <div><Icon name="building" /> Kunde: {e.crmAccountName}</div>}
       <div><Icon name="user" /> Organisator: {e.ownerName}</div>
       {e.accountName && <div><Icon name="refresh" /> aus „{e.accountName}“{e.readOnly ? ' (nur lesen)' : ''}</div>}
       {e.attendees.length > 0 && <div className="row wrap" style={{ gap: 6 }}>{e.attendees.map((a) => <Pill key={a.userId} tone={RESPONSE[a.response]?.tone}>{a.displayName}: {RESPONSE[a.response]?.label}</Pill>)}</div>}

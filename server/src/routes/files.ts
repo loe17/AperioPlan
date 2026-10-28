@@ -129,6 +129,19 @@ export default async function fileRoutes(app: FastifyInstance, ctx: AppContext) 
     return sendStoredFile(ctx, reply, `${p.folder_path}/${rel}`, posix.basename(rel), q.inline);
   });
 
+  /** Dateien ohne Projekt: Chat-Anhänge (nur Mitglieder der Unterhaltung) und CRM-Anhänge (mit CRM-Recht) */
+  async function mayReadLoose(u: Parameters<typeof projectAccess>[1], path: string) {
+    if (u.role === 'guest') return false;
+    const chat = /^Chat\/([0-9a-f-]{36})\//.exec(path);
+    if (chat) {
+      const [m] = await sql`select 1 from chat_members where channel_id = ${chat[1]!} and user_id = ${u.id}
+        union select 1 from chat_channels c join team_members tm on tm.team_id = c.team_id where c.id = ${chat[1]!} and tm.user_id = ${u.id}`;
+      return Boolean(m);
+    }
+    if (path.startsWith('CRM/')) return u.tools.includes('crm');
+    return false;
+  }
+
   app.get('/files/:id/download', async (req, reply) => {
     const u = requireUser(req);
     const { id } = parse(idParam, req.params);
@@ -136,7 +149,7 @@ export default async function fileRoutes(app: FastifyInstance, ctx: AppContext) 
     const [f] = await sql<{ path: string; name: string; project_id: string | null; version: number }[]>`select path, name, project_id, version from files where id = ${id}`;
     if (!f) throw notFound();
     if (f.project_id) await projectAccess(sql, u, f.project_id);
-    else if (u.role !== 'admin') throw notFound();
+    else if (u.role !== 'admin' && !(await mayReadLoose(u, f.path))) throw notFound();
     if (q.version && q.version !== f.version) {
       const [v] = await sql<{ path: string }[]>`select path from file_versions where file_id = ${id} and version = ${q.version}`;
       if (!v) throw notFound('Version nicht gefunden');

@@ -275,6 +275,24 @@ await step('8.3 Abgeschlossenes Projekt ist nur lesbar', async () => {
   await page.waitForSelector('.locked-banner', { state: 'detached' });
 });
 
+// ------------------------------------------------------------ 9. CRM (1.2)
+await step('9.1 Kunde beim Projekt anlegen und im CRM wiederfinden', async () => {
+  await page.goto(`${BASE}/projects?new=1`);
+  await page.fill('.modal input[placeholder*="Verpackungsanlage"]', 'Kundenprojekt');
+  await page.fill('.modal .picker input', 'Testkunde Huber');
+  await page.click('.modal .item:has-text("Im CRM anlegen")');
+  await page.fill('.modal >> nth=1 >> input[placeholder*="Muster Maschinenbau"]', 'Testkunde Huber GmbH');
+  await page.click('.modal >> nth=1 >> button:has-text("Anlegen")');
+  await page.waitForSelector('.modal .picker-value:has-text("Testkunde Huber GmbH")');
+  await page.click('.modal button:has-text("Anlegen")');
+  await page.waitForSelector('a:has-text("Testkunde Huber GmbH")');
+  await page.click('a:has-text("Testkunde Huber GmbH")');
+  await page.waitForSelector('h1:has-text("Testkunde Huber GmbH")');
+  await page.fill('.mention-wrap textarea', 'Erstes Gespräch geführt');
+  await page.click('button:has-text("Notiz speichern")');
+  await page.waitForSelector('.tl-item:has-text("Erstes Gespräch geführt")');
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);
