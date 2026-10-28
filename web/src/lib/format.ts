@@ -20,6 +20,9 @@ export const fmtBytes = (b: number) => {
 };
 export const fmtEuro = (n: number | null | undefined) =>
   n == null ? '–' : n.toLocaleString(locale(), { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+/** Betrag auf den Cent genau (Angebote, Kalkulation, Einkauf) */
+export const fmtEuro2 = (n: number | null | undefined) =>
+  n == null ? '–' : n.toLocaleString(locale(), { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** relative Fälligkeit: "Heute", "Morgen", "in 3 Tagen", "überfällig" */
 export function relDue(d: string | null | undefined): { text: string; tone: '' | 'red' | 'amber' } {

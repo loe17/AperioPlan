@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { del, patch, post } from '../lib/api';
 import { useApi } from '../lib/hooks';
 import { realtime } from '../lib/realtime';
-import { fmtDate, fmtEuro } from '../lib/format';
+import { fmtDate, fmtEuro2 } from '../lib/format';
 import { Confirm, Empty, Field, Modal, Pill, useAction, useToast } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { CustomerPicker } from './CrmShared';
@@ -49,7 +49,7 @@ export function ProjectPurchasing({ project, canEdit }: { project: any; canEdit:
         <div className="kpi"><div className="v">{(data ?? []).filter((i) => i.status === 'open').length}</div><div className="l">offen</div></div>
         <div className="kpi"><div className="v">{(data ?? []).filter((i) => ['ordered', 'confirmed', 'partial'].includes(i.status)).length}</div><div className="l">bestellt, noch nicht da</div></div>
         <div className="kpi"><div className="v" style={{ color: (data ?? []).some((i) => i.overdue) ? 'var(--red)' : undefined }}>{(data ?? []).filter((i) => i.overdue).length}</div><div className="l">überfällig</div></div>
-        <div className="kpi"><div className="v">{fmtEuro(spent)}</div><div className="l">bestellt{project.budget ? ` von ${fmtEuro(project.budget)} Budget` : ''}{planned ? ` · ${fmtEuro(planned)} geplant` : ''}</div>
+        <div className="kpi"><div className="v">{fmtEuro2(spent)}</div><div className="l">bestellt{project.budget ? ` von ${fmtEuro2(project.budget)} Budget` : ''}{planned ? ` · ${fmtEuro2(planned)} geplant` : ''}</div>
           {project.budget ? <div className="progress" style={{ marginTop: 6 }}><div style={{ width: `${Math.min(100, (spent / project.budget) * 100)}%`, background: spent > project.budget ? 'var(--red)' : undefined }} /></div> : null}</div>
       </div>
       {(data ?? []).some((i) => i.revisionWarning && !['delivered', 'cancelled'].includes(i.status)) && (
@@ -81,7 +81,7 @@ export function ProjectPurchasing({ project, canEdit }: { project: any; canEdit:
               <td className="small">{i.manufacturer}<div className="muted">{i.manufacturerNo}</div></td>
               <td className="small">{i.supplierName ?? <span className="muted">–</span>}{i.orderNumber && <div className="muted">{i.orderNumber}</div>}</td>
               <td style={{ textAlign: 'right' }}>{i.qty.toLocaleString('de-DE')} {i.unit}{i.deliveredQty > 0 && i.status !== 'delivered' && <div className="small muted">{i.deliveredQty} da</div>}</td>
-              <td style={{ textAlign: 'right' }}>{i.unitPrice != null ? fmtEuro(i.total) : <span className="muted">–</span>}</td>
+              <td style={{ textAlign: 'right' }}>{i.unitPrice != null ? fmtEuro2(i.total) : <span className="muted">–</span>}</td>
               <td className={i.overdue ? 'error-text' : 'small'}>{fmtDate(i.confirmedDelivery ?? i.plannedDelivery)}{i.confirmedDelivery && <div className="small muted">bestätigt</div>}</td>
               <td><Pill tone={PURCHASE_STATUS[i.status]?.tone}>{PURCHASE_STATUS[i.status]?.label}</Pill></td>
               <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
@@ -117,7 +117,7 @@ function ItemModal({ projectId, item, canEdit, onClose, onSaved }: { projectId: 
     <Modal size="lg" title={item ? item.designation : 'Neue Position'} onClose={onClose} footer={<>
       {item?.status === 'open' && canEdit && <button className="btn danger" onClick={() => setConfirm(true)}>Löschen</button>}
       {item?.revisionWarning && canEdit && <button className="btn" onClick={async () => { await act(() => patch(`/purchasing/items/${item.id}`, { revisionWarning: false }), 'Hinweis erledigt'); onSaved(); }}><Icon name="check" /> Änderung mit Lieferant geklärt</button>}
-      <span className="grow" /><span className="muted">Gesamt {fmtEuro(total)}</span>
+      <span className="grow" /><span className="muted">Gesamt {fmtEuro2(total)}</span>
       <button className="btn" onClick={onClose}>Abbrechen</button>{canEdit && <button className="btn primary" disabled={!i.designation?.trim()} onClick={save}>Speichern</button>}</>}>
       {item?.revisionWarning && <div className="locked-banner" style={{ borderColor: 'var(--red)' }}><Icon name="alert" /> Bestellt mit Versionsstand {String(item.revisionAtOrder ?? 0).padStart(2, '0')}, aktuell {String(item.cadRevision ?? 0).padStart(2, '0')}.</div>}
       <div className="grid2">
@@ -178,7 +178,7 @@ function OrderModal({ ids, items, onClose, onDone }: { ids: string[]; items: Pur
         const r = await act(() => post<{ orderId: string; orderNumber: string }>('/purchasing/bulk', { ids, supplierId: supplier!.id, createOrder: true, plannedDelivery: date || undefined, note }), 'Bestellung angelegt');
         if (r) { window.open(`/api/purchasing/orders/${r.orderId}/pdf`, '_blank'); onDone(); }
       }}>Bestellung anlegen</button></>}>
-      <p className="muted">Die Positionen werden auf „Bestellt“ gesetzt, bekommen eine Bestellnummer und Sie erhalten die Bestellung als PDF ({fmtEuro(total)} netto).</p>
+      <p className="muted">Die Positionen werden auf „Bestellt“ gesetzt, bekommen eine Bestellnummer und Sie erhalten die Bestellung als PDF ({fmtEuro2(total)} netto).</p>
       <Field label="Lieferant" required><CustomerPicker kind="supplier" value={supplier} onChange={setSupplier} placeholder="Lieferant suchen …" /></Field>
       <Field label="Gewünschter Liefertermin"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
       <Field label="Hinweis auf der Bestellung"><textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></Field>
@@ -200,14 +200,14 @@ export function PurchasingDashboard() {
         <div className="kpi click" onClick={() => setFilter('active')}><div className="v">{d.ordered}</div><div className="l">bestellt, noch unterwegs</div></div>
         <div className="kpi click" onClick={() => setFilter('overdue')}><div className="v" style={{ color: d.overdue ? 'var(--red)' : undefined }}>{d.overdue}</div><div className="l">überfällig</div></div>
         <div className="kpi"><div className="v" style={{ color: d.warnings ? 'var(--red)' : undefined }}>{d.warnings}</div><div className="l">nach Bestellung geändert</div></div>
-        <div className="kpi"><div className="v">{fmtEuro(d.orderedValue)}</div><div className="l">Bestellwert gesamt</div></div>
+        <div className="kpi"><div className="v">{fmtEuro2(d.orderedValue)}</div><div className="l">Bestellwert gesamt</div></div>
       </div>
       <div className="grid2">
         <div className="card">
           <h3>Ausgaben je Projekt</h3>
           {d.projects.map((p: any) => (
             <div key={p.id} style={{ margin: '6px 0' }}>
-              <div className="row small"><Link className="grow" to={`/projects/${p.id}?tab=purchasing`}>{p.number} {p.name}</Link><b>{fmtEuro(p.spent)}</b>{p.budget ? <span className="muted">von {fmtEuro(p.budget)}</span> : null}</div>
+              <div className="row small"><Link className="grow" to={`/projects/${p.id}?tab=purchasing`}>{p.number} {p.name}</Link><b>{fmtEuro2(p.spent)}</b>{p.budget ? <span className="muted">von {fmtEuro2(p.budget)}</span> : null}</div>
               {p.budget ? <div className="progress"><div style={{ width: `${Math.min(100, (p.spent / p.budget) * 100)}%`, background: p.spent > p.budget ? 'var(--red)' : undefined }} /></div> : null}
             </div>
           ))}
@@ -237,7 +237,7 @@ export function PurchasingDashboard() {
         <thead><tr><th>Projekt</th><th>Teil</th><th>Lieferant</th><th style={{ textAlign: 'right' }}>Menge</th><th style={{ textAlign: 'right' }}>Gesamt</th><th>Liefertermin</th><th>Status</th></tr></thead>
         <tbody>{(items ?? []).map((i) => (
           <tr key={i.id}><td><Link to={`/projects/${i.projectId}?tab=purchasing`}>{i.projectNumber}</Link></td><td>{i.revisionWarning && <Icon name="alert" />} {i.designation}</td><td className="small">{i.supplierName ?? '–'}</td>
-            <td style={{ textAlign: 'right' }}>{i.qty} {i.unit}</td><td style={{ textAlign: 'right' }}>{i.unitPrice != null ? fmtEuro(i.total) : '–'}</td>
+            <td style={{ textAlign: 'right' }}>{i.qty} {i.unit}</td><td style={{ textAlign: 'right' }}>{i.unitPrice != null ? fmtEuro2(i.total) : '–'}</td>
             <td className={i.overdue ? 'error-text' : ''}>{fmtDate(i.confirmedDelivery ?? i.plannedDelivery)}</td><td><Pill tone={PURCHASE_STATUS[i.status]?.tone}>{PURCHASE_STATUS[i.status]?.label}</Pill></td></tr>
         ))}</tbody>
       </table></div>

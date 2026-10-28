@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { del, patch, post } from '../lib/api';
 import { useApi } from '../lib/hooks';
 import { useSession } from '../session';
-import { fmtEuro, isoDate } from '../lib/format';
+import { fmtEuro2, isoDate } from '../lib/format';
 import { Confirm, Field, Modal, useAction } from '../components/ui';
 import { UserPicker } from '../components/UserPicker';
 import { Icon } from '../components/Icon';
@@ -164,7 +164,7 @@ export function QuoteEditor({ quote, accountId, opportunityId, projectId, initia
   return (
     <Modal size="lg" title={quote ? `Angebot ${quote.number}` : 'Neues Angebot'} onClose={onClose} footer={<>
       {quote && <a className="btn" href={`/api/crm/quotes/${quote.id}/pdf`} target="_blank" rel="noreferrer"><Icon name="file-pdf" /> PDF ansehen</a>}
-      <span className="grow" /><span className="muted">Summe netto <b>{fmtEuro(net)}</b> · brutto {fmtEuro(net * (1 + Number(q.vatRate) / 100))}</span>
+      <span className="grow" /><span className="muted">Summe netto <b>{fmtEuro2(net)}</b> · brutto {fmtEuro2(net * (1 + Number(q.vatRate) / 100))}</span>
       <button className="btn" onClick={onClose}>Abbrechen</button><button className="btn primary" disabled={!q.title.trim() || !q.account} onClick={save}>Speichern</button></>}>
       {!quote && !accountId && <Field label="Kunde" required><CustomerPicker value={q.account} onChange={(account) => setQ({ ...q, account })} /></Field>}
       <div className="grid2">
@@ -187,7 +187,7 @@ export function QuoteEditor({ quote, accountId, opportunityId, projectId, initia
             <td><input value={p.unit} onChange={(e) => setPos(i, { unit: e.target.value })} /></td>
             <td><input type="number" step="0.01" value={p.price} onChange={(e) => setPos(i, { price: Number(e.target.value) })} /></td>
             <td><input type="number" min={0} max={100} value={p.discount} onChange={(e) => setPos(i, { discount: Number(e.target.value) })} /></td>
-            <td style={{ textAlign: 'right' }} className={p.optional ? 'muted' : ''}>{p.optional ? `(${fmtEuro(p.qty * p.price * (1 - p.discount / 100))})` : fmtEuro(posTotal(p))}</td>
+            <td style={{ textAlign: 'right' }} className={p.optional ? 'muted' : ''}>{p.optional ? `(${fmtEuro2(p.qty * p.price * (1 - p.discount / 100))})` : fmtEuro2(posTotal(p))}</td>
             <td style={{ whiteSpace: 'nowrap' }}>
               <button className={`btn ghost sm ${p.optional ? 'primary' : ''}`} title="Optional (nicht in der Summe)" onClick={() => setPos(i, { optional: !p.optional })}>opt.</button>
               <button className="btn ghost sm" onClick={() => move(i, -1)} title="nach oben"><Icon name="arrow-up" /></button>

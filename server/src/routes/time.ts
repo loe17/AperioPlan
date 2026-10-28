@@ -10,10 +10,12 @@ import { badRequest, forbidden, notFound } from '../lib/errors';
 import { audit } from '../services/audit';
 import { notify } from '../services/notify';
 import { approversOf, canApprove, reviewableUserIds } from '../services/approvers';
+import { checkUser, restWarning, timeRules, violations } from '../services/timeRules';
+import { TIME_RULE_TEMPLATES, evaluateDay, ruleSetFor } from '@aperio/shared';
 
 const entrySelect = (sql: AppContext['sql']) => sql`e.id, e.user_id as "userId", u.display_name as "userName", e.project_id as "projectId",
   p.number as "projectNumber", p.name as "projectName", e.task_id as "taskId", t.number as "taskNumber", t.title as "taskTitle",
-  e.started_at as "startedAt", e.ended_at as "endedAt", e.note, e.source,
+  e.started_at as "startedAt", e.ended_at as "endedAt", e.note, e.source, e.auto_closed as "autoClosed",
   round((extract(epoch from (coalesce(e.ended_at, now()) - e.started_at)) / 3600)::numeric, 2)::float as hours`;
 const entryFrom = (sql: AppContext['sql']) => sql`time_entries e join users u on u.id = e.user_id
   left join projects p on p.id = e.project_id left join tasks t on t.id = e.task_id`;
@@ -56,6 +58,8 @@ export default async function timeRoutes(app: FastifyInstance, ctx: AppContext) 
     if (u.role === 'guest') throw forbidden();
     const b = parse(z.object({ projectId: z.string().uuid().nullable().optional(), taskId: z.string().uuid().nullable().optional(), note: z.string().default('') }), req.body ?? {});
     const projectId = await checkTarget(u, b.projectId, b.taskId);
+    const running = (await sql`select 1 from time_entries where user_id = ${u.id} and ended_at is null`).length > 0;
+    const rest = running ? null : await restWarning(ctx, u.id);
     const now = await round(new Date());
     const entry = await sql.begin(async (tx) => {
       await tx`update time_entries set ended_at = greatest(${now}, started_at + interval '1 minute'), updated_at = now() where user_id = ${u.id} and ended_at is null`;
@@ -66,7 +70,7 @@ export default async function timeRoutes(app: FastifyInstance, ctx: AppContext) 
     const [full] = await sql`select ${entrySelect(sql)} from ${entryFrom(sql)} where e.id = ${entry.id}`;
     ctx.hub.toUser(u.id, 'time.changed', full);
     if (projectId) ctx.hub.publish(`project:${projectId}`, 'task.changed', {});
-    return full;
+    return { ...full, warning: rest };
   });
 
   app.post('/time/clock-out', async (req) => {
@@ -76,6 +80,7 @@ export default async function timeRoutes(app: FastifyInstance, ctx: AppContext) 
     const [e] = await sql<{ id: string; project_id: string | null }[]>`update time_entries set ended_at = greatest(${now}, started_at + interval '1 minute'),
       note = coalesce(${b.note ?? null}, note), updated_at = now() where user_id = ${u.id} and ended_at is null returning id, project_id`;
     if (!e) throw badRequest('Die Stempeluhr läuft nicht');
+    await checkUser(ctx, u.id).catch(() => {});
     const [full] = await sql`select ${entrySelect(sql)} from ${entryFrom(sql)} where e.id = ${e.id}`;
     ctx.hub.toUser(u.id, 'time.changed', null);
     if (e.project_id) ctx.hub.publish(`project:${e.project_id}`, 'task.changed', {});
@@ -87,6 +92,56 @@ export default async function timeRoutes(app: FastifyInstance, ctx: AppContext) 
     const b = parse(z.object({ note: z.string() }), req.body);
     await sql`update time_entries set note = ${b.note}, updated_at = now() where user_id = ${u.id} and ended_at is null`;
     return { ok: true };
+  });
+
+  // ------------------------------------------------ Gesetzliche Regeln und Pausen
+  /** Mein Regelsatz und der heutige Stand (Arbeitszeit, Pausen, was noch fällig ist) */
+  app.get('/time/rules/me', async (req) => {
+    const u = requireUser(req);
+    const s = await timeRules(ctx);
+    const set = ruleSetFor(s, u.departmentId);
+    const from = new Date(); from.setHours(0, 0, 0, 0);
+    const rows = await sql<{ started_at: Date; ended_at: Date | null }[]>`select started_at, ended_at from time_entries where user_id = ${u.id} and coalesce(ended_at, now()) > ${from} order by started_at`;
+    const now = Date.now();
+    const work = rows.map((r) => ({ start: Math.max(r.started_at.getTime(), from.getTime()), end: Math.min((r.ended_at ?? new Date()).getTime(), now) })).filter((i) => i.end > i.start);
+    const breaks = await sql`select id, starts_at as "startsAt", ends_at as "endsAt", kind, note from time_breaks where user_id = ${u.id} and ends_at > ${from} order by starts_at`;
+    return { set, today: set ? evaluateDay(set, work) : null, breaks, scheduled: s.scheduledBreaks.filter((b) => !b.teamIds.length || (u.departmentId && b.teamIds.includes(u.departmentId))) };
+  });
+
+  app.get('/time/breaks', async (req) => {
+    const u = requireUser(req);
+    const q = parse(z.object({ from: z.string().date(), to: z.string().date(), userId: z.string().uuid().optional() }), req.query);
+    const userId = q.userId ?? u.id;
+    if (userId !== u.id && !(await canApprove(sql, u, userId))) throw forbidden();
+    return sql`select id, starts_at as "startsAt", ends_at as "endsAt", kind, rule, note from time_breaks where user_id = ${userId}
+      and starts_at < (${q.to}::date + 1) and ends_at > ${q.from}::date order by starts_at`;
+  });
+
+  /** Monatsübersicht der Verstöße (Teamleitung, Administration) */
+  app.get('/time/violations', async (req) => {
+    const u = requireUser(req);
+    const q = parse(z.object({ month: z.string().regex(/^\d{4}-\d{2}$/) }), req.query);
+    const ids = await reviewableUserIds(sql, u);
+    const userIds = ids === 'all' ? (await sql<{ id: string }[]>`select id from users where active and deleted_at is null and role <> 'guest'`).map((r) => r.id) : ids;
+    if (!userIds.length) return [];
+    const start = new Date(`${q.month}-01T00:00:00`);
+    const end = new Date(start); end.setMonth(end.getMonth() + 1);
+    return violations(ctx, userIds, start, end);
+  });
+
+  /** Vorlage Deutschland / Österreich / Schweiz als Regelsatz übernehmen (Administrator) */
+  app.post('/time/rules/import', async (req) => {
+    const u = requireUser(req);
+    if (u.role !== 'admin') throw forbidden();
+    const b = parse(z.object({ template: z.enum(['de', 'at', 'ch']) }), req.body);
+    const t = TIME_RULE_TEMPLATES.find((x) => x.id === b.template)!;
+    const s = await timeRules(ctx);
+    let id = t.id;
+    for (let i = 2; s.sets.some((x) => x.id === id); i++) id = `${t.id}${i}`;
+    const sets = [...s.sets, { ...t, id, teamIds: [] }];
+    await ctx.settings.set('timeRules', { ...s, sets, defaultSetId: s.defaultSetId ?? id });
+    await audit(sql, u, { action: 'settings.update', entityType: 'settings', entityId: 'timeRules', summary: `Regelsatz ${t.name} übernommen` });
+    return { id };
   });
 
   // ------------------------------------------------ Buchungen

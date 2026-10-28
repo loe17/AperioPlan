@@ -29,8 +29,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         else push(`Nicht gespeichert: ${d.message ?? 'unbekannter Fehler'}`, 'error');
       }, 80);
     };
+    const w = (e: Event) => setTimeout(() => push((e as CustomEvent<string>).detail, 'error'), 120);
     window.addEventListener('aperio:saved', h);
-    return () => window.removeEventListener('aperio:saved', h);
+    window.addEventListener('aperio:warning', w);
+    return () => { window.removeEventListener('aperio:saved', h); window.removeEventListener('aperio:warning', w); };
   }, [push]);
   return (
     <ToastCtx.Provider value={push}>

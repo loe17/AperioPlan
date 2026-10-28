@@ -505,3 +505,4 @@ ol.steps { padding-left: 20px; margin: 0; display: grid; gap: 12px; }
 .calc-line.indent { padding-left: 14px; color: var(--text-2, var(--text)); }
 .calc-line.bold { font-weight: 650; border-top: 1px solid var(--line); margin-top: 3px; padding-top: 5px; }
 @media (max-width: 1000px) { .calc-layout { grid-template-columns: 1fr; } }
+.break-row td { background: var(--bg-soft); color: var(--text-3); font-size: 12px; }

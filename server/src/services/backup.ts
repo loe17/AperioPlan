@@ -57,6 +57,7 @@ export const BACKUP_TABLES: { name: string; pk: string[] }[] = [
   { name: 'share_links', pk: ['id'] },
   { name: 'time_entries', pk: ['id'] },
   { name: 'time_corrections', pk: ['id'] },
+  { name: 'time_breaks', pk: ['id'] },
   { name: 'absences', pk: ['id'] },
   { name: 'vacation_adjustments', pk: ['id'] },
   { name: 'holidays', pk: ['day'] },

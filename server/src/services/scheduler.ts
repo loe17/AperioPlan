@@ -5,6 +5,7 @@ import { runBackup } from './backup';
 import { syncMail } from './mail';
 import { syncAllCalendars } from './caldav';
 import { deliveryReminders } from '../routes/purchasing';
+import { checkAllRunning } from './timeRules';
 import { sendCalendarReminders } from '../routes/calendar';
 
 /** Geplante Hintergrundaufgaben: Nacht-Tresor, Aufräumen abgelaufener Sitzungen und Links. */
@@ -45,6 +46,7 @@ export function startScheduler(ctx: AppContext, log: FastifyBaseLogger) {
     try { await syncAllCalendars(ctx); } catch (e) { log.warn(e, 'Kalender-Abgleich fehlgeschlagen'); }
   });
   cron.schedule('* * * * *', async () => {
+    try { await checkAllRunning(ctx); } catch (e) { log.warn(e, 'Prüfung der Stempeluhr fehlgeschlagen'); }
     try { await sendCalendarReminders(ctx); } catch (e) { log.warn(e, 'Termin-Erinnerungen fehlgeschlagen'); }
   });
 

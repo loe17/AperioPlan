@@ -324,6 +324,15 @@ await step('10.2 Kalkulation: Angebotskalkulation rechnet beim Tippen', async ()
   await page.click('button:has-text("Speichern")');
 });
 
+// ------------------------------------------------------------ 11. Zeiterfassung mit Regeln (1.2)
+await step('11.1 Regelsatz Deutschland laden, Stempeluhr zeigt die Regeln', async () => {
+  await page.goto(`${BASE}/settings/time`);
+  await page.click('button:has-text("Deutschland")');
+  await page.waitForSelector('b:has-text("Deutschland (ArbZG)")');
+  await page.goto(`${BASE}/time`);
+  await page.waitForSelector('text=Regeln: Deutschland (ArbZG)');
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);

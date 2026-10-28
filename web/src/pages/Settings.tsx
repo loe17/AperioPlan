@@ -7,6 +7,7 @@ import { useCrumbs } from '../components/Layout';
 import { useSession, useCan } from '../session';
 import { CalendarSyncSettings } from './CalendarSync';
 import { CalcRatesSettings } from '../modules/Calculations';
+import { TimeRulesSettings } from './SettingsTime';
 import { useT, LANGUAGES } from '../i18n';
 import { fmtDateTime } from '../lib/format';
 import { Avatar, Confirm, Empty, Field, Modal, Pill, useAction } from '../components/ui';
@@ -51,6 +52,7 @@ export default function SettingsPage() {
           <SettingsNav to="/settings/cad"><Icon name="cad" /> {t('Speichermaske')} (CAD)</SettingsNav>
           <SettingsNav to="/settings/resources"><Icon name="car" /> Ressourcen</SettingsNav>
           <SettingsNav to="/settings/calc"><Icon name="euro" /> Kalkulationssätze</SettingsNav>
+          <SettingsNav to="/settings/time"><Icon name="timer" /> Zeiterfassung &amp; Regeln</SettingsNav>
           <SettingsNav to="/settings/holidays"><Icon name="holiday" /> Feiertage</SettingsNav>
           <SettingsNav to="/settings/ldap"><Icon name="building" /> {t('Firmen-Login')} (LDAP)</SettingsNav>
           <SettingsNav to="/settings/mail"><Icon name="mail" /> E-Mail-Konto</SettingsNav>
@@ -78,6 +80,7 @@ export default function SettingsPage() {
             <Route path="storage" element={<StorageSettings />} />
             <Route path="cad" element={<CadMaskSettings />} />
             <Route path="holidays" element={<HolidaySettings />} />
+            <Route path="time" element={<TimeRulesSettings />} />
             <Route path="resources" element={<ResourcesSettings />} />
             <Route path="calc" element={<CalcRatesSettings />} />
             <Route path="ldap" element={<Ldap />} />
@@ -301,7 +304,7 @@ export function useAdminSettings<K extends string>(key: K) {
   const [value, setValue] = useState<any>(null);
   const load = () => get('/settings').then((s) => setValue(s[key]));
   useEffect(() => { void load(); }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
-  return { value, setValue, save: (v: any) => put(`/settings/${key}`, v).then(() => { invalidate('/settings'); return load(); }) };
+  return { value, setValue, reload: load, save: (v: any) => put(`/settings/${key}`, v).then(() => { invalidate('/settings'); return load(); }) };
 }
 
 function General() {
@@ -384,13 +387,6 @@ function General() {
         <button className="btn" onClick={() => kanban.setValue([...kanban.value, { name: '', color: '#f59e0b', baseStatus: 'in_progress' }])}><Icon name="plus" /> Spalte</button>
         <button className="btn primary" onClick={() => act(() => kanban.save(kanban.value.filter((c: any) => c.name.trim())), 'Gespeichert')}>Speichern</button>
       </div>
-
-      <h2 style={{ margin: '28px 0 10px' }}>Zeiterfassung</h2>
-      <div className="grid2">
-        <Field label="Runden auf Minuten" hint="1 = minutengenau"><input type="number" min={1} max={60} value={time.value.roundMinutes} onChange={(e) => time.setValue({ ...time.value, roundMinutes: Number(e.target.value) })} /></Field>
-        <Field label="Warnung ab Stunden pro Tag"><input type="number" min={1} max={24} value={time.value.maxDailyHours} onChange={(e) => time.setValue({ ...time.value, maxDailyHours: Number(e.target.value) })} /></Field>
-      </div>
-      <button className="btn primary" onClick={async () => { await act(() => time.save(time.value), 'Gespeichert'); refreshLists(); }}>Speichern</button>
 
       <h2 style={{ margin: '28px 0 10px' }}>Anwesenheit im Chat</h2>
       <p className="muted">Grün = aktiv, Orange = eine Weile keine Eingabe, Rot = abwesend (Urlaub oder von Hand gewählt).</p>

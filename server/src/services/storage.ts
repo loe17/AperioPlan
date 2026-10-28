@@ -1,4 +1,4 @@
-import { mkdir, readdir, stat, rename, rm, copyFile } from 'node:fs/promises';
+import { mkdir, readdir, stat, rename, rm, copyFile, cp, statfs } from 'node:fs/promises';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { join, resolve, relative, sep, dirname } from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -19,18 +19,56 @@ export interface DirEntry {
  * oder ein eingebundenes Netzlaufwerk (NAS / SMB / Windows-Freigabe), siehe deploy/README.
  */
 export class Storage {
+  /** Weitere Speicherorte: Pfade beginnen mit "@<id>/" (z. B. @archiv/Projekte/0100_Anlage) */
+  private mounts = new Map<string, string>();
   constructor(public readonly root: string) {}
+
+  setMounts(m: Record<string, string>) {
+    this.mounts = new Map(Object.entries(m).map(([k, v]) => [k, resolve(v)]));
+  }
+
+  /** Wurzelordner und Rest eines Pfads */
+  private split(rel: string): { base: string; rest: string; prefix: string } {
+    const clean = rel.replace(/\\/g, '/').replace(/^\/+/, '');
+    const m = /^@([a-z0-9_-]+)(?:\/(.*))?$/.exec(clean);
+    if (m) {
+      const base = this.mounts.get(m[1]!);
+      if (!base) throw badRequest(`Speicherort „${m[1]}“ ist nicht eingerichtet`);
+      return { base, rest: m[2] ?? '', prefix: `@${m[1]}/` };
+    }
+    return { base: this.root, rest: clean, prefix: '' };
+  }
 
   /** Wandelt einen relativen Pfad sicher in einen absoluten um (kein Ausbruch aus dem Wurzelordner). */
   abs(rel: string): string {
-    const clean = rel.replace(/\\/g, '/').replace(/^\/+/, '');
-    const p = resolve(this.root, clean);
-    if (p !== this.root && !p.startsWith(this.root + sep)) throw badRequest('Ungültiger Pfad');
+    const { base, rest } = this.split(rel);
+    const p = resolve(base, rest);
+    if (p !== base && !p.startsWith(base + sep)) throw badRequest('Ungültiger Pfad');
     return p;
   }
 
   rel(abs: string): string {
+    for (const [id, base] of this.mounts) if (abs === base || abs.startsWith(base + sep)) return `@${id}/${relative(base, abs).split(sep).join('/')}`.replace(/\/$/, '');
     return relative(this.root, abs).split(sep).join('/');
+  }
+
+  /** Freier und gesamter Platz eines Ordners */
+  async space(absDir: string): Promise<{ free: number; total: number } | null> {
+    try {
+      const s = await statfs(absDir);
+      return { free: Number(s.bavail) * Number(s.bsize), total: Number(s.blocks) * Number(s.bsize) };
+    } catch { return null; }
+  }
+
+  /** Ordner in einen anderen Speicherort verschieben (auch über Laufwerksgrenzen) */
+  async moveTree(from: string, to: string) {
+    const a = this.abs(from), b = this.abs(to);
+    await mkdir(dirname(b), { recursive: true });
+    try { await rename(a, b); } catch (e) {
+      if ((e as { code?: string }).code !== 'EXDEV') throw e;
+      await cp(a, b, { recursive: true, preserveTimestamps: true, errorOnExist: true });
+      await rm(a, { recursive: true, force: true });
+    }
   }
 
   async ensureDir(rel: string) {

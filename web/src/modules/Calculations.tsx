@@ -4,7 +4,7 @@ import { CALC_TEMPLATES, computeCalc, type CalcRates, type CalcResult, type Calc
 import { del, get, patch, post, put } from '../lib/api';
 import { useApi } from '../lib/hooks';
 import { useSession } from '../session';
-import { fmtDate, fmtEuro } from '../lib/format';
+import { fmtDate, fmtEuro2 } from '../lib/format';
 import { Confirm, Empty, Field, Modal, Pill, useAction, useToast } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { CustomerPicker } from './CrmShared';
@@ -29,7 +29,7 @@ export function CalculationList({ projectId, canEdit = true }: { projectId?: str
             <tr key={c.id} className="click" onClick={() => setOpen(c.id)}>
               <td className="mono small">{c.number}</td><td>{c.title}</td><td className="small">{tplName(c.template)}</td>
               {!projectId && <td className="small">{c.projectNumber ? <Link to={`/projects/${c.projectId}?tab=calculation`} onClick={(e) => e.stopPropagation()}>{c.projectNumber}</Link> : '–'}</td>}
-              <td style={{ textAlign: 'right' }}>{fmtEuro(c.result?.total)}{c.template === 'hourly' && ' / Std.'}</td>
+              <td style={{ textAlign: 'right' }}>{fmtEuro2(c.result?.total)}{c.template === 'hourly' && ' / Std.'}</td>
               <td><Pill tone={STATUS[c.status]?.tone}>{STATUS[c.status]?.label}</Pill></td><td className="small">{c.quoteNumber ?? ''}</td><td className="small">{fmtDate(c.updatedAt)}</td>
             </tr>
           ))}</tbody>
@@ -116,12 +116,12 @@ export function CalcEditor({ id, onBack }: { id: string; onBack: () => void }) {
         <div className="calc-result card">
           <h3>Ergebnis</h3>
           {result?.lines.map((l, i) => (
-            <div key={i} className={`calc-line ${l.bold ? 'bold' : ''} ${l.indent ? 'indent' : ''}`}><span>{l.label}</span><span>{l.hint === 'Stunden' ? `${l.value.toLocaleString('de-DE')} Std.` : fmtEuro(l.value)}</span></div>
+            <div key={i} className={`calc-line ${l.bold ? 'bold' : ''} ${l.indent ? 'indent' : ''}`}><span>{l.label}</span><span>{l.hint === 'Stunden' ? `${l.value.toLocaleString('de-DE')} Std.` : fmtEuro2(l.value)}</span></div>
           ))}
-          {result?.perUnit != null && result.perUnit !== result.total && <div className="calc-line bold"><span>je Stück</span><span>{fmtEuro(result.perUnit)}</span></div>}
+          {result?.perUnit != null && result.perUnit !== result.total && <div className="calc-line bold"><span>je Stück</span><span>{fmtEuro2(result.perUnit)}</span></div>}
           <details style={{ marginTop: 12 }} className="small muted"><summary>Verwendete Sätze</summary>
-            {rates.labor.map((l) => <div key={l.key}>{l.name}: Lohn {fmtEuro(l.wage)}, Verrechnung {fmtEuro(l.rate)} / Std.</div>)}
-            {rates.machines.map((m) => <div key={m.key}>{m.name}: {fmtEuro(m.rate)} / Std.</div>)}
+            {rates.labor.map((l) => <div key={l.key}>{l.name}: Lohn {fmtEuro2(l.wage)}, Verrechnung {fmtEuro2(l.rate)} / Std.</div>)}
+            {rates.machines.map((m) => <div key={m.key}>{m.name}: {fmtEuro2(m.rate)} / Std.</div>)}
             <div>Zuschläge: Material {rates.surcharges.materialOverhead} %, Fertigung {rates.surcharges.productionOverhead} %, VwVt {rates.surcharges.adminSales} %, Wagnis {rates.surcharges.risk} %, Gewinn {rates.surcharges.profit} %, Zukauf {rates.surcharges.purchasedMarkup} %</div>
             {!locked && <button className="btn sm" style={{ marginTop: 6 }} onClick={async () => { if (await act(() => patch(`/calculations/${id}`, { refreshRates: true }), 'Aktuelle Sätze übernommen')) await reload(); }}>Aktuelle Sätze übernehmen</button>}
           </details>
@@ -289,7 +289,7 @@ function PostcalcView({ c }: { c: any }) {
       <table className="table"><thead><tr><th>Bereich</th><th style={{ textAlign: 'right' }}>Soll</th><th style={{ textAlign: 'right' }}>Ist</th><th style={{ textAlign: 'right' }}>Abweichung</th></tr></thead>
         <tbody>{rows.map((r: any, i: number) => {
           const d = r.actual - r.plan;
-          const f = (v: number) => (r.unit === '€' ? fmtEuro(v) : `${v.toLocaleString('de-DE', { maximumFractionDigits: 1 })} Std.`);
+          const f = (v: number) => (r.unit === '€' ? fmtEuro2(v) : `${v.toLocaleString('de-DE', { maximumFractionDigits: 1 })} Std.`);
           return <tr key={i} style={r.label === 'Kosten gesamt' ? { fontWeight: 650 } : undefined}><td>{r.label}</td><td style={{ textAlign: 'right' }}>{f(r.plan)}</td><td style={{ textAlign: 'right' }}>{f(r.actual)}</td>
             <td style={{ textAlign: 'right', color: d > 0 ? 'var(--red)' : 'var(--green)' }}>{d > 0 ? '+' : ''}{f(d)}</td></tr>;
         })}</tbody></table>

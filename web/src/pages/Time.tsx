@@ -10,7 +10,7 @@ import { fmtDate, fmtDateTime, fmtDuration, fmtHours, fmtTime, isoDate } from '.
 import { Avatar, Empty, Field, Modal, REQUEST_META, StatusPill, Tabs, useAction } from '../components/ui';
 import { Icon } from '../components/Icon';
 
-interface Entry { id: string; userId: string; userName: string; projectId: string | null; projectNumber: string | null; projectName: string | null; taskId: string | null; taskNumber: number | null; taskTitle: string | null; startedAt: string; endedAt: string | null; note: string; source: string; hours: number }
+interface Entry { id: string; userId: string; userName: string; projectId: string | null; projectNumber: string | null; projectName: string | null; taskId: string | null; taskNumber: number | null; taskTitle: string | null; startedAt: string; endedAt: string | null; note: string; source: string; hours: number; autoClosed?: boolean }
 
 /** Stempeluhr-Kachel (Schreibtisch und Zeiterfassung) */
 export function ClockWidget({ compact, defaultProjectId }: { compact?: boolean; defaultProjectId?: string }) {
@@ -34,6 +34,7 @@ export function ClockWidget({ compact, defaultProjectId }: { compact?: boolean; 
           seit {fmtTime(running.startedAt)} · {running.projectNumber ? `${running.projectNumber} ${running.projectName}` : 'ohne Projekt'}{running.taskTitle ? ` · P${running.taskNumber} ${running.taskTitle}` : ''}
         </div>
       ) : <div className="small muted" style={{ marginBottom: 8 }}>Heute {fmtHours(data?.todayHours ?? 0)} · Woche {fmtHours(data?.weekHours ?? 0)}</div>}
+      {!compact && <RuleStatus running={Boolean(running)} />}
       <div className="row">
         {!compact && <select value={projectId} onChange={(e) => setProjectId(e.target.value)} style={{ maxWidth: 260 }}>
           <option value="">– ohne Projekt –</option>{projects?.map((p) => <option key={p.id} value={p.id}>{p.number} {p.name}</option>)}
@@ -47,13 +48,33 @@ export function ClockWidget({ compact, defaultProjectId }: { compact?: boolean; 
   );
 }
 
+/** Heutiger Stand nach dem Regelsatz: Pausen, Pflichtpause, Höchstarbeitszeit */
+function RuleStatus({ running }: { running: boolean }) {
+  const { data } = useApi<any>('/time/rules/me', [running]);
+  if (!data?.set || !data.today) return null;
+  const t = data.today;
+  const left = Math.max(0, data.set.maxDailyHours * 60 - t.workMinutes);
+  return (
+    <div className="small" style={{ margin: '0 0 8px', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+      <span className="muted">Regeln: {data.set.name}</span>
+      <span>Pause heute {t.breakMinutes} Min.{t.requiredBreak ? ` von ${t.requiredBreak}` : ''}</span>
+      {t.missingBreak > 0 && <span style={{ color: 'var(--amber)' }}>{t.missingBreak} Min. Pause fehlen</span>}
+      {running && <span className="muted">noch {Math.floor(left / 60)} Std. {left % 60} Min. bis zur Höchstarbeitszeit</span>}
+      {data.breaks.map((b: any) => <span key={b.id} className="pill small">{b.kind === 'legal' ? 'Pflichtpause' : b.note} {fmtTime(b.startsAt)}–{fmtTime(b.endsAt)}</span>)}
+      {data.scheduled.length > 0 && <span className="muted">Feste Pausen: {data.scheduled.map((s: any) => `${s.name} ${s.start}–${s.end}`).join(', ')}</span>}
+    </div>
+  );
+}
+
 const monday = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
 
 export default function TimePage() {
   const t = useT();
   useCrumbs([{ label: `${t('Zeiterfassung')}` }]);
   const [params, setParams] = useSearchParams();
-  const tab = (params.get('tab') ?? rememberedTab('time') ?? 'entries') as 'entries' | 'corrections' | 'review';
+  const tab = (params.get('tab') ?? rememberedTab('time') ?? 'entries') as 'entries' | 'corrections' | 'review' | 'violations';
+  const { me } = useSession();
+  const lead = me?.role === 'admin' || me?.role === 'teamlead';
   const { data: review } = useApi<any[]>('/time/corrections?scope=review');
   const pending = review?.filter((r) => r.status === 'pending').length ?? 0;
   return (
@@ -65,10 +86,31 @@ export default function TimePage() {
         { id: 'entries', label: 'Meine Buchungen' },
         { id: 'corrections', label: 'Korrekturanfragen' },
         ...(review && review.length ? [{ id: 'review' as const, label: `Zu prüfen${pending ? ` (${pending})` : ''}` }] : []),
+        ...(lead ? [{ id: 'violations' as const, label: 'Regelverstöße' }] : []),
       ]} />
+      {tab === 'violations' && lead && <Violations />}
       {tab === 'entries' && <Entries />}
       {tab === 'corrections' && <Corrections />}
       {tab === 'review' && <Review rows={review ?? []} />}
+    </div>
+  );
+}
+
+/** Monatsübersicht für die Teamleitung: zu lange Tage, fehlende Pausen, zu kurze Ruhezeit */
+function Violations() {
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const { data } = useApi<any[]>(`/time/violations?month=${month}`);
+  const KIND: Record<string, string> = { max: 'Höchstarbeitszeit', break: 'Pause zu kurz', rest: 'Ruhezeit zu kurz' };
+  return (
+    <div>
+      <div className="toolbar"><input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={{ width: 'auto' }} />
+        <span className="muted small">Nach dem Regelsatz der jeweiligen Abteilung. Hilfe, keine Rechtsberatung.</span></div>
+      {!data?.length ? <Empty icon="check" title="Keine Verstöße in diesem Monat" /> : (
+        <div className="table-wrap"><table className="table">
+          <thead><tr><th>Mitarbeiter</th><th>Tag</th><th>Art</th><th>Einzelheiten</th></tr></thead>
+          <tbody>{data.map((v, i) => <tr key={i}><td>{v.userName}</td><td>{fmtDate(v.day)}</td><td>{KIND[v.kind] ?? v.kind}</td><td className="small">{v.detail}</td></tr>)}</tbody>
+        </table></div>
+      )}
     </div>
   );
 }
@@ -78,7 +120,16 @@ function Entries() {
   const from = isoDate(week);
   const to = isoDate(new Date(week.getTime() + 6 * 86400000));
   const { data } = useApi<Entry[]>(`/time/entries?from=${from}&to=${to}`);
+  const { data: breaks } = useApi<any[]>(`/time/breaks?from=${from}&to=${to}`);
   const [correct, setCorrect] = useState<Partial<Entry> | null>(null);
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    const id = params.get('correct');
+    if (!id || !data) return;
+    const e = data.find((x) => x.id === id);
+    setCorrect(e ?? { id: undefined });
+    params.delete('correct'); setParams(params, { replace: true });
+  }, [data, params.get('correct')]); // eslint-disable-line react-hooks/exhaustive-deps
   const days = useMemo(() => {
     const map = new Map<string, Entry[]>();
     for (const e of data ?? []) {
@@ -103,12 +154,20 @@ function Entries() {
         <div key={day} style={{ marginBottom: 16 }}>
           <div className="row" style={{ marginBottom: 6 }}><b>{new Date(day).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' })}</b><span className="muted small">{fmtHours(list.reduce((s, e) => s + e.hours, 0))}</span></div>
           <div className="table-wrap"><table className="table"><tbody>
-            {list.map((e) => (
+            {[...list.map((e) => ({ t: new Date(e.startedAt).getTime(), e, b: null as any })),
+              ...(breaks ?? []).filter((b) => isoDate(new Date(b.startsAt)) === day).map((b) => ({ t: new Date(b.startsAt).getTime(), e: null as Entry | null, b }))]
+              .sort((a, b) => b.t - a.t).map(({ e, b }) => b ? (
+              <tr key={b.id} className="break-row">
+                <td className="mono small">{fmtTime(b.startsAt)} – {fmtTime(b.endsAt)}</td>
+                <td colSpan={4}><Icon name="clock" /> {b.kind === 'legal' ? 'Pflichtpause (automatisch eingetragen)' : `Feste Pause: ${b.note}`}</td>
+                <td><button className="btn sm ghost" onClick={() => setCorrect({ id: undefined, note: `Pause ${fmtTime(b.startsAt)}–${fmtTime(b.endsAt)} verschieben auf: ` })}>verschieben …</button></td>
+              </tr>
+            ) : e && (
               <tr key={e.id}>
                 <td style={{ width: 130 }} className="mono small">{fmtTime(e.startedAt)} – {e.endedAt ? fmtTime(e.endedAt) : 'läuft'}</td>
                 <td>{e.projectNumber ? `${e.projectNumber} ${e.projectName}` : <span className="muted">ohne Projekt</span>}{e.taskTitle && <span className="muted"> · P{e.taskNumber} {e.taskTitle}</span>}</td>
                 <td className="small muted">{e.note}</td>
-                <td className="small">{e.source === 'correction' ? 'korrigiert' : e.source === 'manual' ? 'nachgetragen' : ''}</td>
+                <td className="small">{e.autoClosed ? <span style={{ color: 'var(--amber)' }}>automatisch beendet – bitte korrigieren</span> : e.source === 'correction' ? 'korrigiert' : e.source === 'manual' ? 'nachgetragen' : ''}</td>
                 <td style={{ width: 80 }}><b>{fmtHours(e.hours)}</b></td>
                 <td style={{ width: 110 }}>{e.endedAt && <button className="btn sm" onClick={() => setCorrect(e)}>Korrektur …</button>}</td>
               </tr>

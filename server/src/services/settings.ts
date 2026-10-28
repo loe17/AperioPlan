@@ -1,6 +1,6 @@
 import type { Sql } from '../db';
 import {
-  DEFAULT_PROJECT_NUMBER_SETTINGS, DEFAULT_CALC_RATES, type CalcRates, DEFAULT_PROJECT_MODULES, DEFAULT_PROJECT_FOLDERS,
+  DEFAULT_PROJECT_NUMBER_SETTINGS, DEFAULT_CALC_RATES, type CalcRates, DEFAULT_TIME_RULES, type TimeRuleSettings, DEFAULT_PROJECT_MODULES, DEFAULT_PROJECT_FOLDERS,
   DEFAULT_MASK_FIELDS, DEFAULT_CATALOGS, type ProjectNumberSettings, type ProjectModule,
   type MaskField, type Catalog,
 } from '@aperio/shared';
@@ -39,8 +39,14 @@ export interface StorageSettings {
   /** Unterordner im Speicherwurzelverzeichnis bzw. eingebundener Netzpfad */
   mode: 'local' | 'network';
   networkPath: string;       // Anzeige für Windows-Explorer, z. B. \\nas\projekte
+  /** Ordnerstruktur neuer Projekte; Unterordner mit „/“, z. B. „01_CAD/Teile“ */
   projectFolders: string[];
+  /** weitere Speicherorte (Netzlaufwerke, Archiv); „main“ = Standardablage */
+  locations: StorageLocation[];
+  defaultLocation: string;
 }
+
+export interface StorageLocation { id: string; name: string; path: string; networkPath: string; teamIds: string[]; archive: boolean }
 
 export interface BackupSettings {
   enabled: boolean;
@@ -60,6 +66,7 @@ export interface SettingsMap {
   kanbanTemplate: { name: string; color: string; baseStatus: 'todo' | 'in_progress' | 'review' | 'done' }[];
   /** Nummernkreise im CRM und Einkauf */
   calcRates: CalcRates;
+  timeRules: TimeRuleSettings;
   numbers: { customer: string; supplier: string; quote: string; case: string; order: string; calculation: string };
   /** Firmendaten für Angebote und Bestellungen */
   letterhead: { address: string; footer: string; vatRate: number; paymentTerms: string; quoteValidityDays: number; quoteIntro: string; quoteOutro: string };
@@ -82,13 +89,14 @@ export const DEFAULT_SETTINGS: SettingsMap = {
   defaultModules: DEFAULT_PROJECT_MODULES,
   kanbanTemplate: [],
   calcRates: DEFAULT_CALC_RATES,
+  timeRules: DEFAULT_TIME_RULES,
   numbers: { customer: 'K{NNNN}', supplier: 'L{NNNN}', quote: 'AN-{JJJJ}-{NNNN}', case: 'RK-{JJJJ}-{NNNN}', order: 'B-{JJJJ}-{NNNN}', calculation: 'KA-{JJJJ}-{NNNN}' },
   letterhead: {
     address: '', footer: '', vatRate: 19, paymentTerms: '30 Tage netto', quoteValidityDays: 30,
     quoteIntro: 'vielen Dank für Ihre Anfrage. Gerne bieten wir Ihnen wie folgt an:',
     quoteOutro: 'Wir freuen uns auf Ihren Auftrag. Bei Fragen sind wir gerne für Sie da.',
   },
-  storage: { mode: 'local', networkPath: '', projectFolders: DEFAULT_PROJECT_FOLDERS },
+  storage: { mode: 'local', networkPath: '', projectFolders: DEFAULT_PROJECT_FOLDERS, locations: [], defaultLocation: 'main' },
   cadMask: {
     fields: DEFAULT_MASK_FIELDS,
     catalogs: DEFAULT_CATALOGS,
@@ -137,10 +145,14 @@ export class SettingsService {
     return value;
   }
 
+  /** Wird nach jeder Änderung aufgerufen (z. B. Speicherorte neu einbinden) */
+  onChange?: (key: keyof SettingsMap, value: unknown) => void;
+
   async set<K extends keyof SettingsMap>(key: K, value: SettingsMap[K]): Promise<void> {
     await this.sql`insert into settings (key, value) values (${key}, ${this.sql.json(value as never)})
       on conflict (key) do update set value = excluded.value, updated_at = now()`;
     this.cache.delete(key);
+    this.onChange?.(key, value);
   }
 
   async all(): Promise<SettingsMap> {

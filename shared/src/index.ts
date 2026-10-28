@@ -4,3 +4,4 @@ export * from './version';
 export * from './holidays';
 export * from './tools';
 export * from './calc';
+export * from './timeRules';

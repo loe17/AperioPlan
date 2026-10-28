@@ -45,7 +45,10 @@ export async function api<T = any>(url: string, opts: { method?: string; body?: 
   report(method, url, startedAt, true, undefined, opts.quiet);
   if (opts.raw) return res as unknown as T;
   const text = await res.text();
-  return (text ? JSON.parse(text) : null) as T;
+  const data = text ? JSON.parse(text) : null;
+  // Hinweise des Servers (z. B. Ruhezeit beim Einstempeln) als Meldung zeigen
+  if (data && typeof data === 'object' && typeof data.warning === 'string' && data.warning) window.dispatchEvent(new CustomEvent('aperio:warning', { detail: data.warning }));
+  return data as T;
 }
 
 export const get = <T = any>(url: string) => api<T>(url);
