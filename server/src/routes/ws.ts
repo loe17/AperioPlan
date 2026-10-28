@@ -1,3 +1,4 @@
+import { mindmapAccess } from './mindmaps';
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../context';
 import type { HubClient } from '../lib/hub';
@@ -56,6 +57,7 @@ export default async function wsRoutes(app: FastifyInstance, ctx: AppContext) {
           return Boolean(m) || user.role === 'admin';
         }
         if (kind === 'user') return id === user.id;
+        if (kind === 'mindmap') { await mindmapAccess(ctx.sql, user, id); return true; }
         if (kind === 'project') { await projectAccess(ctx.sql, user, id); return true; }
         if (kind === 'chat' || kind === 'call') {
           const [m] = await ctx.sql`select 1 from chat_members where channel_id = ${id} and user_id = ${user.id}`;

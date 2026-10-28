@@ -511,6 +511,25 @@ await step('14.5 3D-Viewer: Baugruppe öffnen, Teile im Baum, Messen', async () 
   await page.waitForSelector('text=Zwei Punkte auf dem Modell anklicken');
 });
 
+await step('14.6 Mindmap: mit Tastatur anlegen, speichern, als Gliederung exportieren', async () => {
+  await api('POST', '/apps/mindmap/install', {});
+  await page.goto(`${BASE}/mindmaps`);
+  await page.click('button:has-text("Neue Mindmap")');
+  await page.fill('.modal input', 'Produktidee');
+  await page.click('.modal button:has-text("Anlegen")');
+  await page.waitForSelector('.mm-node.d0:has-text("Produktidee")');
+  await page.click('.mm-node.d0');
+  await page.keyboard.press('Tab'); await page.keyboard.type('Zielgruppe'); await page.keyboard.press('Enter');
+  await page.keyboard.press('Tab'); await page.keyboard.type('Handwerker'); await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter'); await page.keyboard.type('Planer'); await page.keyboard.press('Enter');
+  await page.waitForSelector('.mm-bar >> text=4 Punkte · gespeichert', { timeout: 8000 });
+  await page.reload();
+  await page.waitForSelector('.mm-node:has-text("Planer")');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('.mm-bar button:has-text("Gliederung")')]);
+  const md = await (await import('node:fs/promises')).readFile(await dl.path(), 'utf8');
+  if (!md.includes('# Produktidee') || !md.includes('  - Handwerker')) throw new Error(`Gliederung falsch: ${md}`);
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} Prüfungen bestanden`);

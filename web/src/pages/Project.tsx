@@ -1,3 +1,4 @@
+import { MindmapList } from './Mindmaps';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { TASK_PRIORITIES, TASK_STATUSES } from '@aperio/shared';
@@ -77,6 +78,7 @@ export default function ProjectPage() {
   const tabs = [
     { id: 'overview', label: `${t('Übersicht')}` },
     ...project.modules.map((m: string) => ({ id: m, label: t(MODULE_LABELS[m]?.label ?? m) })),
+    ...(can('mindmap') ? [{ id: 'mindmaps', label: 'Mindmaps' }] : []),
     ...pluginTabs.map((p) => ({ id: `plugin:${p.id}`, label: p.projectTab.label })),
     { id: 'documents', label: 'Dokumente' },
     { id: 'audit', label: `${t('Änderungsprotokoll')}` },
@@ -153,6 +155,7 @@ export default function ProjectPage() {
       {tab === 'list' && <TaskTable tasks={filtered} onOpen={openTask} />}
       {tab === 'gantt' && <Gantt projectId={project.id} tasks={tasks ?? []} onOpen={openTask} canEdit={project.canEdit} />}
       {tab === 'whiteboard' && <Whiteboards projectId={project.id} canEdit={project.canEdit} />}
+      {tab === 'mindmaps' && <MindmapList projectId={project.id} canEdit={project.canEdit} />}
       {tab === 'report' && <Report project={project} tasks={tasks ?? []} canEdit={project.canEdit} />}
       {tab === 'files' && <ProjectFiles projectId={project.id} project={project} canEdit={project.canEdit} />}
       {tab === 'cad' && <ProjectCad projectId={project.id} project={project} canEdit={project.canEdit} />}

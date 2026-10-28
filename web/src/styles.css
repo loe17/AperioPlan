@@ -686,3 +686,30 @@ ol.steps { padding-left: 20px; margin: 0; display: grid; gap: 12px; }
 .v3d-drop { border: 2px dashed var(--line-strong); border-radius: 12px; padding: 48px 16px; text-align: center; color: var(--text-2); }
 .v3d-drop.over { border-color: var(--accent); background: var(--accent-soft); }
 @media (max-width: 720px) { .v3d-tree { display: none; } }
+
+/* Mindmaps */
+.mm-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.mm-card { display: flex; flex-direction: column; gap: 4px; color: inherit; text-decoration: none; }
+.mm-card:hover { border-color: var(--line-strong); }
+.mm { position: relative; height: calc(100vh - 190px); min-height: 420px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; outline: none; cursor: grab;
+  background: var(--bg-soft) radial-gradient(circle, var(--line) 1px, transparent 1px) 0 0 / 22px 22px; user-select: none; touch-action: none; }
+.mm:focus-visible { border-color: var(--accent); }
+.mm-bar { position: absolute; top: 0; left: 0; right: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 8px; background: var(--card); border-bottom: 1px solid var(--line); z-index: 3; cursor: default; }
+.mm-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.mm-edges { position: absolute; left: 0; top: 0; pointer-events: none; }
+.mm-node { position: absolute; box-sizing: border-box; padding: 7px 12px; font-size: 14px; line-height: 19px; white-space: pre; border-radius: 8px; cursor: pointer;
+  background: var(--card); border: 1.5px solid var(--c); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.mm-node.d0 { background: var(--c); color: #fff; border: none; border-radius: 14px; font-size: 17px; font-weight: 600; line-height: 22px; padding: 11px 18px; box-shadow: var(--shadow); }
+.mm-node.d1 { font-weight: 600; background: color-mix(in srgb, var(--c) 13%, var(--card)); }
+.mm-node.sel { outline: 2.5px solid var(--accent); outline-offset: 2px; }
+.mm-node.drop-child { outline: 2.5px dashed var(--accent); outline-offset: 3px; }
+.mm-node.drop-before { box-shadow: 0 -4px 0 var(--accent); }
+.mm-node.drop-after { box-shadow: 0 4px 0 var(--accent); }
+.mm-badges { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); opacity: .7; display: flex; }
+.mm-count { position: absolute; top: 50%; transform: translateY(-50%); min-width: 20px; height: 20px; border-radius: 10px; border: 1.5px solid var(--c); background: var(--card); color: var(--text); font-size: 11px; padding: 0 4px; cursor: pointer; line-height: 16px; }
+.mm-edit { position: absolute; z-index: 4; font: inherit; font-size: 14px; line-height: 19px; padding: 7px 12px; border: 2px solid var(--accent); border-radius: 8px; resize: none; box-shadow: var(--shadow-lg); background: var(--card); color: var(--text); }
+.mm-panel { position: absolute; right: 8px; top: 52px; bottom: 8px; width: 280px; z-index: 3; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px; overflow: auto; cursor: default; box-shadow: var(--shadow); }
+.mm-swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+.mm-swatch.on { border-color: var(--text); }
+.mm-hint { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-size: 13px; color: var(--text-2); }
+@media (max-width: 720px) { .mm-panel { left: 8px; width: auto; top: auto; height: 55%; } }
