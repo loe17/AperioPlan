@@ -27,3 +27,12 @@ export function staffOf(req: Parameters<typeof requireUser>[0]): AuthUser {
 
 export const today = () => new Date().toISOString().slice(0, 10);
 export const addDays = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+
+/** Gespeicherte Datei ausliefern (PDF und Bilder im Browser anzeigen, sonst herunterladen) */
+export function sendStored(reply: { header: (k: string, v: string) => unknown; send: (b: unknown) => unknown }, storage: { read: (p: string) => unknown }, path: string, name: string, download = false) {
+  const ext = name.split('.').pop()?.toLowerCase();
+  const type = ext === 'pdf' ? 'application/pdf' : ext === 'png' ? 'image/png' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'application/octet-stream';
+  reply.header('content-type', type);
+  reply.header('content-disposition', `${download || type === 'application/octet-stream' ? 'attachment' : 'inline'}; filename="${encodeURIComponent(name)}"`);
+  return reply.send(storage.read(path));
+}

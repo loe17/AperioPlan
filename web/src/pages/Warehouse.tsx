@@ -10,6 +10,7 @@ import { fmtDate, fmtDateTime, fmtEuro2 } from '../lib/format';
 import { Confirm, Empty, Field, Modal, Pill, SlideOver, Tabs, useAction, useToast } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { LabelButton, ScanButton, type Label } from '../modules/Scan';
+import { CustomFields } from '../modules/CustomFields';
 
 const qty = (n: number | null | undefined, unit = '') => `${(n ?? 0).toLocaleString('de-DE', { maximumFractionDigits: 3 })}${unit ? ` ${unit}` : ''}`;
 type Loc = { id: string; parentId: string | null; name: string; code: string; kind: string; active: boolean; articles: number };
@@ -189,6 +190,7 @@ function ArticlePanel({ id, locs, onClose }: { id: string; locs: ReturnType<type
           <tr><td className="muted">Verfolgung</td><td>{{ none: 'keine', lot: 'Chargen', serial: 'Seriennummern' }[a.tracking as string]}</td></tr>
         </tbody></table>
       </div>
+      <CustomFields entity="article" id={id} />
       <h3 style={{ margin: '18px 0 6px' }}>Bestand je Lagerort</h3>
       {!a.stockByLocation.length ? <p className="muted small">Kein Bestand.</p> : <table className="table small"><tbody>{a.stockByLocation.map((s: any) => (
         <tr key={s.locationId + s.lot}><td>{s.locationName} <span className="muted mono">{s.locationCode}</span></td><td>{s.lot && <span className="mono">{a.tracking === 'serial' ? 'SN ' : 'Ch. '}{s.lot}</span>}</td><td style={{ textAlign: 'right' }}><b>{qty(s.qty, a.unit)}</b></td></tr>

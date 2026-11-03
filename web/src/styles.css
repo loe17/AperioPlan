@@ -934,3 +934,45 @@ textarea.hd-internal { background: #fffbea; }
 .dot.green { background: var(--green); } .dot.red { background: var(--red); } .dot.amber { background: var(--amber, #d97706); } .dot.blue { background: var(--blue, #2563eb); }
 .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0 14px; }
 @media (max-width: 760px) { .grid4 { grid-template-columns: 1fr 1fr; } }
+
+/* Freigaben */
+.apr-steps { list-style: none; padding: 0; margin: 0; border-left: 2px solid var(--line); }
+.apr-steps li { padding: 4px 0 10px 14px; position: relative; }
+.apr-steps li::before { content: ''; position: absolute; left: -7px; top: 8px; width: 12px; height: 12px; border-radius: 50%; background: var(--card); border: 2px solid var(--line-strong); }
+.apr-steps li.done::before { background: var(--green); border-color: var(--green); }
+.apr-steps li.current::before { background: var(--amber); border-color: var(--amber); }
+.apr-steps li.rejected::before { background: var(--red); border-color: var(--red); }
+/* E-Signatur */
+.pub-card.wide { max-width: 920px; }
+.sign-doc { width: 100%; height: 60vh; min-height: 360px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-soft); margin: 10px 0 4px; }
+/* Eigene Felder */
+.cf-box { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 12px 0; }
+.cf-title { font-size: 12px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+.cf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px 16px; }
+.cf-row { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.cf-label { color: var(--text-2); font-size: 12px; }
+/* Auswertungen und Diagramme */
+:root, :root[data-theme='light'] { --viz-1: #2a78d6; --viz-2: #eb6834; --viz-3: #1baf7a; --viz-4: #eda100; --viz-5: #e87ba4; --viz-6: #008300; --viz-7: #6250d6; --viz-8: #e34948; }
+@media (prefers-color-scheme: dark) { :root:where(:not([data-theme='light'])) { --viz-1: #3987e5; --viz-2: #d95926; --viz-3: #199e70; --viz-4: #c98500; --viz-5: #d55181; --viz-6: #008300; --viz-7: #9085e9; --viz-8: #e66767; } }
+:root[data-theme='dark'] { --viz-1: #3987e5; --viz-2: #d95926; --viz-3: #199e70; --viz-4: #c98500; --viz-5: #d55181; --viz-6: #008300; --viz-7: #9085e9; --viz-8: #e66767; }
+.viz { position: relative; margin: 6px 0; width: 100%; min-width: 0; overflow: hidden; }
+.grid2 > *, .grid3 > *, .bi-build > *, .bi-board > * { min-width: 0; }
+.viz svg { display: block; overflow: visible; }
+.viz-grid { stroke: var(--line); stroke-width: 1; }
+.viz-base { stroke: var(--line-strong); stroke-width: 1; }
+.viz-cross { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 3 3; }
+.viz-axis, .viz-label, .viz-value { font-size: 11px; fill: var(--text-3); }
+.viz-label { fill: var(--text-2); font-size: 12px; }
+.viz-value { fill: var(--text-2); }
+.viz-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text-2); margin-bottom: 4px; }
+.viz-legend i, .viz-tip i.sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.viz-tip { position: absolute; pointer-events: none; background: var(--card); border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 9px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12); min-width: 140px; z-index: 5; color: var(--text); }
+.bi-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 14px; }
+.bi-card.small { align-self: start; }
+.bi-number { padding: 18px 4px; } .bi-number .v { font-size: 34px; font-weight: 700; letter-spacing: -.02em; }
+.bi-build { display: grid; grid-template-columns: 300px 1fr; gap: 14px; align-items: start; }
+@media (max-width: 900px) { .bi-build { grid-template-columns: 1fr; } .bi-board { grid-template-columns: 1fr; } }
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.kpi .v { font-size: 24px; font-weight: 700; margin: 2px 0; }
+.text-green { color: var(--green); }
+.pub-card .sig-pad { max-width: 560px; }

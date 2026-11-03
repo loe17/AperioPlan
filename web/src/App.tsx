@@ -55,6 +55,12 @@ const MyHrPage = lazy(() => import('./pages/Hr').then((m) => ({ default: m.MyHrP
 const PublicJobPage = lazy(() => import('./pages/Hr').then((m) => ({ default: m.PublicJobPage })));
 const TrainingPage = lazy(() => import('./pages/Training'));
 const FleetPage = lazy(() => import('./pages/Fleet'));
+const ApprovalsPage = lazy(() => import('./pages/Approvals'));
+const EsignPage = lazy(() => import('./pages/Esign'));
+const PublicSignPage = lazy(() => import('./pages/Esign').then((m) => ({ default: m.PublicSignPage })));
+const BiPage = lazy(() => import('./pages/Bi'));
+const StudioPage = lazy(() => import('./pages/Studio'));
+const SustainabilityPage = lazy(() => import('./pages/Sustainability'));
 const TimePage = lazy(() => import('./pages/Time'));
 const AbsencesPage = lazy(() => import('./pages/Absences'));
 const CalendarPage = lazy(() => import('./pages/Calendar'));
@@ -83,6 +89,7 @@ export function App() {
   if (location.pathname.startsWith('/support')) return <Suspense fallback={<Loading />}><PublicSupportPage /></Suspense>;
   if (location.pathname.startsWith('/book/')) return <Suspense fallback={<Loading />}><PublicBookingPage /></Suspense>;
   if (location.pathname.startsWith('/event/')) return <Suspense fallback={<Loading />}><PublicEventPage /></Suspense>;
+  if (location.pathname.startsWith('/sign/')) return <Suspense fallback={<Loading />}><PublicSignPage /></Suspense>;
   if (location.pathname.startsWith('/jobs/')) return <Suspense fallback={<Loading />}><PublicJobPage /></Suspense>;
   if (location.pathname.startsWith('/s/')) {
     return <I18nProvider lang={lang}><Suspense fallback={<Loading />}><SharePage /></Suspense></I18nProvider>;
@@ -135,6 +142,11 @@ export function App() {
             <Route path="/my-hr" element={<MyHrPage />} />
             <Route path="/training" element={<TrainingPage />} />
             <Route path="/fleet" element={<FleetPage />} />
+            <Route path="/approvals" element={<ApprovalsPage />} />
+            <Route path="/esign" element={<EsignPage />} />
+            <Route path="/bi" element={<BiPage />} />
+            <Route path="/studio" element={<StudioPage />} />
+            <Route path="/sustainability" element={<SustainabilityPage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="/knowledge/:id" element={<KnowledgePage />} />
             <Route path="/mindmaps" element={<MindmapsPage />} />

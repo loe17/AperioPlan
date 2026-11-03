@@ -11,6 +11,7 @@ import { Icon } from '../components/Icon';
 import { CustomerPicker } from '../modules/CrmShared';
 import { useAdminSettings } from './Settings';
 import { NewJob } from './Service';
+import { CustomFields } from '../modules/CustomFields';
 
 type Tab = 'tickets' | 'canned' | 'settings';
 export const HD_STATUS: Record<string, [string, string]> = { new: ['neu', 'red'], open: ['offen', 'blue'], waiting: ['wartet auf Kunde', 'amber'], solved: ['gelöst', 'green'], closed: ['geschlossen', ''] };
@@ -146,6 +147,7 @@ function TicketPanel({ id, onClose }: { id: string; onClose: () => void }) {
         <button className="btn sm" onClick={() => setJob(true)}><Icon name="tools" /> Service-Einsatz planen</button>
         {t.jobs.map((j: any) => <a key={j.id} className="pill small" href={`/service?job=${j.id}`}>{j.number}</a>)}
       </div>}
+      <CustomFields entity="ticket" id={t.id} />
       <div className="hd-thread">{t.messages.map((m: any) => (
         <div key={m.id} className={`hd-msg ${m.userId ? 'staff' : 'customer'} ${m.internal ? 'internal' : ''}`}>
           <div className="small muted">{m.author} · {fmtDateTime(m.createdAt)}{m.internal ? ' · interne Notiz' : ''}</div>

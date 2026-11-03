@@ -53,10 +53,15 @@ describe('Spesen', () => {
 describe('Einsatzplanung', () => {
   it('Schichten planen, kopieren, veröffentlichen, offene Schicht übernehmen', async () => {
     const { client: anna, id: annaId } = await userClient(env.app, admin, 'anna.pl');
-    const mon = '2026-11-02';
+    // ein Montag in der Zukunft, damit „meine Schichten“ (ab heute) ihn enthalten
+    const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + 7); while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
+    const iso = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+    const mon = iso(d);
+    const tue = iso(new Date(d.getTime() + 86400000));
+    const nextMon = iso(new Date(d.getTime() + 7 * 86400000));
     await anna.post('/api/planning/shifts', { userId: annaId, date: mon, startTime: '06:00', endTime: '14:00' }, 403);
     await admin.post('/api/planning/shifts', { userId: annaId, date: mon, startTime: '06:00', endTime: '14:00', role: 'Frühschicht' });
-    await admin.post('/api/planning/shifts', { userId: null, date: '2026-11-03', startTime: '22:00', endTime: '06:00', role: 'Nacht' });
+    await admin.post('/api/planning/shifts', { userId: null, date: tue, startTime: '22:00', endTime: '06:00', role: 'Nacht' });
     let w = await anna.get(`/api/planning/week?from=${mon}`);
     expect(w.shifts).toHaveLength(0); // noch nicht veröffentlicht
     const pub = await admin.post('/api/planning/publish', { from: mon });
@@ -68,7 +73,7 @@ describe('Einsatzplanung', () => {
     await anna.post(`/api/planning/shifts/${open[0].id}/claim`, {});
     await admin.post(`/api/planning/shifts/${open[0].id}/claim`, {}, 400);
     expect((await anna.get('/api/planning/mine')).length).toBe(2);
-    const c = await admin.post('/api/planning/copy', { from: mon, to: '2026-11-09' });
+    const c = await admin.post('/api/planning/copy', { from: mon, to: nextMon });
     expect(c.copied).toBe(2);
   });
 });

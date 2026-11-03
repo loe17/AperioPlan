@@ -10,6 +10,7 @@ import { Confirm, Empty, ErrorBox, Field, Loading, Modal, Pill, Tabs, UserSelect
 import { Icon } from '../components/Icon';
 import { LabelButton, ScanButton, ScanModal, type Label } from '../modules/Scan';
 import { ReportModal } from './Maintenance';
+import { CustomFields } from '../modules/CustomFields';
 
 const STATUS_TONE: Record<string, string> = { active: 'green', repair: 'amber', retired: '', lost: 'red' };
 const today = () => isoDate(new Date());
@@ -236,6 +237,7 @@ function AssetPage({ id }: { id: string }) {
         <tr><td className="muted">Zuletzt gesehen</td><td>{a.lastSeenAt ? `${fmtDateTime(a.lastSeenAt)} (${a.lastSeenBy})` : '–'}</td></tr>
         {a.notes && <tr><td className="muted">Notizen</td><td style={{ whiteSpace: 'pre-wrap' }}>{a.notes}</td></tr>}
       </tbody></table>}
+      {tab === 'info' && <CustomFields entity="asset" id={id} />}
       {tab === 'inspections' && <div>
         <div className="toolbar"><span className="small muted">Wiederkehrende Prüfungen mit Erinnerung, z. B. DGUV V3 alle 24 Monate.</span>
           <button className="btn primary right" onClick={() => setInsp({ kind: INSPECTION_KINDS[0], intervalMonths: 24, nextDate: today(), responsibleId: a.holderId ?? '' })}><Icon name="plus" /> Prüfung</button></div>

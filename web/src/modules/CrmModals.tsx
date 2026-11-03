@@ -8,6 +8,7 @@ import { Confirm, Field, Modal, useAction } from '../components/ui';
 import { UserPicker } from '../components/UserPicker';
 import { Icon } from '../components/Icon';
 import { CASE_STATUS, CASE_TYPE, CustomerPicker, QUOTE_STATUS, STAGES, contactName, useContacts, type CrmContact } from './CrmShared';
+import { CustomFields } from './CustomFields';
 
 const toLocal = (d: Date) => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 16); };
 
@@ -43,6 +44,7 @@ export function ContactModal({ accountId, contact, onClose, onSaved }: { account
         <Field label="Hauptansprechpartner"><label className="row"><input type="checkbox" checked={Boolean(c.isPrimary)} onChange={(e) => setC({ ...c, isPrimary: e.target.checked })} /> ja</label></Field>
       </div>
       <Field label="Notizen"><textarea rows={2} value={c.notes ?? ''} onChange={set('notes')} /></Field>
+      {contact?.id && <CustomFields entity="crm_contact" id={contact.id} />}
       {confirm && contact && <Confirm danger text={`${contactName(contact)} löschen?`} onClose={() => setConfirm(false)} onConfirm={async () => { await act(() => del(`/crm/contacts/${contact.id}`), 'Gelöscht'); onSaved(); }} />}
     </Modal>
   );

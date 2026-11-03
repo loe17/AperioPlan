@@ -12,6 +12,7 @@ import { UserPicker } from '../components/UserPicker';
 import { CustomerPicker } from '../modules/CrmShared';
 import { InvoicePanel } from '../modules/Invoices';
 import { SignaturePad, type Stroke } from '../modules/Signature';
+import { CustomFields } from '../modules/CustomFields';
 
 export const SVC_STATUS: Record<string, [string, string]> = { planned: ['geplant', 'blue'], on_way: ['unterwegs', 'amber'], in_progress: ['vor Ort', 'amber'], done: ['erledigt', 'green'], invoiced: ['abgerechnet', ''], cancelled: ['storniert', ''] };
 const localInput = (iso: string | null) => (iso ? new Date(new Date(iso).getTime() - new Date(iso).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '');
@@ -145,6 +146,7 @@ function JobPanel({ id, onClose }: { id: string; onClose: () => void }) {
       </div>
       <Field label="Techniker"><UserPicker users={users} value={f.technicianIds} onChange={(ids) => setF({ ...f, technicianIds: ids })} /></Field>
       {j.description && <p className="muted small" style={{ whiteSpace: 'pre-wrap' }}>{j.description}</p>}
+      <CustomFields entity="service_job" id={id} readOnly={locked} />
       <fieldset className="plain" disabled={locked}>
         <h3 style={{ margin: '10px 0 4px' }}>Bericht</h3>
         <textarea rows={4} value={f.report} onChange={(e) => setF({ ...f, report: e.target.value })} placeholder="Was wurde gemacht? Befund, Ursache, Ergebnis …" />

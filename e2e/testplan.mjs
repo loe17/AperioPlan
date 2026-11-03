@@ -16,7 +16,7 @@ const results = [];
 const step = async (name, fn) => {
   const t = Date.now();
   try { await fn(); results.push({ name, ok: true, ms: Date.now() - t }); console.log(`[OK]     ${name}`); }
-  catch (e) { results.push({ name, ok: false, error: e.message }); console.log(`[FEHLER] ${name}: ${e.message.split('\n')[0]}`); }
+  catch (e) { results.push({ name, ok: false, error: e.message }); console.log(`[FEHLER] ${name}: ${e.message.split("\n").slice(0, 3).join(" | ")}`); if (process.env.E2E_SHOTS) await page.screenshot({ path: `${process.env.E2E_SHOTS}/fail-${name.split(" ")[0]}.png` }).catch(() => {}); }
 };
 const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
 
@@ -877,6 +877,63 @@ await step('14.15 Spesen, Einsatzplanung, Personal, Unterweisungen, Fuhrpark: Ab
   await page.locator('.slideover input[placeholder*="Kundentermin"]').fill('Montage beim Kunden');
   await page.click('.slideover button:has-text("Fahrt eintragen")');
   await page.waitForSelector('.slideover td:has-text("Montage beim Kunden")');
+});
+
+await step('14.16 Freigaben, E-Signatur, Auswertungen, Eigene Felder, Nachhaltigkeit: Antrag, Unterschrift, Bericht, Feld, CO₂', async () => {
+  for (const a of ['approvals', 'esign', 'bi', 'studio', 'sustainability']) await api('POST', `/apps/${a}/install`, {});
+  // Freigaben: allgemeinen Antrag stellen (Administrator ohne Teamleitung → genehmigt selbst als Geschäftsführung)
+  await page.goto(`${BASE}/approvals`);
+  await page.click('.page-head button.primary:has-text("Antrag")');
+  await page.click('.modal .card:has-text("Allgemeiner Antrag")');
+  await page.locator('.modal textarea').first().fill('Neuer Bürostuhl für die Konstruktion');
+  await page.click('.modal button.primary:has-text("Einreichen")');
+  await page.waitForSelector('.slideover >> text=Neuer Bürostuhl für die Konstruktion');
+  await page.click('.slideover button:has-text("Genehmigen")');
+  await page.waitForSelector('.slideover .pill:has-text("genehmigt")');
+  // E-Signatur: PDF hochladen, absenden, extern unterschreiben
+  const env = await page.evaluate(async (b) => { const f = new FormData(); for (const [k, v] of b.fields) f.append(k, v); f.append('file', new Blob([b.pdf]), 'abnahme.pdf'); const r = await fetch('/api/esign/envelopes', { method: 'POST', body: f }); return r.json(); },
+    { fields: [['title', 'Abnahmeprotokoll E2E'], ['signers', JSON.stringify([{ name: 'Kurt Kunde', email: 'kurt@kunde.de' }])]], pdf: '%PDF-1.4\n%%EOF' });
+  await page.goto(`${BASE}/esign?envelope=${env.id}`);
+  await page.click('.slideover button:has-text("Absenden")');
+  await page.waitForSelector('.slideover .pill:has-text("zur Unterschrift")');
+  const det = await api('GET', `/esign/envelopes/${env.id}`);
+  const ctx4 = await browser.newContext();
+  const p4 = await ctx4.newPage();
+  await p4.goto(det.signers[0].link.replace(/^https?:\/\/[^/]+/, BASE));
+  await p4.waitForSelector('h1:has-text("Abnahmeprotokoll E2E")');
+  await p4.locator('canvas').scrollIntoViewIfNeeded();
+  const c = await p4.locator('canvas').boundingBox();
+  await p4.mouse.move(c.x + 20, c.y + c.height / 2); await p4.mouse.down();
+  for (let i = 1; i <= 12; i++) await p4.mouse.move(c.x + 20 + i * 20, c.y + c.height / 2 + (i % 2 ? -12 : 12));
+  await p4.mouse.up();
+  await p4.locator('label:has-text("elektronisch") input').check();
+  await p4.click('button:has-text("Verbindlich unterschreiben")');
+  await p4.waitForSelector('text=Signaturprotokoll herunterladen');
+  await ctx4.close();
+  // Auswertung als Bericht speichern und in der Übersicht sehen
+  await page.goto(`${BASE}/bi?tab=build`);
+  await page.waitForSelector('.bi-result');
+  await page.click('.bi-controls button:has-text("Speichern")');
+  await page.locator('.modal input').first().fill('Stunden je Monat');
+  await page.click('.modal button.primary:has-text("Speichern")');
+  await page.click('.tabs button:has-text("Übersicht")');
+  await page.waitForSelector('.bi-card >> text=Stunden je Monat');
+  // Eigenes Feld am Kunden
+  await api('POST', '/custom-fields', { entity: 'crm_account', label: 'Kundenklasse', type: 'select', options: ['A', 'B', 'C'] });
+  const acc = await api('POST', '/crm/accounts', { name: 'Feldkunde E2E' });
+  await page.goto(`${BASE}/crm/${acc.id}`);
+  await page.locator('.cf-row:has-text("Kundenklasse") select').selectOption('B');
+  await page.waitForTimeout(400);
+  const vals = await api('GET', `/custom-values/crm_account/${acc.id}`);
+  if (vals.kundenklasse !== 'B') throw new Error('Eigenes Feld nicht gespeichert');
+  // Nachhaltigkeit: Stromverbrauch erfassen
+  await page.goto(`${BASE}/sustainability?tab=entries`);
+  await page.click('button.primary:has-text("Verbrauch")');
+  await page.locator('.modal input:not([type=date])').first().fill('12000');
+  await page.click('.modal button.primary:has-text("Speichern")');
+  await page.waitForSelector('td:has-text("12.000 kWh")');
+  await page.click('.tabs button:has-text("Übersicht")');
+  await page.waitForSelector('.kpi >> text=Scope 2');
 });
 
 await browser.close();

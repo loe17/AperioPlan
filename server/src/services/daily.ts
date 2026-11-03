@@ -7,6 +7,8 @@ import { contractsDaily } from '../routes/contracts';
 import { hrDaily } from '../routes/hr';
 import { trainingDaily } from '../routes/training';
 import { fleetDaily } from '../routes/fleet';
+import { esignDaily } from '../routes/esign';
+import { sustainabilityDaily } from '../routes/sustainability';
 
 export const DAILY_JOBS: [string, (ctx: AppContext) => Promise<unknown>][] = [
   ['Instandhaltung', maintenanceDaily],
@@ -15,6 +17,8 @@ export const DAILY_JOBS: [string, (ctx: AppContext) => Promise<unknown>][] = [
   ['Personal', hrDaily],
   ['Unterweisungen', trainingDaily],
   ['Fuhrpark', fleetDaily],
+  ['E-Signatur', esignDaily],
+  ['Nachhaltigkeit', sustainabilityDaily],
 ];
 
 export async function runDailyJobs(ctx: AppContext, log?: FastifyBaseLogger) {

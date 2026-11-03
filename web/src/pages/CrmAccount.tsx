@@ -15,6 +15,7 @@ import { CaseModal, ContactModal, MinutesModal, OpportunityModal, QuoteEditor } 
 import { CaseTable, QuoteTable, WonToProject } from './Crm';
 import { EventModal } from '../modules/EventModal';
 import { NewProjectDialog } from './Projects';
+import { CustomFields } from '../modules/CustomFields';
 
 type Tab = 'timeline' | 'contacts' | 'opportunities' | 'quotes' | 'invoices' | 'cases' | 'projects';
 
@@ -72,6 +73,7 @@ export default function CrmAccountPage() {
       {tab === 'invoices' && <InvoiceList accountId={a.id} />}
       {tab === 'cases' && <AccountCases accountId={a.id} />}
       {tab === 'projects' && <AccountProjects account={a} />}
+      {tab === 'timeline' && <CustomFields entity="crm_account" id={a.id} />}
       {a.notes && tab === 'timeline' && <div className="card flat" style={{ marginTop: 12 }}><div className="small muted">Notizen zum Kunden</div><div style={{ whiteSpace: 'pre-wrap' }}>{a.notes}</div></div>}
       {edit && <AccountModal initial={a} onClose={() => setEdit(false)} onSaved={() => { setEdit(false); void reload(); }} />}
       {remove && <Confirm danger text={`${a.name} mit allen Ansprechpartnern, Notizen und Protokollen löschen?`} onClose={() => setRemove(false)}

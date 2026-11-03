@@ -29,6 +29,7 @@ import { ProjectChat } from '../modules/ProjectChat';
 import { ProjectTime } from '../modules/ProjectTime';
 import { AiPanel } from '../modules/AiPanel';
 import { EntityIcon, Icon, IconPicker } from '../components/Icon';
+import { CustomFields } from '../modules/CustomFields';
 
 const TASK_VIEWS = ['kanban', 'list', 'gantt'];
 
@@ -219,6 +220,7 @@ function Overview({ project, tasks, onOpen }: { project: any; tasks: Task[]; onO
   return (
     <div className="stack">
       {project.description && <div className="card" style={{ whiteSpace: 'pre-wrap' }}>{project.description}</div>}
+      <CustomFields entity="project" id={project.id} readOnly={!project.canEdit} />
       <div className="card-grid">
         <div className="card">
           <div className="muted small">Fortschritt</div>

@@ -3,7 +3,7 @@
  * Nicht freigeschaltete Werkzeuge fehlen in der Seitenleiste und sind auch über die Schnittstelle gesperrt.
  */
 export const TOOLS = ['chat', 'mail', 'calendar', 'resources', 'time', 'absences', 'notes', 'kvp', 'cad', 'pcb', 'crm', 'purchasing', 'calculation', 'ai',
-  'meetings', 'phone', 'forms', 'board', 'viewer3d', 'mindmap', 'knowledge', 'inventory', 'warehouse', 'finance', 'payroll', 'maintenance', 'quality', 'manufacturing', 'plm', 'service', 'helpdesk', 'contracts', 'booking', 'events', 'expenses', 'planning', 'hr', 'training', 'fleet'] as const;
+  'meetings', 'phone', 'forms', 'board', 'viewer3d', 'mindmap', 'knowledge', 'inventory', 'warehouse', 'finance', 'payroll', 'maintenance', 'quality', 'manufacturing', 'plm', 'service', 'helpdesk', 'contracts', 'booking', 'events', 'expenses', 'planning', 'hr', 'training', 'fleet', 'approvals', 'esign', 'bi', 'studio', 'sustainability'] as const;
 export type Tool = (typeof TOOLS)[number];
 
 export const TOOL_LABELS: Record<Tool, string> = {
@@ -32,6 +32,11 @@ export const TOOL_LABELS: Record<Tool, string> = {
   warehouse: 'Lager',
   finance: 'Finanzbuchhaltung',
   payroll: 'Lohnabrechnung',
+  sustainability: 'Nachhaltigkeit',
+  studio: 'Eigene Felder',
+  bi: 'Auswertungen',
+  esign: 'E-Signatur',
+  approvals: 'Freigaben',
   fleet: 'Fuhrpark',
   training: 'Unterweisungen und Schulungen',
   hr: 'Personal',
@@ -83,6 +88,11 @@ export const NOTIFY_KINDS: { kind: string; label: string; app: boolean; mail: bo
   { kind: 'inventory', label: 'Inventar: Prüftermine und Übergaben', app: true, mail: true },
   { kind: 'warehouse', label: 'Lager: Mindestbestand unterschritten', app: true, mail: false },
   { kind: 'payroll', label: 'Lohnzettel bereitgestellt', app: true, mail: true },
+  { kind: 'sustainability', label: 'Nachhaltigkeit', app: true, mail: false },
+  { kind: 'studio', label: 'Eigene Felder', app: true, mail: false },
+  { kind: 'bi', label: 'Auswertungen', app: true, mail: false },
+  { kind: 'esign', label: 'E-Signatur: Unterschriften und abgeschlossene Vorgänge', app: true, mail: true },
+  { kind: 'approvals', label: 'Freigaben: Anträge zur Genehmigung und Entscheidungen', app: true, mail: true },
   { kind: 'fleet', label: 'Fuhrpark: HU, Wartung und Führerscheinkontrolle', app: true, mail: true },
   { kind: 'training', label: 'Unterweisungen: fällige Schulungen', app: true, mail: true },
   { kind: 'hr', label: 'Personal: Dokumente, Gespräche, Bewerbungen', app: true, mail: true },
