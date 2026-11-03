@@ -12,6 +12,7 @@ import { UserPicker } from '../components/UserPicker';
 import { useAdminSettings } from './Settings';
 
 const KIND: Record<string, string> = { car: 'Pkw', van: 'Transporter', truck: 'Lkw', trailer: 'Anhänger', other: 'Sonstiges' };
+const FUEL: Record<string, string> = { diesel: 'Diesel', benzin: 'Benzin', hybrid: 'Plug-in-Hybrid', electric: 'Elektro', gas: 'Gas' };
 const ENTRY: Record<string, string> = { fuel: 'Tanken', charge: 'Laden', service: 'Inspektion', repair: 'Reparatur', tires: 'Reifen', insurance: 'Versicherung', tax: 'Kfz-Steuer', leasing: 'Leasing', other: 'Sonstiges' };
 const TRIP: Record<string, string> = { business: 'dienstlich', private: 'privat', commute: 'Arbeitsweg' };
 const DAMAGE: Record<string, [string, string]> = { open: ['offen', 'red'], repaired: ['repariert', 'green'], closed: ['erledigt', ''] };
@@ -46,7 +47,7 @@ export default function FleetPage() {
           <tbody>{data.map((v) => (
             <tr key={v.id} className="click" onClick={() => setOpen(v.id)} style={!v.active ? { opacity: 0.5 } : undefined}>
               <td><b>{v.plate}</b>{v.openDamages > 0 && <span className="pill small red" style={{ marginLeft: 6 }}>{v.openDamages} Schaden</span>}</td>
-              <td>{[v.make, v.model].filter(Boolean).join(' ')}<div className="small muted">{KIND[v.kind]} · {v.fuel}</div></td>
+              <td>{[v.make, v.model].filter(Boolean).join(' ')}<div className="small muted">{KIND[v.kind]} · {FUEL[v.fuel] ?? v.fuel}</div></td>
               <td>{v.driverName ?? <span className="muted">Pool</span>}</td><td>{km(v.mileage)}</td>
               <td className={soon(v.nextHu) ? 'text-red' : ''}>{fmtDate(v.nextHu)}</td><td className={soon(v.nextService) ? 'text-red' : ''}>{fmtDate(v.nextService)}</td>
               <td>{fmtEuro2(v.cost12)}</td><td>{v.costPerKm != null ? v.costPerKm.toLocaleString('de-DE', { minimumFractionDigits: 2 }) : ''}</td>
@@ -148,7 +149,7 @@ function VehiclePanel({ id, onClose, onEdit }: { id: string; onClose: () => void
         ))}
       </>}
       {tab === 'info' && <table className="table small"><tbody>
-        {([['Art', KIND[v.kind]], ['Antrieb', v.fuel], ['Fahrgestellnummer', v.vin], ['Erstzulassung', fmtDate(v.firstRegistration)], ['Bruttolistenpreis', v.listPrice != null ? fmtEuro2(v.listPrice) : ''],
+        {([['Art', KIND[v.kind]], ['Antrieb', FUEL[v.fuel] ?? v.fuel], ['Fahrgestellnummer', v.vin], ['Erstzulassung', fmtDate(v.firstRegistration)], ['Bruttolistenpreis', v.listPrice != null ? fmtEuro2(v.listPrice) : ''],
           ['Eigentum', { owned: 'gekauft', leased: 'geleast', rented: 'gemietet' }[v.ownership as string]], ['Leasingende', fmtDate(v.leasingEnd)], ['Leasingrate', v.leasingRate != null ? fmtEuro2(v.leasingRate) : ''],
           ['Privatnutzung', v.privateUse ? 'ja' : 'nein'], ['Nächste HU', fmtDate(v.nextHu)], ['Nächste Inspektion', `${fmtDate(v.nextService)}${v.serviceKm ? ` / bei ${km(v.serviceKm)}` : ''}`], ['Versicherung', v.insurance], ['Notizen', v.notes]] as [string, string][])
           .filter(([, x]) => x).map(([k, x]) => <tr key={k}><td className="muted" style={{ width: 180 }}>{k}</td><td style={{ whiteSpace: 'pre-wrap' }}>{x}</td></tr>)}
@@ -177,7 +178,7 @@ function VehicleModal({ v, onClose, onDone }: { v: any; onClose: () => void; onD
         <Field label="Art"><select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{Object.entries(KIND).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></Field>
       </div>
       <div className="grid4">
-        <Field label="Antrieb"><select value={f.fuel} onChange={(e) => setF({ ...f, fuel: e.target.value })}>{['diesel', 'benzin', 'hybrid', 'electric', 'gas'].map((x) => <option key={x} value={x}>{{ diesel: 'Diesel', benzin: 'Benzin', hybrid: 'Plug-in-Hybrid', electric: 'Elektro', gas: 'Gas' }[x]}</option>)}</select></Field>
+        <Field label="Antrieb"><select value={f.fuel} onChange={(e) => setF({ ...f, fuel: e.target.value })}>{Object.entries(FUEL).map(([x, l]) => <option key={x} value={x}>{l}</option>)}</select></Field>
         <Field label="Erstzulassung"><input type="date" value={f.firstRegistration ?? ''} onChange={date('firstRegistration')} /></Field>
         <Field label="km-Stand"><input type="number" value={f.mileage ?? ''} onChange={num('mileage')} /></Field>
         <Field label="Fahrgestellnummer"><input value={f.vin} onChange={(e) => setF({ ...f, vin: e.target.value })} /></Field>

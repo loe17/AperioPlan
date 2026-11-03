@@ -1,6 +1,8 @@
 # AperioPlan – Handbuch für Anwender
 
-Willkommen bei AperioPlan! Diese Anleitung zeigt Schritt für Schritt, wie Sie im Alltag mit Projekten, Aufgaben, CAD-Daten, Zeiten und Urlaub arbeiten.
+Willkommen bei AperioPlan! Diese Anleitung zeigt Schritt für Schritt, wie Sie im Alltag mit Projekten, Aufgaben, CAD-Daten, Zeiten und Urlaub arbeiten – und was die Apps aus dem App-Store können.
+
+> **Welche Werkzeuge Sie sehen, legt Ihre Firma fest.** Jedes Werkzeug ist eine App, die der Administrator im App-Store einschaltet. Fehlt etwas in Ihrer Seitenleiste, ist die App nicht installiert oder für Sie nicht freigegeben.
 
 ---
 
@@ -23,7 +25,7 @@ Unter **Einstellungen → Profil** stellen Sie Sprache (Deutsch/Englisch) und Fa
 │  Meine Teams       │                                                      │
 │  Werkzeuge         │                 Arbeitsbereich                       │
 │                    │                                                      │
-│ v1.1.0 ● Verbunden │                                                      │
+│ v0.2.0 ● Verbunden │                                                      │
 └────────────────────┴──────────────────────────────────────────────────────┘
 ```
 
@@ -212,6 +214,84 @@ Falls eingerichtet, erscheint im Projekt der Knopf **KI**:
 * **Frage stellen:** freie Fragen zum Projekt.
 
 Der Assistent sieht nur Daten, auf die Sie selbst Zugriff haben.
+
+## 11a. Apps aus dem App-Store
+
+Die folgenden Apps erscheinen in der Seitenleiste, sobald Ihre Firma sie installiert hat. Fast überall gilt: **Klick auf eine Zeile öffnet rechts die Details**, Änderungen erscheinen bei allen Kollegen sofort, und die Glocke meldet, wenn Sie etwas tun müssen.
+
+### Zusammenarbeit und Wissen
+
+* **Meetings:** Videokonferenz planen, Gäste treten ohne Konto über einen Link bei und warten, bis Sie sie hereinlassen.
+* **Telefonie:** Anrufe über die Firmen-Telefonanlage am PC führen; bekannte Anrufer werden aus dem CRM erkannt.
+* **Formulare:** Umfragen und Formulare erstellen, intern oder per Link verteilen, Ergebnisse auswerten.
+* **Schwarzes Brett:** Mitteilungen an alle und ein interner Marktplatz.
+* **Mindmaps** und **Wissensdatenbank:** Ideen sammeln; Anleitungen und Abläufe der Firma an einem Ort.
+* **3D-Viewer:** 3D-Modelle direkt im Browser drehen und ansehen.
+
+### Freigaben (Anträge)
+
+**Freigaben → Antrag:** Art wählen (z. B. *Anschaffung*, *Weiterbildung*, *Allgemeiner Antrag*), Felder ausfüllen, bei Bedarf Angebot anhängen, **Einreichen**. Wer genehmigen muss – meist Ihre Teamleitung, bei höheren Beträgen zusätzlich die Geschäftsführung – bekommt eine Nachricht. Den Stand sehen Sie unter **Meine Anträge**; offene Anträge können Sie zurückziehen.
+
+Genehmigen Sie selbst Anträge, finden Sie diese unter **Zu genehmigen**. Bei einer Ablehnung ist eine kurze Begründung Pflicht.
+
+![Freigaben](screenshots/36-freigaben.png)
+
+### E-Signatur
+
+**E-Signatur → Dokument zur Unterschrift:** PDF wählen, Unterzeichner eintragen (Kollegen oder Externe mit E-Mail), auf Wunsch „nacheinander“ ankreuzen, **Anlegen** und dann **Absenden**. Jeder Unterzeichner erhält einen persönlichen Link, sieht das Dokument und unterschreibt mit Maus, Finger oder Stift. Nach der letzten Unterschrift bekommen alle das Dokument mit **Signaturprotokoll** per E-Mail.
+
+Liegt etwas für Sie zum Unterschreiben bereit, steht es oben auf der Seite E-Signatur und in der Glocke.
+
+![Unterschreiben im Browser](screenshots/38-e-signatur.png)
+
+> Die E-Signatur ist eine *einfache elektronische Signatur*. Sie genügt für Angebote, Aufträge, Abnahmen und die meisten Verträge – nicht aber, wo das Gesetz die Schriftform verlangt (z. B. Kündigung eines Arbeitsvertrags).
+
+### Auswertungen
+
+**Auswertungen → Bericht:** Datenquelle wählen (z. B. Arbeitszeiten, Aufgaben, Verkaufschancen, Umsatz), dann **Kennzahl**, **Gruppiert nach** (Monat, Projekt, Mitarbeiter …) und den **Zeitraum**. Mit **Unterteilt nach** bekommt jeder Wert eine eigene Farbe. Darstellung als Säulen, Balken, Linie, Tabelle oder große Kennzahl. **Speichern** heftet den Bericht an die Übersicht, **Excel** lädt die Zahlen herunter. Sie sehen nur Daten, die Sie auch im jeweiligen Werkzeug sehen dürfen.
+
+![Auswertungen](screenshots/34-auswertungen.png)
+
+### Eigene Felder
+
+Hat Ihre Firma eigene Felder angelegt (z. B. *Kostenstelle* am Projekt oder *Kundenklasse* am Kunden), erscheinen sie im Datensatz unter **Weitere Angaben**. Eingaben werden beim Verlassen des Feldes gespeichert.
+
+### Kunden und Service
+
+* **Kundenanfragen:** Anfragen aus dem Web-Formular, per E-Mail oder Telefon als Ticket mit Nummer. Antworten gehen per E-Mail an den Kunden; interne Notizen sieht nur das Team. Oben zeigt die Übersicht, wie viele Anfragen offen sind und wie schnell geantwortet wird.
+* **Service-Einsätze:** Einsatz planen, vor Ort **Losfahren → Vor Ort**, Arbeitszeit und Material eintragen, den Kunden auf dem Tablet unterschreiben lassen. Der Servicebericht entsteht als PDF, die Rechnung als Entwurf.
+* **Wartungsverträge:** wiederkehrende Leistungen; Rechnungen entstehen automatisch zum Fälligkeitstag.
+* **Terminbuchung:** Kunden buchen über Ihren Link freie Termine; belegte Zeiten aus Ihrem Kalender und Urlaub sind gesperrt.
+* **Messen und Veranstaltungen:** Planung, Standkontakte erfassen und ins CRM übernehmen, Anmeldungen über eine öffentliche Seite.
+
+![Service-Einsatz](screenshots/32-service-einsatz.png)
+
+### Produktion
+
+* **Instandhaltung:** Wartungspläne für Maschinen; **Störung melden** direkt am Gerät im Inventar oder per QR-Code.
+* **Qualität:** Prüfpläne, Prüfprotokolle mit Messwerten, Messmittel mit Kalibrierfristen, 8D-Reports.
+* **Fertigung:** Fertigungsaufträge aus der Stückliste, Arbeitsgänge an der Maschine zurückmelden.
+* **Änderungsmanagement:** Änderungsantrag zu einem Teil stellen, prüfen lassen, freigeben.
+
+### Personal
+
+* **Spesen und Reisekosten:** Für jede Reise eine Abrechnung anlegen, Beginn und Ende eintragen (die Verpflegungspauschale rechnet AperioPlan aus), Belege fotografieren, Kilometer erfassen, **Einreichen**. Die Teamleitung gibt frei, die Buchhaltung zahlt aus.
+* **Einsatzplanung:** Ihre Schichten der Woche; offene Schichten können Sie mit **Übernehmen** selbst belegen.
+* **Meine Unterlagen:** Dokumente aus Ihrer Personalakte, die für Sie freigegeben sind, geteilte Gesprächsprotokolle mit Zielen (abhakbar) und Ihre Qualifikationen.
+* **Unterweisungen:** Fällige Pflichtunterweisungen öffnen, Inhalt lesen, Verständnisfragen beantworten und **Teilnahme bestätigen** – der Nachweis entsteht automatisch.
+* **Meine Lohnzettel:** Ihre Lohn- und Gehaltsabrechnungen als PDF.
+
+![Einsatzplanung](screenshots/31-einsatzplanung.png)
+
+### Lager, Fahrzeuge, Finanzen
+
+* **Lager:** Bestände je Lagerort, Zugang, Entnahme und Umlagern, Etiketten mit QR-Code.
+* **Inventar:** Geräte und Maschinen mit Prüfterminen, Übergabe an Mitarbeiter, Abschreibung.
+* **Fuhrpark:** Fahrten ins elektronische Fahrtenbuch eintragen (Beginn, Ende, Zweck), Tankbelege und Schäden melden. Das Fahrtenbuch lässt sich nachträglich nicht ändern – nur die letzte Fahrt der vergangenen 7 Tage kann gelöscht werden.
+* **Rechnungen und Finanzen:** für die Buchhaltung – Rechnungen als E-Rechnung, Eingangsrechnungen freigeben, Zahlungen zuordnen, Mahnungen.
+* **Nachhaltigkeit:** Strom-, Gas- und Kraftstoffverbrauch und daraus die CO₂-Bilanz je Monat, Projekt und Standort.
+
+![Fuhrpark](screenshots/37-fuhrpark.png)
 
 ## 12. Tastenkürzel
 

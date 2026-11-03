@@ -66,6 +66,30 @@ docker compose logs -f app
 
 Alle Dienste laufen getrennt voneinander und beeinflussen keine anderen Programme auf dem Server.
 
+## 3a. App-Store: Werkzeuge ein- und ausschalten
+
+Jedes Werkzeug ist eine **App**. Eine neue Installation startet bewusst schlank – nur mit **Chat** und **E-Mail**. Alles Weitere schaltet der Administrator unter **App-Store** (Seitenleiste bzw. `/apps`) mit einem Klick ein:
+
+* **Installieren** legt die App für die ganze Firma an; sie erscheint in der Seitenleiste aller Benutzer, die das Werkzeug nutzen dürfen (Einstellungen → Benutzer bzw. Standard-Werkzeuge je Abteilung).
+* **Entfernen** blendet die App aus. **Daten bleiben erhalten** und sind nach erneutem Installieren wieder da.
+* Manche Apps bauen auf anderen auf (z. B. Wartungsverträge auf CRM, Terminbuchung auf Kalender). Der App-Store weist darauf hin und installiert die Voraussetzung mit.
+* Wer von 0.1.x aktualisiert, behält alle bisher festen Werkzeuge (Kalender, Zeiterfassung, CAD-Bridge, CRM …) eingeschaltet.
+* Eigene Erweiterungen lassen sich als ZIP hochladen (**Plugin hochladen**), siehe Entwickler-Handbuch.
+
+| Bereich | Apps |
+|---|---|
+| Zusammenarbeit | Kalender, Schwarzes Brett, Formulare, Mindmaps |
+| Kommunikation | Chat und Videoanrufe, Meetings (mit Gast-Link), Telefonie, E-Mail |
+| Kunden & Verkauf | CRM, Kalkulation, Kundenanfragen, Wartungs- und Serviceverträge, Terminbuchung, Messen und Veranstaltungen, E-Signatur |
+| Produktion & Service | Instandhaltung, Qualität, Fertigung, Service-Einsätze |
+| Technik | CAD-Bridge, PCB-Bridge, 3D-Viewer, Änderungsmanagement |
+| Lager & Material | Einkauf, Lager, Inventar, Ressourcen, Fuhrpark |
+| Personal | Zeiterfassung, Urlaub, Lohnabrechnung, Spesen und Reisekosten, Einsatzplanung, Personal, Unterweisungen und Schulungen |
+| Finanzen | Finanzbuchhaltung, Nachhaltigkeit |
+| Wissen & Organisation | Notizen, Wissensdatenbank, KVP-Ideenbox, Freigaben, Auswertungen, Eigene Felder, KI-Assistent |
+
+Was nach dem Installieren einzurichten ist, steht in [Abschnitt 13a](#13a-einrichtung-der-apps).
+
 ## 4. Erreichbarkeit und HTTPS-Zertifikat
 
 AperioPlan wird immer über `https://` aufgerufen – im Internet genauso wie im lokalen Netz. `install.sh` bietet drei Wege an:
@@ -159,6 +183,7 @@ Dateien, die Mitarbeiter direkt im Windows-Explorer in Projektordner legen, ersc
 * Projektnummern fortlaufend (`0100`, `0200` …) oder mit Jahreszahl (`PRJ-2026-0042`).
 * Teilprojekte erhalten automatisch Buchstaben (`0100-A`, `0100-B`), Dokumente laufende Nummern (`0100-DOK-001`).
 * Welche Werkzeuge (Kanban, Gantt, Whiteboard, CAD …) bei neuen Projekten sofort aktiv sind.
+* Nummernkreise der installierten Apps, z. B. Rechnungen `RE-{JJJJ}-{NNNN}`, Tickets `T{JJ}-{NNNNN}`, Anträge `FG-{JJ}-{NNNN}`, Unterschriftsvorgänge `ES-{JJ}-{NNNN}`. Platzhalter: `{JJJJ}`/`{JJ}` Jahr, `{NNNN}` laufende Nummer mit fester Stellenzahl. Rechnungsnummern werden lückenlos erst beim Festschreiben vergeben.
 
 ## 8. CAD-Zentrale und Speichermaske
 
@@ -217,7 +242,9 @@ Datenbank, Dateien, Sicherungen und Einstellungen bleiben unberührt. Die Versio
 
 Manuell geht es auch: `git pull && docker compose up -d --build app`.
 
-> **Von Version 1.0 auf 1.1:** Die Datei `deploy/Caddyfile` wird jetzt vom Installationsskript erzeugt. Nach der Aktualisierung bitte einmal `sudo ./install.sh` ausführen (vorhandene `.env` behalten) – dabei wird auch die verschlüsselte Verbindung neu eingerichtet.
+> **Von 0.1.x auf 0.2.0:** Die Aktualisierung richtet die Datenbank für alle neuen Apps ein. Bisher genutzte Werkzeuge bleiben eingeschaltet; die neuen Apps erscheinen im App-Store und werden erst nach dem Installieren sichtbar. Weitere Schritte sind nicht nötig.
+>
+> **Hinweis zu älteren Versionsnummern:** Frühere Testfassungen hießen 1.0 und 1.1. Sie entsprechen dem Stand 0.1.x; die Zählung beginnt seitdem bei 0.x, bis die erste offizielle Fassung 1.0.0 erscheint.
 
 ## 12. Ausfallsicherheit
 
@@ -259,6 +286,33 @@ docker compose --profile video up -d
 ### Plugins und Webhooks
 
 Siehe `docs/ENTWICKLER.md`.
+
+## 13a. Einrichtung der Apps
+
+Die meisten Apps funktionieren sofort. Wer zusätzlich zum Administrator verwalten darf, wird jeweils im Reiter **Einstellungen** der App eingetragen. Jeden Morgen laufen die **täglichen Aufgaben** aller installierten Apps (Erinnerungen, fällige Termine, Rechnungen aus Verträgen); im Protokoll des Servers steht, was erledigt wurde.
+
+| App | Einrichten | Gut zu wissen |
+|---|---|---|
+| **Rechnungen (CRM)** | Einstellungen → Allgemein → Briefkopf: Firmenname, Anschrift, USt-IdNr. oder Steuernummer, Bankverbindung | Rechnungen entstehen als E-Rechnung (ZUGFeRD, für Behörden XRechnung). Festgeschriebene Rechnungen sind unveränderbar; Korrektur nur per Gutschrift/Storno. |
+| **Finanzbuchhaltung** | Freigabegrenze und Freigeber für Eingangsrechnungen, Kontenrahmen (SKR 03 oder SKR 04) und DATEV-Berater-/Mandantennummer, Soll- oder Ist-Versteuerung | Kontoauszüge als CAMT (XML) oder CSV der gängigen Banken einlesen; Übergabe an den Steuerberater im DATEV-Format. Die Umsatzsteuer-Voranmeldung selbst wird weiter über ELSTER bzw. den Steuerberater abgegeben. |
+| **Lohnabrechnung** | Lohnbuchhalter eintragen, Personalstammdaten (Steuerklasse, Krankenkasse, Beitragsgruppen) je Mitarbeiter | Lohnsteuer nach dem amtlichen Programmablaufplan 2026, Sozialversicherung mit Midi- und Minijob. Ergebnis: Lohnzettel, Lohnjournal, DATEV-Buchungen, SEPA-Datei. **Lohnsteueranmeldung und SV-Meldungen werden nicht übermittelt** – dafür bleibt ein zertifiziertes Programm oder der Steuerberater zuständig. Die Werte bitte in den ersten Monaten mit einer bestehenden Abrechnung vergleichen. |
+| **Instandhaltung, Qualität, Fertigung, Änderungen** | Verantwortliche je App; Nummernkreise | Störungen lassen sich per QR-Code am Gerät (Inventar) melden. |
+| **Service-Einsätze** | Stundensatz, Kilometerpauschale, E-Mail-Text | Bericht mit Unterschrift des Kunden als PDF, danach Rechnungsentwurf mit einem Klick. |
+| **Kundenanfragen** | Reaktionszeiten je Priorität, Kategorien, Absender-Adresse | Öffentliches Formular unter `/support`; Kunden verfolgen ihr Ticket über einen persönlichen Link. |
+| **Wartungsverträge** | Nummernkreis | Erzeugt fällige Rechnungen automatisch am Morgen und warnt vor Kündigungsfristen. |
+| **Terminbuchung** | Terminarten mit Dauer, Puffer und Verfügbarkeit | Buchungsseite `/book/<name>` berücksichtigt Kalender und Abwesenheiten. |
+| **Spesen** | Freigeber (sonst Teamleitung), Buchhaltung, Kilometergeld | Verpflegungspauschalen nach den Inlandssätzen; Auslandsreisen bitte als Beleg erfassen. |
+| **Einsatzplanung** | Planer (zusätzlich Teamleitungen) | Mitarbeiter sehen nur veröffentlichte Schichten. |
+| **Personal** | Personalverantwortliche, Löschfrist für Bewerbungen (üblich 6 Monate), Dokumentarten | Personalakten sehen nur Administratoren und Personalverantwortliche. Stellenanzeigen unter `/jobs/<link>`; Bewerbungen werden nach Absage automatisch gelöscht. |
+| **Unterweisungen** | Schulungsverantwortliche | Fällige Unterweisungen erinnern 30 Tage vorher; Nachweis als Excel. |
+| **Fuhrpark** | Fuhrparkverantwortliche, Intervall der Führerscheinkontrolle | Fahrtenbuch lückenlos und nachträglich nicht änderbar; geldwerter Vorteil nach 1-%-Regel (E-Auto 0,25 %, Plug-in-Hybrid 0,5 %) als Hinweis. |
+| **Freigaben** | Antragsarten mit Feldern, Stufen und Wertgrenzen; Verwalter | Ohne Teamleitung genehmigen Administratoren. |
+| **E-Signatur** | Erinnerung nach Tagen, Gültigkeit der Links | **Einfache elektronische Signatur:** gezeichnete Unterschrift, Zeitpunkt, IP-Adresse und SHA-256-Prüfsumme des Dokuments im Signaturprotokoll. Nicht ausreichend, wo das Gesetz Schriftform verlangt. Ohne eingerichteten E-Mail-Versand lassen sich die Links auch kopieren und selbst weitergeben. |
+| **Auswertungen** | – | Jeder sieht nur Daten, die er auch im jeweiligen Werkzeug sehen darf (z. B. eigene Arbeitszeiten). Berichte für alle freigeben dürfen Administratoren. |
+| **Eigene Felder** | Felder für Projekte, Kunden, Kontakte, Lagerartikel, Inventar, Tickets und Service-Einsätze | Erscheinen im Datensatz unter „Weitere Angaben“. |
+| **Nachhaltigkeit** | Verantwortliche, Basisjahr und Minderungsziel | Emissionsfaktoren vorbelegt (Umweltbundesamt: Strommix 2024 353 g/kWh, Verkehrsmittel; BAFA/KfW-Merkblatt CO₂-Faktoren: Erdgas, Heizöl, Diesel, Benzin, Fernwärme). Bei Ökostrom den Faktor des Versorgers eintragen. Tankbelege aus dem Fuhrpark und Dienstfahrten aus den Spesen werden nachts übernommen. |
+
+Öffentliche Seiten ohne Anmeldung – `/support`, `/book/…`, `/event/…`, `/jobs/…`, `/sign/…` – sind gegen massenhafte Anfragen begrenzt und funktionieren nur, solange die zugehörige App installiert ist. Damit Links in E-Mails stimmen, muss in der `.env` die Adresse `PUBLIC_URL` gesetzt sein (das Installationsskript erledigt das).
 
 ## 14. Änderungsprotokoll
 

@@ -34,18 +34,23 @@ Der Name kommt vom lateinischen *aperio* – „ich öffne, mache sichtbar“. A
 
 ## Was AperioPlan kann
 
-| Bereich | Das steckt drin |
+Jedes Werkzeug ist eine **App**. Eine neue Installation startet schlank mit **Chat** und **E-Mail**; alles Weitere schaltet der Administrator im **App-Store** mit einem Klick ein – und wieder aus, ohne dass Daten verloren gehen.
+
+![App-Store](docs/screenshots/30-app-store.png)
+
+| Bereich | Apps |
 |---|---|
-| **Projekte** | Automatische Projektnummern (z. B. `0100`, Teilprojekte `0100-A`), Ordnerstruktur, Symbol und Farbe je Projekt, Favoriten, Teams und Abteilungen |
-| **Aufgaben** | Kanban-Board, Aufgabenliste, Gantt-Diagramm mit Abhängigkeiten und Meilensteinen, Kommentare mit @Erwähnungen, Whiteboard, Abschlussbericht |
-| **Dateien** | Versionen statt Überschreiben, Sperren, Vorschau, Netzlaufwerk (NAS), Freigabelinks für Kunden und Lieferanten, Office im Browser |
-| **CAD-Zentrale** | SolidWorks-Anbindung, Nummern wie `0100-100-00-0000-00`, Speichermaske, Aus- und Einchecken, Versionsstände, Stücklisten, „Wo verbaut?“, Freigabe mit PDF/DXF/STEP |
-| **Ressourcen** | Räume, Firmenwagen und Geräte buchen – ohne Doppelbuchungen, mit Genehmigung, Serienterminen und Vorschlägen für freie Alternativen |
-| **Zeit und Urlaub** | Stempeluhr, Korrekturanfragen, Urlaubskonto mit Feiertagen aller Bundesländer, Teamkalender, der nur „abwesend“ zeigt |
-| **Kommunikation** | Chat für Projekte und Teams, Videoanrufe mit Bildschirmfreigabe, E-Mail-Postfach mit automatischer Projektzuordnung |
-| **Verbesserung** | KVP-Ideenbox mit Einsparpotenzial und Entscheidung, KI-Assistent (lokal oder extern) |
-| **Betrieb** | Verschlüsselte Nacht-Sicherung, Wiederherstellung mit Duplikaterkennung, Ein-Klick-Aktualisierung, revisionssicheres Änderungsprotokoll, Firmen-Login (Active Directory) |
-| **Komfort** | Strg + K-Blitzsuche, Hell- und Dunkelmodus, eigener Symbolsatz, Smartphone-tauglich, Erweiterungen (Plugins) und Webhooks |
+| **Projekte** *(immer dabei)* | Automatische Projektnummern (`0100`, Teilprojekte `0100-A`), Kanban, Aufgabenliste, Gantt mit Abhängigkeiten, Whiteboard, Dateien mit Versionen und Freigabelinks, Office im Browser, Abschlussbericht |
+| **Zusammenarbeit** | Kalender mit Outlook-/Google-Abgleich, Schwarzes Brett mit Marktplatz, Formulare und Umfragen, Mindmaps |
+| **Kommunikation** | Chat und Videoanrufe, Meetings mit Gast-Link und Warteraum, Telefonie über die Telefonanlage, E-Mail-Postfach mit Projektzuordnung |
+| **Kunden & Verkauf** | CRM mit Angeboten, Rechnungen als E-Rechnung (ZUGFeRD/XRechnung) und Reklamationen, Kalkulation, Kundenanfragen (Tickets), Wartungsverträge mit automatischer Rechnung, Terminbuchung per Link, Messen und Veranstaltungen, E-Signatur |
+| **Produktion & Service** | Instandhaltung mit Störmeldung per QR-Code, Qualität (Prüfpläne, Messmittel, 8D), Fertigungsaufträge, Service-Einsätze mit Unterschrift des Kunden |
+| **Technik** | CAD-Bridge für SolidWorks (Nummern, Speichermaske, Aus-/Einchecken, Stücklisten, Freigabe mit PDF/DXF/STEP), PCB-Bridge für KiCad, 3D-Viewer, Änderungsmanagement |
+| **Lager & Material** | Einkauf, Lager mit Lagerorten und Chargen, Inventar mit Prüfterminen, Ressourcen (Räume, Fahrzeuge, Geräte), Fuhrpark mit Fahrtenbuch |
+| **Personal** | Zeiterfassung mit gesetzlichen Regeln, Urlaub, Lohnabrechnung (Lohnsteuer nach PAP 2026), Spesen, Einsatzplanung, Personalakte mit Bewerbungen, Unterweisungen mit Nachweis |
+| **Finanzen** | Eingangsrechnungen mit Freigabe, Kontoauszug-Abgleich, Zahlungslauf, Mahnwesen, DATEV-Übergabe, CO₂-Bilanz |
+| **Wissen & Organisation** | Notizen, Wissensdatenbank, KVP-Ideenbox, Freigaben (Anträge), Auswertungen mit Diagrammen, eigene Felder, KI-Assistent (lokal oder extern) |
+| **Betrieb** | Verschlüsselte Nacht-Sicherung, Wiederherstellung mit Duplikaterkennung, Ein-Klick-Aktualisierung, revisionssicheres Änderungsprotokoll, Firmen-Login (Active Directory), Strg + K-Blitzsuche, Hell- und Dunkelmodus, Plugins und Webhooks |
 
 ## Bildschirmfotos
 
@@ -60,6 +65,10 @@ Alle Bilder zeigen erfundene Beispieldaten.
 | ![Zeiterfassung](docs/screenshots/11-zeiterfassung.png) **Zeiterfassung** – Stempeluhr und Wochenübersicht | ![Teamkalender](docs/screenshots/12-teamkalender.png) **Teamkalender** – wer wann da ist, ohne Gründe zu verraten |
 | ![Chat](docs/screenshots/13-chat.png) **Projekt-Chat** – mit Anhängen, Erwähnungen und Videoanruf | ![KVP](docs/screenshots/14-kvp.png) **KVP-Ideenbox** – Verbesserungsvorschläge mit Einsparpotenzial |
 | ![Blitzsuche](docs/screenshots/15-blitzsuche.png) **Blitzsuche** – Strg + K findet Projekte, Teile, Aufgaben, Dateien und Kollegen | ![Symbole](docs/screenshots/16-teams-symbol.png) **Symbol und Farbe** – für jedes Projekt und Team |
+| ![Einsatzplanung](docs/screenshots/31-einsatzplanung.png) **Einsatzplanung** – Schichten per Klick, offene Schichten übernehmen | ![Service-Einsatz](docs/screenshots/32-service-einsatz.png) **Service-Einsatz** – Bericht vor Ort mit Unterschrift des Kunden |
+| ![Kundenanfragen](docs/screenshots/33-kundenanfragen.png) **Kundenanfragen** – Tickets mit Antwortzeiten | ![Auswertungen](docs/screenshots/34-auswertungen.png) **Auswertungen** – eigene Berichte und Diagramme |
+| ![Nachhaltigkeit](docs/screenshots/35-nachhaltigkeit.png) **Nachhaltigkeit** – CO₂-Bilanz nach Scope 1 bis 3 | ![Freigaben](docs/screenshots/36-freigaben.png) **Freigaben** – Anträge mit mehrstufiger Genehmigung |
+| ![Fuhrpark](docs/screenshots/37-fuhrpark.png) **Fuhrpark** – Fahrzeuge, Kosten und Termine | ![E-Signatur](docs/screenshots/38-e-signatur.png) **E-Signatur** – Kunden unterschreiben im Browser |
 | ![Dunkelmodus](docs/screenshots/21-dunkel-kanban.png) **Dunkelmodus** – folgt auf Wunsch automatisch dem Betriebssystem | ![Anmeldung](docs/screenshots/01-anmeldung.png) **Anmeldung** – mit Firmenname, auf Wunsch über Active Directory |
 
 ## Installation
@@ -143,7 +152,7 @@ Von Hand im Programmordner:
 sudo git pull && sudo docker compose up -d --build
 ```
 
-> **Von 1.0 auf 1.1:** Nach der Aktualisierung einmal `sudo ./install.sh` ausführen und die vorhandene `.env` behalten. Dabei wird die neue, immer verschlüsselte Verbindung eingerichtet.
+> **Von 0.1.x auf 0.2.0:** Bisher genutzte Werkzeuge bleiben eingeschaltet. Die neuen Apps stehen im App-Store bereit und erscheinen erst, wenn der Administrator sie installiert.
 
 ## Deinstallieren
 
@@ -175,9 +184,9 @@ Beispiel: `curl -fsSL https://raw.githubusercontent.com/loe17/AperioPlan/main/un
 
 ## Handbücher
 
-* [Administrator-Handbuch](docs/ADMINISTRATOR.md) – Installation, HTTPS, Netzlaufwerk, Firmen-Login, Ressourcen, Sicherung, Aktualisierung, Deinstallation
-* [Anwender-Handbuch](docs/ANWENDER.md) – Projekte, Aufgaben, Dateien, CAD, Ressourcen buchen, Zeiten, Urlaub, Chat
-* [Entwickler-Handbuch](docs/ENTWICKLER.md) – Schnittstelle (REST-API), Echtzeit, Symbole, Plugins, Webhooks
+* [Administrator-Handbuch](docs/ADMINISTRATOR.md) – Installation, HTTPS, App-Store und Einrichtung der Apps, Netzlaufwerk, Firmen-Login, Sicherung, Aktualisierung, Deinstallation
+* [Anwender-Handbuch](docs/ANWENDER.md) – Projekte, Aufgaben, Dateien, CAD, Zeiten, Urlaub, Chat und alle Apps
+* [Entwickler-Handbuch](docs/ENTWICKLER.md) – Schnittstelle (REST-API), neue App hinzufügen, Echtzeit, Symbole, Plugins, Webhooks
 * [CAD-Wächter](cad-bridge/README.md) – SolidWorks-Add-in, Export-Dienst, Kommandozeile
 * [Testplan und Ergebnisse](docs/TESTPLAN.md)
 
@@ -201,10 +210,12 @@ node e2e/screenshots.mjs                    # Bildschirmfotos neu erzeugen
 ```
 
 ```
-shared/      gemeinsame Fachlogik (Nummern, Status, Versionsprotokoll)
+shared/      gemeinsame Fachlogik (Nummern, Apps, Lohnsteuer, Versionsprotokoll)
 server/      Server (REST-API, Echtzeit, Sicherung, Planer)
 web/         Web-Oberfläche
 cad-bridge/  CAD-Wächter für SolidWorks (C#)
 deploy/      Webserver-Vorlage, DNS-Erweiterung, Updater
 docs/        Handbücher, Logo, Bildschirmfotos
 ```
+
+**Fremde Quellen:** Die Lohnsteuer folgt dem amtlichen Programmablaufplan 2026 des Bundesfinanzministeriums; die Prüffälle stammen aus [canida-software/lohnsteuer](https://github.com/canida-software/lohnsteuer) (MIT-Lizenz, siehe `shared/test/fixtures/LICENSE-lohnsteuer.txt`). CO₂-Faktoren: Umweltbundesamt und BAFA/KfW-Merkblatt „CO₂-Faktoren“.

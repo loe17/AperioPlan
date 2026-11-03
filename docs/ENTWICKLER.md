@@ -41,7 +41,27 @@ Umgebungsvariablen des Servers stehen in `server/src/config.ts`.
 
 ### Datenbank ändern
 
-Neue Datei `server/migrations/NNN_beschreibung.sql` anlegen – niemals bestehende Migrationen ändern. Neue Tabellen zusätzlich in `BACKUP_TABLES` (`server/src/services/backup.ts`) eintragen, damit sie gesichert werden.
+Neue Datei `server/migrations/NNN_beschreibung.sql` anlegen – niemals bestehende Migrationen ändern. Neue Tabellen zusätzlich in `BACKUP_TABLES` (`server/src/services/backup.ts`) eintragen, damit sie gesichert werden – in Abhängigkeitsreihenfolge und mit Primärschlüssel. Der Test `server/test/backup-tables.test.ts` schlägt fehl, sobald eine Tabelle fehlt oder keinen Primärschlüssel hat.
+
+### Eine neue App hinzufügen
+
+Jedes Werkzeug ist eine App. Für eine neue App sind diese Stellen zu ergänzen:
+
+| Wo | Was |
+|---|---|
+| `shared/src/tools.ts` | Kennung in `TOOLS`, Name in `TOOL_LABELS`, Pfade in `TOOL_ROUTES` (sperrt die Schnittstelle für Benutzer ohne das Werkzeug), Benachrichtigungsart in `NOTIFY_KINDS` |
+| `shared/src/apps.ts` | Eintrag in `APPS`: Name, Kategorie, Symbol, Startseite, Kurzbeschreibung, Funktionen, ggf. `requires` (Voraussetzungen werden mitinstalliert) |
+| `server/migrations/` | Tabellen; Nummernkreis-Vorgabe in `server/src/services/settings.ts` (`numbers`) und in `NUMBER_KEYS` der Einstellungsseite |
+| `server/src/routes/<app>.ts` | Schnittstelle; in `routes/index.ts` registrieren. Hilfen: `staffOf(req)` (angemeldet, kein Gast), `toRow()` und `patchSchema()` für Eingaben, `sendStored()` für Dateien, `notify()` und `audit()` |
+| `server/src/services/settings.ts` | eigene Einstellungen mit Typ und Vorgabe (z. B. Verantwortliche) |
+| `server/src/services/daily.ts` | tägliche Aufgabe in `DAILY_JOBS` (Erinnerungen, Fristen); sie muss selbst prüfen, ob die App installiert ist |
+| `server/src/services/backup.ts` | neue Tabellen in `BACKUP_TABLES` |
+| `web/src/pages/<App>.tsx` | Seite; Route in `web/src/App.tsx` |
+| `server/test/`, `e2e/testplan.mjs` | Server-Test und ein Schritt im Browser-Test |
+
+**Öffentliche Seiten** (ohne Anmeldung) liegen auf dem Server unter `/api/pub/…` mit Begrenzung der Anfragen (`config: { rateLimit: … }`) und prüfen, ob die App installiert ist. In der Oberfläche fängt `App.tsx` den Pfad vor der Anmeldung ab (`/support`, `/book/`, `/event/`, `/jobs/`, `/sign/`). Formulare erhalten ein verstecktes Feld `website` gegen Spam-Programme.
+
+**Diagramme** zeichnet `web/src/modules/Chart.tsx` (Säulen, Balken, Linie) mit den Farben `--viz-1` bis `--viz-8` für hell und dunkel. **Eigene Felder** bindet `<CustomFields entity="…" id={…} />` aus `web/src/modules/CustomFields.tsx` in eine Detailansicht ein; neue Datensatzarten in `CF_ENTITIES` (`server/src/routes/studio.ts`) und in der Prüfbedingung der Tabelle `cf_fields` ergänzen.
 
 ## REST-Schnittstelle
 
@@ -69,6 +89,16 @@ Wichtige Endpunkte (Auswahl):
 | Chat | `GET /chat/channels`, `GET/POST /chat/channels/:id/messages`, `POST /chat/direct` |
 | KVP | `GET/POST /kvp`, `PATCH /kvp/:id`, `POST /kvp/:id/photos` |
 | Ressourcen | `GET /resources`, `POST/PATCH/DELETE /resources/:id` (Administrator), `GET /resources/bookings?from=&to=&resourceId=&mine=`, `POST /resources/availability`, `POST /resources/bookings` (mit `repeatWeeklyUntil`), `PATCH /resources/bookings/:id`, `POST /resources/bookings/:id/cancel|decide`, `GET /resources/bookings/review` |
+| Apps | `GET /apps`, `POST /apps/:id/install|uninstall` (Administrator), `POST /apps/upload` |
+| Rechnungen, Finanzen | `/crm/invoices…`, `/finance/…` (Eingangsrechnungen, Kontoauszüge, Zahlungslauf, Mahnungen, DATEV) |
+| Lohn | `/payroll/employees`, `/payroll/runs`, `/payroll/runs/:id/finalize|datev.csv|sepa`, `/me/payslips` |
+| Produktion, Service | `/maintenance/…`, `/quality/…`, `/manufacturing/…`, `/plm/…`, `/service/jobs`, `/helpdesk/tickets`, `/contracts`, `/booking/…`, `/events/…` |
+| Personal | `/expenses/reports`, `/planning/week|shifts`, `/hr/…`, `/me/hr`, `/training/…`, `/fleet/…` |
+| Freigaben | `GET /approvals/types`, `GET/POST /approvals/requests` (`?scope=mine|todo|all`), `POST /approvals/requests/:id/decide|withdraw` |
+| E-Signatur | `GET/POST /esign/envelopes` (multipart: `file`, `signers` als JSON), `POST /esign/envelopes/:id/send|remind|cancel`, `GET /esign/envelopes/:id/protocol`; öffentlich `/pub/sign/:token` |
+| Auswertungen | `GET /bi/sources`, `POST /bi/run` (`{source, dim, dim2, measure, period, chart}`), `GET/POST /bi/reports`, `POST /bi/export.xlsx` |
+| Eigene Felder | `GET/POST /custom-fields`, `GET/PUT /custom-values/:entity/:id` |
+| Nachhaltigkeit | `GET /sustainability/summary?year=`, `GET/POST /sustainability/entries`, `GET/PATCH /sustainability/factors`, `POST /sustainability/import` |
 | KI | `POST /ai/chat` |
 | Suche | `GET /search?q=` |
 | Protokoll | `GET /audit?projectId=` |

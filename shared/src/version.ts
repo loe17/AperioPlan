@@ -12,6 +12,27 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.2.0',
+    date: '2026-11-03',
+    title: 'App-Store mit über 40 Apps – von Meetings bis Lohnabrechnung',
+    changes: [
+      { type: 'neu', text: 'App-Store: jedes Werkzeug ist eine App, die der Administrator installiert oder entfernt. Neue Installationen starten nur mit Chat und E-Mail' },
+      { type: 'neu', text: 'Eigene Startseite (Dashboard) mit Bausteinen je Benutzer' },
+      { type: 'neu', text: 'Meetings mit Gast-Link und Warteraum, Telefonie über die Firmen-Telefonanlage (SIP)' },
+      { type: 'neu', text: 'Formulare und Umfragen, Schwarzes Brett mit Marktplatz, Mindmaps, Wissensdatenbank, 3D-Viewer' },
+      { type: 'neu', text: 'Lager mit Lagerorten, Chargen und Seriennummern; Inventar mit Prüfterminen, Übergaben und Abschreibung' },
+      { type: 'neu', text: 'Rechnungen als E-Rechnung (ZUGFeRD, XRechnung) mit Abschlags- und Schlussrechnung' },
+      { type: 'neu', text: 'Finanzen: Eingangsrechnungen mit Freigabe, Kontoauszug-Abgleich, Zahlungslauf, Mahnwesen, Umsatzsteuer-Übersicht, DATEV-Übergabe' },
+      { type: 'neu', text: 'Lohnabrechnung mit Lohnsteuer nach amtlichem Programmablaufplan 2026, Sozialversicherung, Midi- und Minijob, Lohnzettel und SEPA-Datei' },
+      { type: 'neu', text: 'Produktion und Service: Instandhaltung, Qualität (Prüfpläne, Messmittel, 8D), Fertigungsaufträge, Änderungsmanagement, Service-Einsätze mit Unterschrift' },
+      { type: 'neu', text: 'Kunden: Kundenanfragen (Tickets), Wartungsverträge mit automatischer Rechnung, Terminbuchung per Link, Messen und Veranstaltungen' },
+      { type: 'neu', text: 'Personal: Spesen und Reisekosten, Einsatzplanung, Personalakte mit Bewerbungen, Unterweisungen mit Nachweis, Fuhrpark mit Fahrtenbuch' },
+      { type: 'neu', text: 'Freigaben für allgemeine Anträge, E-Signatur für PDF-Dokumente, Auswertungen mit Diagrammen, eigene Felder, CO₂-Bilanz' },
+      { type: 'verbessert', text: 'Nummernkreise für alle neuen Belege in den Einstellungen anpassbar' },
+      { type: 'verbessert', text: 'Tägliche Hintergrundaufgaben (Erinnerungen, fällige Prüfungen, Vertragsrechnungen) laufen gesammelt am Morgen' },
+    ],
+  },
+  {
     version: '0.1.3',
     date: '2026-10-27',
     title: 'Installation und Deinstallation zuverlässiger',
