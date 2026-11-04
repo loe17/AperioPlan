@@ -498,12 +498,56 @@ export function UpdateSettings() {
           </div>
         ) : check && !check.error && <div style={{ marginTop: 10 }}><Pill tone="green"><Icon name="check" /> AperioPlan ist aktuell</Pill></div>}
       </div>
+      <OtherVersions available={!!status?.available} onStarted={() => setTimeout(reloadStatus, 3000)} />
       {status?.status && (
         <div className="card">
           <b>Letzte Aktualisierung:</b> {status.status.ref} – {status.status.status === 'running' ? 'läuft' : status.status.status === 'done' ? 'erfolgreich' : 'fehlgeschlagen'} ({fmtDateTime(status.status.at)})
           {status.log && <pre className="mono small" style={{ maxHeight: 260, overflow: 'auto', background: 'var(--bg-soft)', padding: 10, borderRadius: 8 }}>{status.log}</pre>}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Bestimmte Version installieren – auch eine ältere. Daten bleiben erhalten; was die ältere Version nicht kennt, wird nur nicht angezeigt. */
+function OtherVersions({ available, onStarted }: { available: boolean; onStarted: () => void }) {
+  const act = useAction();
+  const [open, setOpen] = useState(false);
+  const { data } = useApi<any>(open ? '/system/update/versions' : null, [open]);
+  const [pick, setPick] = useState<any | null>(null);
+  const [ok, setOk] = useState(false);
+  const REL: Record<string, [string, string]> = { newer: ['neuer', 'green'], current: ['installiert', 'blue'], older: ['älter', ''] };
+  return (
+    <div className="card" style={{ margin: '14px 0' }}>
+      <div className="row"><b className="grow">Andere Version installieren</b><button className="btn sm" onClick={() => setOpen(!open)}>{open ? 'Ausblenden' : 'Versionen anzeigen'}</button></div>
+      {open && <>
+        <p className="small muted">Sie können auch zu einer älteren Version zurückkehren, z. B. wenn nach einer Aktualisierung etwas nicht wie gewohnt funktioniert. <b>Es gehen keine Daten verloren:</b> Die Datenbank wird nicht zurückgesetzt. Inhalte aus Apps und Funktionen, die die ältere Version noch nicht kennt, werden dort nur nicht angezeigt und sind nach dem nächsten Aktualisieren wieder da. Vorher wird immer eine Sicherung erstellt.</p>
+        {data?.error && <div className="error-text">{data.error}</div>}
+        {data && !data.versions.length && !data.error && <p className="muted small">Keine Versionen gefunden.</p>}
+        {data?.versions.length > 0 && <table className="table small"><thead><tr><th>Version</th><th>Veröffentlicht</th><th /><th /></tr></thead>
+          <tbody>{data.versions.map((v: any) => (
+            <tr key={v.ref}><td><b>{v.version}</b>{v.prerelease && <span className="muted"> (Vorabversion)</span>}{v.url && <> · <a href={v.url} target="_blank" rel="noreferrer">Änderungen</a></>}</td>
+              <td>{v.publishedAt ? fmtDate(v.publishedAt) : ''}</td><td><Pill tone={REL[v.relation]![1]}>{REL[v.relation]![0]}</Pill></td>
+              <td>{v.relation !== 'current' && <button className="btn sm" disabled={!available} onClick={() => { setPick(v); setOk(false); }}>{v.relation === 'older' ? 'Zurück auf diese Version' : 'Installieren'}</button>}</td></tr>
+          ))}</tbody></table>}
+        {data && <p className="hint">Angeboten werden Versionen ab {data.minimum}; frühere Stände sind für einen Wechsel nicht vorbereitet.</p>}
+        {data?.history?.length > 0 && <><b className="small">Verlauf</b>{data.history.map((h: any, i: number) => <div key={i} className="small muted">{fmtDateTime(h.at)} · {h.user ?? ''} · {h.summary}</div>)}</>}
+      </>}
+      {pick && <Modal title={`Version ${pick.version} installieren`} onClose={() => setPick(null)} footer={<><button className="btn" onClick={() => setPick(null)}>Abbrechen</button>
+        <button className="btn primary" disabled={pick.relation === 'older' && !ok} onClick={async () => {
+          if (await act(() => post('/system/update', { ref: pick.ref, backupFirst: true, confirmOlder: pick.relation === 'older' }), pick.relation === 'older' ? 'Wechsel gestartet' : 'Aktualisierung gestartet')) { setPick(null); onStarted(); }
+        }}>Installieren</button></>}>
+        {pick.relation === 'older' ? <>
+          <p>Sie wechseln von <b>{APP_VERSION}</b> zurück auf <b>{pick.version}</b>.</p>
+          <ul className="small">
+            <li>Vorher wird automatisch eine Sicherung erstellt.</li>
+            <li>Alle Daten bleiben in der Datenbank. Was es in {pick.version} noch nicht gibt, ist dort nicht sichtbar.</li>
+            <li>Später lässt sich jederzeit wieder auf die neueste Version aktualisieren – dann ist alles wieder da. Falls es diese Versionsliste in {pick.version} noch nicht gibt: dort einfach „Jetzt aktualisieren“ wählen.</li>
+            <li>AperioPlan ist während des Wechsels einige Minuten nicht erreichbar.</li>
+          </ul>
+          <label className="row"><input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} /> Ich möchte die ältere Version {pick.version} installieren.</label>
+        </> : <p>AperioPlan wird auf {pick.version} aktualisiert. Vorher wird eine Sicherung erstellt; während der Aktualisierung ist AperioPlan einige Minuten nicht erreichbar.</p>}
+      </Modal>}
     </div>
   );
 }

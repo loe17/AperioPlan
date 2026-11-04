@@ -41,7 +41,7 @@ Umgebungsvariablen des Servers stehen in `server/src/config.ts`.
 
 ### Datenbank ändern
 
-Neue Datei `server/migrations/NNN_beschreibung.sql` anlegen – niemals bestehende Migrationen ändern. Neue Tabellen zusätzlich in `BACKUP_TABLES` (`server/src/services/backup.ts`) eintragen, damit sie gesichert werden – in Abhängigkeitsreihenfolge und mit Primärschlüssel. Der Test `server/test/backup-tables.test.ts` schlägt fehl, sobald eine Tabelle fehlt oder keinen Primärschlüssel hat.
+Neue Datei `server/migrations/NNN_beschreibung.sql` anlegen – niemals bestehende Migrationen ändern. **Migrationen dürfen nur ergänzen**, damit Administratoren auf eine ältere Version zurückwechseln können: keine Tabellen oder Spalten löschen oder umbenennen, keine Datentypen ändern, neue Pflichtspalten nur mit Vorgabewert, Prüfbedingungen nur erweitern. `server/test/migrations-additive.test.ts` prüft das. Älterer Code muss also mit zusätzlichen Spalten und Tabellen zurechtkommen (Spalten immer beim Namen nennen, nicht über ihre Reihenfolge). Neue Tabellen zusätzlich in `BACKUP_TABLES` (`server/src/services/backup.ts`) eintragen, damit sie gesichert werden – in Abhängigkeitsreihenfolge und mit Primärschlüssel. Der Test `server/test/backup-tables.test.ts` schlägt fehl, sobald eine Tabelle fehlt oder keinen Primärschlüssel hat.
 
 ### Eine neue App hinzufügen
 

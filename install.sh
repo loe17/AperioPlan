@@ -151,7 +151,9 @@ else
   APERIO_DIR="${APERIO_DIR:-$DEFAULT_DIR}"
   if [ -d "$APERIO_DIR/.git" ]; then
     info "Vorhandene Installation in $APERIO_DIR wird aktualisiert ..."
-    git -C "$APERIO_DIR" pull -q --ff-only || warn "Aktualisierung von GitHub nicht möglich – vorhandener Stand wird verwendet."
+    # Nach einem Wechsel auf eine ältere Version steht der Ordner auf einem festen Stand – zurück auf den Hauptzweig
+    { git -C "$APERIO_DIR" fetch -q --tags origin && git -C "$APERIO_DIR" checkout -q main && git -C "$APERIO_DIR" pull -q --ff-only; } \
+      || warn "Aktualisierung von GitHub nicht möglich – vorhandener Stand wird verwendet."
   else
     mkdir -p "$(dirname "$APERIO_DIR")"
     git clone -q "$REPO_URL" "$APERIO_DIR" || fail "Herunterladen von $REPO_URL fehlgeschlagen."

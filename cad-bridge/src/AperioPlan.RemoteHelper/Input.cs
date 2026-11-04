@@ -36,7 +36,7 @@ internal static class Input
 
     public static void ReleaseAll()
     {
-        foreach (var vk in Down) Send(KeyInput(vk, 0, Native.KEYEVENTF_KEYUP));
+        foreach (var vk in Down) Send(KeyInput(vk, '\0', Native.KEYEVENTF_KEYUP));
         Down.Clear();
         foreach (var b in Buttons) Mouse(b, false);
         Buttons.Clear();
@@ -77,7 +77,7 @@ internal static class Input
         {
             var ext = IsExtended(code) ? Native.KEYEVENTF_EXTENDEDKEY : 0u;
             if (down) Down.Add(vk); else Down.Remove(vk);
-            Send(KeyInput(vk, 0, (down ? 0 : Native.KEYEVENTF_KEYUP) | ext));
+            Send(KeyInput(vk, '\0', (down ? 0 : Native.KEYEVENTF_KEYUP) | ext));
             return;
         }
         // unbekannte Taste mit druckbarem Zeichen: als Zeichen senden

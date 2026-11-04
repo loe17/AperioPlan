@@ -12,6 +12,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.2.1',
+    date: '2026-11-04',
+    title: 'Ältere Versionen installieren',
+    changes: [
+      { type: 'neu', text: 'Einstellungen → Aktualisierung: jede Version ab 0.2.0 installieren – auch eine ältere. Vorher wird gesichert, Daten bleiben vollständig erhalten' },
+      { type: 'verbessert', text: 'Die frühen Testfassungen 1.0 und 1.1 werden nicht mehr als Aktualisierung angeboten' },
+      { type: 'verbessert', text: 'Das Installationsskript holt auch nach einem Wechsel auf eine ältere Version wieder den neuesten Stand' },
+    ],
+  },
+  {
     version: '0.2.0',
     date: '2026-11-03',
     title: 'App-Store mit über 40 Apps – von Meetings bis Lohnabrechnung',

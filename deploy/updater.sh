@@ -17,7 +17,7 @@ while true; do
         && { [ -f deploy/Caddyfile ] || cp deploy/Caddyfile.example deploy/Caddyfile; } \
         && docker compose build app && docker compose up -d app
     } > /update/log.txt 2>&1
-    if [ $? -eq 0 ]; then S=done; else S=failed; fi
+    if [ $? -eq 0 ]; then S="done"; else S="failed"; fi
     echo "{\"status\":\"$S\",\"ref\":\"$REF\",\"at\":\"$(date -Iseconds)\"}" > /update/status.json
   fi
   sleep 5

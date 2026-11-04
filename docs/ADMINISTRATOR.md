@@ -240,7 +240,30 @@ Doppelbuchungen schließt die Datenbank selbst aus – auch wenn zwei Personen i
 
 Datenbank, Dateien, Sicherungen und Einstellungen bleiben unberührt. Die Versionsnummer steht unten links; ein Klick darauf zeigt „Was ist neu?“.
 
-Manuell geht es auch: `git pull && docker compose up -d --build app`.
+Manuell auf die neueste Version (Programmordner, Daten bleiben erhalten):
+
+```sh
+cd /opt/aperioplan
+sudo git fetch --tags origin && sudo git checkout main && sudo git pull --ff-only
+sudo docker compose up -d --build app
+```
+
+Oder ganz ohne Nachdenken – das Installationsskript erkennt die vorhandene Installation, holt den neuesten Stand und behält `.env` und alle Daten:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/loe17/AperioPlan/main/install.sh | sudo bash
+```
+
+### Ältere Version installieren
+
+**Einstellungen → Aktualisierung → Andere Version installieren → Versionen anzeigen.** Neben jeder Version steht, ob sie neuer, installiert oder älter ist. „Zurück auf diese Version“ fragt noch einmal nach, erstellt eine Sicherung und spielt den älteren Programmstand ein.
+
+* **Es gehen keine Daten verloren.** Die Datenbank wird nicht zurückgesetzt. Was die ältere Version noch nicht kennt (neue Apps, neue Felder), bleibt gespeichert und wird nur nicht angezeigt. Nach dem nächsten Aktualisieren ist alles wieder da.
+* Was in der älteren Version geändert wird, bleibt auch nach dem Aktualisieren erhalten.
+* Angeboten werden Versionen ab 0.2.0. Die frühen Testfassungen 1.0 und 1.1 werden nie angeboten.
+* Möglich wird das, weil Datenbank-Änderungen seit 0.2.0 nur ergänzen (keine Tabellen oder Spalten löschen oder umbenennen). Ein Test prüft das bei jeder neuen Version.
+
+Von Hand: `cd /opt/aperioplan && sudo git fetch --tags origin && sudo git checkout v0.2.0 && sudo docker compose up -d --build app` – vorher unter Einstellungen → Sicherung eine Sicherung anlegen.
 
 > **Von 0.1.x auf 0.2.0:** Die Aktualisierung richtet die Datenbank für alle neuen Apps ein. Bisher genutzte Werkzeuge bleiben eingeschaltet; die neuen Apps erscheinen im App-Store und werden erst nach dem Installieren sichtbar. Weitere Schritte sind nicht nötig.
 >
