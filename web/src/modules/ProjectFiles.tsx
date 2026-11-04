@@ -119,7 +119,7 @@ export function ProjectFiles({ projectId, project, canEdit }: { projectId: strin
       {newDoc && <NameDialog title={newDoc === 'docx' ? 'Neues Word-Dokument' : 'Neue Excel-Tabelle'} initial="" onClose={() => setNewDoc(null)} onSave={async (name) => {
         const r = await act(() => post<{ id: string }>(`/projects/${projectId}/files/new-document`, { folder: path, name, kind: newDoc }));
         setNewDoc(null); reload();
-        if (r) window.open(`/office/${r.id}?project=${projectId}`, '_blank');
+        if (r) location.assign(`/office/${r.id}?project=${projectId}`);
       }} />}
       {newFolder && <NameDialog title="Neuer Ordner" initial="" onClose={() => setNewFolder(false)} onSave={async (name) => {
         await act(() => post(`/projects/${projectId}/files/folder`, { path, name })); setNewFolder(false); reload();

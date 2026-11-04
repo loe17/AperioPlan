@@ -19,6 +19,8 @@ export const CHANGELOG: ChangelogEntry[] = [
       { type: 'neu', text: 'Einstellungen → Aktualisierung: jede Version ab 0.2.0 installieren – auch eine ältere. Vorher wird gesichert, Daten bleiben vollständig erhalten' },
       { type: 'verbessert', text: 'Die frühen Testfassungen 1.0 und 1.1 werden nicht mehr als Aktualisierung angeboten' },
       { type: 'verbessert', text: 'Das Installationsskript holt auch nach einem Wechsel auf eine ältere Version wieder den neuesten Stand' },
+      { type: 'behoben', text: 'Office im Browser: Word-, Excel- und PowerPoint-Dateien öffnen wieder (Fehler 404 „file not found“)' },
+      { type: 'verbessert', text: 'Office-Dokumente öffnen im selben Fenster; „Zurück“ bzw. „Schließen“ im Editor führt in den Ordner zurück' },
     ],
   },
   {

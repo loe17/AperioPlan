@@ -57,6 +57,25 @@ async function discovery(officeUrl: string) {
   return map;
 }
 
+/**
+ * Adresse des Editors für den Browser. Collabora liefert in der Discovery z. B.
+ * „https://host/browser/abc/cool.html?“ – oft mit Platzhaltern wie „<ui=UI_LLCC&>“, die entfernt werden.
+ * Die Adresse zeigt immer auf OFFICE_URL, auch wenn die Discovery intern (http://office:9980) abgefragt wurde.
+ */
+export function officeAction(urlsrc: string, officeUrl: string, wopiSrc: string, lang: string) {
+  let url = urlsrc.replace(/<[^>]*>/g, '');
+  if (officeUrl) {
+    try {
+      const pub = new URL(officeUrl), u = new URL(url);
+      url = `${pub.origin}${pub.pathname.replace(/\/$/, '')}${u.pathname}${u.search}`;
+    } catch { /* Adresse unverändert lassen */ }
+  }
+  const [base, query = ''] = url.split('?');
+  const params = query.split('&').filter(Boolean);
+  params.push(`WOPISrc=${encodeURIComponent(wopiSrc)}`, `lang=${encodeURIComponent(lang)}`);
+  return `${base}?${params.join('&')}`;
+}
+
 export default async function officeRoutes(app: FastifyInstance, ctx: AppContext) {
   const { sql, storage, config } = ctx;
 
@@ -75,7 +94,7 @@ export default async function officeRoutes(app: FastifyInstance, ctx: AppContext
     const ttl = 10 * 3600_000;
     const token = await signToken(ctx, { f: id, u: u.id, n: u.displayName, w: writable, e: Date.now() + ttl });
     const wopiSrc = `${(config.officeWopiUrl || config.publicUrl).replace(/\/$/, '')}/api/wopi/files/${id}`;
-    const action = `${urlsrc.replace(/[?&]$/, '')}${urlsrc.includes('?') ? '&' : '?'}WOPISrc=${encodeURIComponent(wopiSrc)}&lang=${u.locale}`;
+    const action = officeAction(urlsrc, config.officeUrl, wopiSrc, u.locale);
     return { action, accessToken: token, accessTokenTtl: Date.now() + ttl, name: f.name, writable };
   });
 
@@ -107,6 +126,8 @@ export default async function officeRoutes(app: FastifyInstance, ctx: AppContext
       BaseFileName: f.name, Size: f.size, OwnerId: 'aperioplan', UserId: c.u, UserFriendlyName: c.n, Version: String(f.version),
       LastModifiedTime: new Date(f.updated_at).toISOString(), UserCanWrite: c.w, SupportsUpdate: c.w, SupportsLocks: false,
       UserCanNotWriteRelative: true, DisablePrint: false, HidePrintOption: false,
+      // „Schließen“ im Editor meldet sich per Nachricht an AperioPlan, damit es im selben Fenster zurückgeht
+      ClosePostMessage: true, PostMessageOrigin: new URL(config.publicUrl).origin,
     };
   });
 
