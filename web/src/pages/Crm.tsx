@@ -10,6 +10,7 @@ import { Empty, Field, Modal, Pill, Tabs, useAction } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { ACCOUNT_STATUS, AccountModal, CASE_STATUS, CASE_TYPE, QUOTE_STATUS, STAGES, type CrmAccount } from '../modules/CrmShared';
 import { CaseModal, OpportunityModal, QuoteEditor } from '../modules/CrmModals';
+import { ProjectGroups, TabHead, useGrouping, useLiveReload, type TabProps } from '../modules/ProjectApps';
 
 type Tab = 'overview' | 'customers' | 'suppliers' | 'opportunities' | 'quotes' | 'invoices' | 'cases' | 'duplicates';
 
@@ -32,7 +33,7 @@ export default function CrmPage() {
       {tab === 'suppliers' && <Accounts kind="supplier" />}
       {tab === 'opportunities' && <OpportunityBoard />}
       {tab === 'quotes' && <Quotes />}
-      {tab === 'invoices' && <InvoiceList />}
+      {tab === 'invoices' && <InvoiceList groupable />}
       {tab === 'cases' && <Cases />}
       {tab === 'duplicates' && <Duplicates />}
     </div>
@@ -215,22 +216,25 @@ export function WonToProject({ opp, onDone }: { opp: any; onDone: () => void }) 
 function Quotes() {
   const { data, reload } = useApi<any[]>('/crm/quotes');
   const [edit, setEdit] = useState<any | null | 'new'>(null);
+  const [grouped, toggle] = useGrouping('crm-quotes');
   return (
     <div>
-      <div className="toolbar"><span className="grow" /><button className="btn primary" onClick={() => setEdit('new')}><Icon name="plus" /> Angebot</button></div>
-      {!data?.length ? <Empty icon="file-text" title="Noch keine Angebote" /> : <QuoteTable rows={data} onOpen={setEdit} />}
+      <div className="toolbar">{toggle}<span className="grow" /><button className="btn primary" onClick={() => setEdit('new')}><Icon name="plus" /> Angebot</button></div>
+      {!data?.length ? <Empty icon="file-text" title="Noch keine Angebote">Angebote zu einem Projekt legen Sie am besten im Projekt unter „Verkauf“ an.</Empty>
+        : grouped ? <ProjectGroups rows={data} tab="sales">{(rows) => <QuoteTable rows={rows} onOpen={setEdit} />}</ProjectGroups> : <QuoteTable rows={data} onOpen={setEdit} showProject />}
       {edit && <QuoteEditor quote={edit === 'new' ? undefined : edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); void reload(); }} />}
     </div>
   );
 }
 
-export function QuoteTable({ rows, onOpen, hideAccount }: { rows: any[]; onOpen: (q: any) => void; hideAccount?: boolean }) {
+export function QuoteTable({ rows, onOpen, hideAccount, showProject }: { rows: any[]; onOpen: (q: any) => void; hideAccount?: boolean; showProject?: boolean }) {
   return (
     <div className="table-wrap"><table className="table">
-      <thead><tr><th>Nummer</th><th>Betreff</th>{!hideAccount && <th>Kunde</th>}<th>Datum</th><th>Gültig bis</th><th style={{ textAlign: 'right' }}>Netto</th><th>Status</th><th /></tr></thead>
+      <thead><tr><th>Nummer</th><th>Betreff</th>{!hideAccount && <th>Kunde</th>}{showProject && <th>Projekt</th>}<th>Datum</th><th>Gültig bis</th><th style={{ textAlign: 'right' }}>Netto</th><th>Status</th><th /></tr></thead>
       <tbody>{rows.map((q) => (
         <tr key={q.id} className="click" onClick={() => onOpen(q)}>
-          <td className="mono small">{q.number}</td><td>{q.title}</td>{!hideAccount && <td>{q.accountName}</td>}<td>{fmtDate(q.quoteDate)}</td>
+          <td className="mono small">{q.number}</td><td>{q.title}</td>{!hideAccount && <td>{q.accountName}</td>}
+          {showProject && <td onClick={(e) => e.stopPropagation()}>{q.projectId ? <Link to={`/projects/${q.projectId}?tab=sales`}>{q.projectNumber}</Link> : <span className="muted">–</span>}</td>}<td>{fmtDate(q.quoteDate)}</td>
           <td className={q.validUntil && q.validUntil < new Date().toISOString().slice(0, 10) && q.status === 'sent' ? 'error-text' : ''}>{fmtDate(q.validUntil)}</td>
           <td style={{ textAlign: 'right' }}>{fmtEuro(q.totalNet)}</td><td><Pill tone={QUOTE_STATUS[q.status]?.tone}>{QUOTE_STATUS[q.status]?.label}</Pill></td>
           <td onClick={(e) => e.stopPropagation()}><a className="btn ghost sm" href={`/api/crm/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer" title="PDF"><Icon name="file-pdf" /></a></td>
@@ -244,10 +248,12 @@ function Cases() {
   const [open, setOpen] = useState(true);
   const { data, reload } = useApi<any[]>(`/crm/cases${open ? '?open=1' : ''}`);
   const [edit, setEdit] = useState<any | null | 'new'>(null);
+  const [grouped, toggle] = useGrouping('crm-cases');
   return (
     <div>
-      <div className="toolbar"><label className="row"><input type="checkbox" checked={open} onChange={(e) => setOpen(e.target.checked)} /> nur offene</label><span className="grow" /><button className="btn primary" onClick={() => setEdit('new')}><Icon name="plus" /> Reklamation</button></div>
-      {!data?.length ? <Empty icon="alert" title="Keine Reklamationen" /> : <CaseTable rows={data} onOpen={setEdit} />}
+      <div className="toolbar"><label className="row"><input type="checkbox" checked={open} onChange={(e) => setOpen(e.target.checked)} /> nur offene</label>{toggle}<span className="grow" /><button className="btn primary" onClick={() => setEdit('new')}><Icon name="plus" /> Reklamation</button></div>
+      {!data?.length ? <Empty icon="alert" title="Keine Reklamationen" />
+        : grouped ? <ProjectGroups rows={data} tab="sales">{(rows) => <CaseTable rows={rows} onOpen={setEdit} />}</ProjectGroups> : <CaseTable rows={data} onOpen={setEdit} />}
       {edit && <CaseModal item={edit === 'new' ? undefined : edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); void reload(); }} />}
     </div>
   );
@@ -289,6 +295,49 @@ function Duplicates() {
           }}>Zusammenführen</button>
         </div>
       ))}
+    </div>
+  );
+}
+
+/** Projekt-Reiter „Verkauf“: Angebote, Rechnungen, Verkaufschancen und Reklamationen des Projekts – Kontakte bleiben im CRM */
+export function ProjectSales({ project, canEdit }: TabProps) {
+  const pid = project.id;
+  const { data: quotes, reload: reloadQuotes } = useApi<any[]>(`/crm/quotes?projectId=${pid}`);
+  const { data: opps, reload: reloadOpps } = useApi<any[]>(`/crm/opportunities?projectId=${pid}`);
+  const { data: cases, reload: reloadCases } = useApi<any[]>(`/crm/cases?projectId=${pid}`);
+  useLiveReload(['global'], ['crm.'], reloadQuotes);
+  const [quote, setQuote] = useState<any | 'new' | null>(null);
+  const [opp, setOpp] = useState<any | null>(null);
+  const [kase, setKase] = useState<any | 'new' | null>(null);
+  const sum = (st: string[]) => (quotes ?? []).filter((q) => st.includes(q.status)).reduce((a, q) => a + (q.totalNet ?? 0), 0);
+  return (
+    <div>
+      <div className="kpi-row">
+        <div className="kpi"><div className="v">{(quotes ?? []).length}</div><div className="l">Angebote</div></div>
+        <div className="kpi"><div className="v">{fmtEuro(sum(['sent']))}</div><div className="l">angeboten, noch offen</div></div>
+        <div className="kpi"><div className="v">{fmtEuro(sum(['accepted']))}</div><div className="l">beauftragt</div></div>
+        <div className="kpi"><div className="v" style={{ color: (cases ?? []).some((c) => c.status !== 'closed') ? 'var(--amber)' : undefined }}>{(cases ?? []).filter((c) => c.status !== 'closed').length}</div><div className="l">offene Reklamationen</div></div>
+      </div>
+      <TabHead hint={project.customer ? <>Kunde: <Link to={`/crm/${project.customerId}`}>{project.customer}</Link></> : 'Dem Projekt ist noch kein Kunde aus dem CRM zugeordnet.'}
+        to="/crm?tab=quotes" toLabel="Alle Angebote" newLabel="Angebot" onNew={canEdit && (() => setQuote('new'))} />
+      {!quotes?.length ? <Empty icon="file-text" title="Noch keine Angebote zu diesem Projekt" /> : <QuoteTable rows={quotes} onOpen={setQuote} hideAccount={Boolean(project.customerId)} />}
+
+      <div className="app-section"><h3>Rechnungen</h3><InvoiceList projectId={pid} /></div>
+
+      {(opps ?? []).length > 0 && <div className="app-section"><h3>Verkaufschancen</h3>
+        <div className="table-wrap"><table className="table"><tbody>{opps!.map((o) => (
+          <tr key={o.id} className="click" onClick={() => setOpp(o)}><td>{o.title}</td><td>{STAGES.find((x) => x.id === o.stage)?.label}</td>
+            <td style={{ textAlign: 'right' }}>{o.value != null ? fmtEuro(o.value) : '–'}</td><td className="small muted">{o.ownerName ?? ''}</td></tr>
+        ))}</tbody></table></div></div>}
+
+      <div className="app-section"><h3><span className="grow">Reklamationen und Serviceanfragen</span>{canEdit && project.customerId && <button className="btn sm" onClick={() => setKase('new')}><Icon name="plus" /> Reklamation</button>}</h3>
+        {!cases?.length ? <div className="muted small">Keine</div> : <CaseTable rows={cases} onOpen={setKase} hideAccount={Boolean(project.customerId)} />}</div>
+
+      {quote && <QuoteEditor quote={quote === 'new' ? undefined : quote} projectId={pid} accountId={quote === 'new' ? project.customerId ?? undefined : undefined} title={quote === 'new' ? project.name : undefined}
+        onClose={() => setQuote(null)} onSaved={() => { setQuote(null); void reloadQuotes(); }} />}
+      {opp && <OpportunityModal opp={opp} onClose={() => setOpp(null)} onSaved={() => { setOpp(null); void reloadOpps(); }} />}
+      {kase && <CaseModal item={kase === 'new' ? undefined : kase} accountId={kase === 'new' ? project.customerId ?? undefined : undefined} projectId={pid}
+        onClose={() => setKase(null)} onSaved={() => { setKase(null); void reloadCases(); }} />}
     </div>
   );
 }

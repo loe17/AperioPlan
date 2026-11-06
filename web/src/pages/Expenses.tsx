@@ -9,6 +9,7 @@ import { fmtDate, fmtEuro2, isoDate } from '../lib/format';
 import { Confirm, Empty, Field, Modal, Pill, SlideOver, Tabs, useAction, useToast } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { ProjectSelect, uploadForm } from '../modules/Pickers';
+import { ProjectGroups, TabHead, useGrouping, type TabProps } from '../modules/ProjectApps';
 import { useAdminSettings } from './Settings';
 import { UserPicker } from '../components/UserPicker';
 import { useSession } from '../session';
@@ -47,6 +48,7 @@ export default function ExpensesPage() {
 function ReportList({ scope, onOpen }: { scope: Tab; onOpen: (id: string) => void }) {
   const { data, reload, error } = useApi<any[]>(`/expenses/reports?scope=${scope}`, [scope]);
   const [range, setRange] = useState({ from: isoDate(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1)), to: isoDate(new Date()) });
+  const [grouped, groupToggle] = useGrouping('expenses', false);
   useLive(reload);
   if (error) return <Empty icon="lock" title="Kein Zugriff">Diese Ansicht ist für die Buchhaltung (Einstellungen → Spesen).</Empty>;
   return (
@@ -54,22 +56,52 @@ function ReportList({ scope, onOpen }: { scope: Tab; onOpen: (id: string) => voi
       {scope === 'all' && <div className="toolbar"><span className="small">Freigegebene Abrechnungen</span>
         <input type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} style={{ width: 150 }} />–<input type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} style={{ width: 150 }} />
         <a className="btn" href={`/api/expenses/export.xlsx?from=${range.from}&to=${range.to}`}><Icon name="file-excel" /> Excel</a></div>}
+      {scope !== 'mine' && data && data.length > 0 && <div className="toolbar">{groupToggle}</div>}
       {data && !data.length && <Empty icon="receipt" title={scope === 'approve' ? 'Nichts zur Freigabe' : 'Keine Abrechnungen'}>{scope === 'mine' ? 'Für jede Reise eine Abrechnung anlegen: Zeiten eintragen, Belege fotografieren, einreichen.' : undefined}</Empty>}
-      {data && data.length > 0 && <table className="table"><thead><tr><th>Nr.</th><th>Reise</th>{scope !== 'mine' && <th>Mitarbeiter</th>}<th>Zeitraum</th><th style={{ textAlign: 'right' }}>Erstattung</th><th>Status</th></tr></thead>
-        <tbody>{data.map((r) => (
-          <tr key={r.id} className="click" onClick={() => onOpen(r.id)}>
-            <td className="mono small">{r.number}</td><td><b>{r.title}</b>{r.destination && <div className="small muted">{r.destination}</div>}</td>
-            {scope !== 'mine' && <td>{r.userName}</td>}<td>{r.startAt ? `${fmtDate(r.startAt)}${r.endAt && fmtDate(r.endAt) !== fmtDate(r.startAt) ? ` – ${fmtDate(r.endAt)}` : ''}` : '–'}</td>
-            <td style={{ textAlign: 'right' }}><b>{fmtEuro2(r.total)}</b></td><td><Pill tone={STATUS[r.status]![1]}>{STATUS[r.status]![0]}</Pill></td>
-          </tr>
-        ))}</tbody></table>}
+      {data && data.length > 0 && (scope !== 'mine' && grouped ? <ProjectGroups rows={data} tab="expenses">{(rows) => <ReportTable rows={rows} showUser onOpen={onOpen} />}</ProjectGroups>
+        : <ReportTable rows={data} showUser={scope !== 'mine'} onOpen={onOpen} />)}
     </div>
   );
 }
 
-function NewReport({ onClose, onDone }: { onClose: () => void; onDone: (id: string) => void }) {
+function ReportTable({ rows, showUser, onOpen }: { rows: any[]; showUser?: boolean; onOpen: (id: string) => void }) {
+  return (
+    <table className="table"><thead><tr><th>Nr.</th><th>Reise</th>{showUser && <th>Mitarbeiter</th>}<th>Zeitraum</th><th style={{ textAlign: 'right' }}>Erstattung</th><th>Status</th></tr></thead>
+      <tbody>{rows.map((r) => (
+        <tr key={r.id} className="click" onClick={() => onOpen(r.id)}>
+          <td className="mono small">{r.number}</td><td><b>{r.title}</b>{r.destination && <div className="small muted">{r.destination}</div>}</td>
+          {showUser && <td>{r.userName}</td>}<td>{r.startAt ? `${fmtDate(r.startAt)}${r.endAt && fmtDate(r.endAt) !== fmtDate(r.startAt) ? ` – ${fmtDate(r.endAt)}` : ''}` : '–'}</td>
+          <td style={{ textAlign: 'right' }}><b>{fmtEuro2(r.total)}</b></td><td><Pill tone={STATUS[r.status]![1]}>{STATUS[r.status]![0]}</Pill></td>
+        </tr>
+      ))}</tbody></table>
+  );
+}
+
+/** Projekt-Reiter „Reisekosten“: Abrechnungen zum Projekt (Leitung sieht alle, sonst die eigenen) */
+export function ProjectExpenses({ project }: TabProps) {
+  const { data, reload } = useApi<any[]>(`/expenses/reports?scope=project&projectId=${project.id}`);
+  useLive(reload);
+  const [create, setCreate] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
+  const total = (data ?? []).filter((r) => ['approved', 'paid'].includes(r.status)).reduce((a, r) => a + (r.total ?? 0), 0);
+  return (
+    <div>
+      <div className="kpi-row">
+        <div className="kpi"><div className="v">{(data ?? []).length}</div><div className="l">Abrechnungen</div></div>
+        <div className="kpi"><div className="v">{fmtEuro2(total)}</div><div className="l">freigegeben oder ausgezahlt</div></div>
+        <div className="kpi"><div className="v">{(data ?? []).filter((r) => r.status === 'submitted').length}</div><div className="l">warten auf Freigabe</div></div>
+      </div>
+      <TabHead hint="Projektleitung sieht alle Abrechnungen zum Projekt, alle anderen ihre eigenen." to="/expenses" toLabel="Meine Spesen" newLabel="Abrechnung" onNew={() => setCreate(true)} />
+      {data && !data.length ? <Empty icon="receipt" title="Keine Reisekosten zu diesem Projekt" /> : data && <ReportTable rows={data} showUser onOpen={setOpen} />}
+      {create && <NewReport projectId={project.id} onClose={() => setCreate(false)} onDone={(id) => { setCreate(false); void reload(); setOpen(id); }} />}
+      {open && <ReportPanel id={open} onClose={() => { setOpen(null); void reload(); }} />}
+    </div>
+  );
+}
+
+function NewReport({ onClose, onDone, projectId }: { onClose: () => void; onDone: (id: string) => void; projectId?: string }) {
   const act = useAction();
-  const [f, setF] = useState({ title: '', destination: '', purpose: '', start: '', end: '', country: 'DE', projectId: null as string | null });
+  const [f, setF] = useState({ title: '', destination: '', purpose: '', start: '', end: '', country: 'DE', projectId: (projectId ?? null) as string | null });
   return (
     <Modal title="Neue Abrechnung" onClose={onClose} footer={<><button className="btn" onClick={onClose}>Abbrechen</button>
       <button className="btn primary" disabled={!f.title.trim()} onClick={async () => {

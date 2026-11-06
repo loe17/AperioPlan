@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { PROJECT_MODULES } from '@aperio/shared';
+import { PROJECT_MODULES, PROJECT_TABS } from '@aperio/shared';
 import { useApi } from '../lib/hooks';
 import { post, invalidate } from '../lib/api';
 import { useCrumbs } from '../components/Layout';
@@ -53,12 +53,12 @@ export function NewProjectDialog({ onClose, parentId, teamId, customer: preset }
   const { data: projects } = useApi<ProjectRow[]>('/projects?parentId=root');
   const [d, setD] = useState({
     name: '', description: '', icon: 'rocket', parentId: parentId ?? '', teamId: teamId ?? '', visibility: 'company', customer: '',
-    startDate: '', dueDate: '', number: '', modules: settings?.defaultModules ?? [...PROJECT_MODULES],
+    startDate: '', dueDate: '', number: '', modules: settings?.defaultProjectTabs ?? settings?.defaultModules ?? [...PROJECT_MODULES],
   });
   const [customer, setCustomer] = useState<{ id: string; name: string; number?: string } | null>(preset ?? null);
   const [contactId, setContactId] = useState('');
   const contacts = useContacts(customer?.id);
-  useEffect(() => { if (settings) setD((x) => ({ ...x, modules: settings.defaultModules })); }, [settings]);
+  useEffect(() => { if (settings) setD((x) => ({ ...x, modules: settings.defaultProjectTabs ?? settings.defaultModules })); }, [settings]);
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setD({ ...d, [k]: e.target.value });
   return (
     <Modal size="lg" title={t('Neues Projekt')} onClose={onClose} footer={<>
@@ -92,10 +92,10 @@ export function NewProjectDialog({ onClose, parentId, teamId, customer: preset }
           <input value={d.number} onChange={set('number')} className="mono" />
         </Field>
       )}
-      <Field label="Aktive Werkzeuge">
+      <Field label="Reiter im Projekt" hint="Werkzeuge und Apps – später jederzeit unter Einstellungen oder mit „+“ in der Reiterleiste änderbar">
         <div className="row wrap">
-          {PROJECT_MODULES.filter(moduleOk).map((m) => (
-            <label key={m} className="row small" style={{ gap: 4 }}>
+          {PROJECT_TABS.filter(moduleOk).map((m) => (
+            <label key={m} className="row small" style={{ gap: 4 }} title={MODULE_LABELS[m]?.hint}>
               <input type="checkbox" checked={d.modules.includes(m)} onChange={() => setD({ ...d, modules: d.modules.includes(m) ? d.modules.filter((x) => x !== m) : [...d.modules, m] })} />
               <Icon name={MODULE_LABELS[m]?.icon ?? 'square'} /> {MODULE_LABELS[m]?.label}
             </label>

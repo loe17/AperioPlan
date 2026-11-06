@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react';
 const InvoicingSettings = lazy(() => import('./SettingsInvoicing'));
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Route, Routes, Navigate, useLocation } from 'react-router-dom';
-import { APP_VERSION, PROJECT_MODULES, ROLES, TOOLS, TOOL_LABELS, NUMBER_TOKENS, formatNumberPattern, validateNumberPattern, TASK_STATUSES } from '@aperio/shared';
+import { APP_VERSION, ROLES, TOOLS, TOOL_LABELS, NUMBER_TOKENS, formatNumberPattern, validateNumberPattern, TASK_STATUSES } from '@aperio/shared';
 import { useApi, rememberedTab, rememberTab } from '../lib/hooks';
 import { api, del, get, patch, post, put, invalidate } from '../lib/api';
 import { useCrumbs } from '../components/Layout';
@@ -15,7 +15,7 @@ import { fmtDateTime } from '../lib/format';
 import { Avatar, Confirm, Empty, Field, Modal, Pill, useAction } from '../components/ui';
 import { ChangePasswordPage } from './Auth';
 import { AuditView } from '../modules/AuditView';
-import { MODULE_LABELS } from '../modules/ProjectSettings';
+import { ModuleChooser } from '../modules/ProjectSettings';
 import { PhoneSettings } from './SettingsPhone';
 import { CadMaskSettings, BackupSettings, UpdateSettings, MailSettings, AiSettings, HolidaySettings, StorageSettings, ExtensionSettings, ResourcesSettings } from './SettingsExtra';
 import { EntityIcon, Icon, IconPicker } from '../components/Icon';
@@ -331,7 +331,7 @@ function General() {
   const { refreshLists } = useSession();
   const company = useAdminSettings('company');
   const numbers = useAdminSettings('projectNumbers');
-  const modules = useAdminSettings('defaultModules');
+  const modules = useAdminSettings('defaultProjectTabs');
   const time = useAdminSettings('time');
   const presence = useAdminSettings('presence');
   const kanban = useAdminSettings('kanbanTemplate');
@@ -378,15 +378,9 @@ function General() {
       <Field label="Schlusstext im Angebot"><textarea rows={2} value={letter.value.quoteOutro} onChange={(e) => letter.setValue({ ...letter.value, quoteOutro: e.target.value })} /></Field>
       <button className="btn primary" onClick={() => act(() => letter.save(letter.value), 'Gespeichert')}>Speichern</button>
 
-      <h2 style={{ margin: '28px 0 10px' }}>Standard-Werkzeuge für neue Projekte</h2>
-      <div className="row wrap">
-        {PROJECT_MODULES.filter(moduleOk).map((m) => (
-          <label key={m} className="row" style={{ gap: 4 }}>
-            <input type="checkbox" checked={modules.value.includes(m)} onChange={() => modules.setValue(modules.value.includes(m) ? modules.value.filter((x: string) => x !== m) : [...modules.value, m])} />
-            <Icon name={MODULE_LABELS[m]?.icon ?? 'square'} /> {MODULE_LABELS[m]?.label}
-          </label>
-        ))}
-      </div>
+      <h2 style={{ margin: '28px 0 4px' }}>Standard-Reiter für neue Projekte</h2>
+      <p className="muted" style={{ marginTop: 0 }}>Welche Werkzeuge und Apps ein neues Projekt als Reiter bekommt. Im Projekt lassen sie sich jederzeit ändern.</p>
+      <ModuleChooser value={modules.value} onChange={modules.setValue} moduleOk={moduleOk} />
       <div className="spacer" />
       <button className="btn primary" onClick={async () => { await act(() => modules.save(modules.value), 'Gespeichert'); refreshLists(); }}>Speichern</button>
 

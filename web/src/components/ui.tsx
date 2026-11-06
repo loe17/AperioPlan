@@ -207,7 +207,7 @@ export function StatusPill({ status, meta = STATUS_META }: { status: string; met
   return <Pill tone={m.tone}>{t(m.label)}</Pill>;
 }
 
-export function Tabs<T extends string>({ value, onChange, tabs }: { value: T; onChange: (v: T) => void; tabs: { id: T; label: ReactNode }[] }) {
+export function Tabs<T extends string>({ value, onChange, tabs, extra }: { value: T; onChange: (v: T) => void; tabs: { id: T; label: ReactNode }[]; extra?: ReactNode }) {
   // Passen nicht alle Reiter in die Breite, wandern die übrigen in ein Menü „Mehr“ – kein Rollbalken.
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(tabs.length);
@@ -218,17 +218,18 @@ export function Tabs<T extends string>({ value, onChange, tabs }: { value: T; on
     if (!el) return;
     const measure = () => {
       const buttons = [...el.querySelectorAll<HTMLElement>('[data-tab-measure]')];
-      const avail = el.clientWidth - 96;
+      const reserve = extra ? 40 : 0;
+      const avail = el.clientWidth - 96 - reserve;
       let used = 0; let n = 0;
       for (const b of buttons) { used += b.offsetWidth + 2; if (used > avail && n > 0) break; n++; }
       const total = buttons.reduce((sum, b) => sum + b.offsetWidth + 2, 0);
-      setVisible(total <= el.clientWidth ? buttons.length : n);
+      setVisible(total <= el.clientWidth - reserve ? buttons.length : n);
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [key]);
+  }, [key, Boolean(extra)]); // eslint-disable-line react-hooks/exhaustive-deps
   const shown = tabs.slice(0, visible);
   const more = tabs.slice(visible);
   const activeHidden = more.find((t) => t.id === value);
@@ -247,6 +248,7 @@ export function Tabs<T extends string>({ value, onChange, tabs }: { value: T; on
           </>}
         </div>
       )}
+      {extra}
     </div>
   );
 }

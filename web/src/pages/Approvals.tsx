@@ -10,6 +10,7 @@ import { Avatar, Empty, Field, Modal, Pill, SlideOver, Tabs, useAction } from '.
 import { Icon } from '../components/Icon';
 import { UserPicker } from '../components/UserPicker';
 import { ProjectSelect, uploadForm } from '../modules/Pickers';
+import { ProjectGroups, TabHead, useGrouping, type TabProps } from '../modules/ProjectApps';
 import { useAdminSettings } from './Settings';
 
 const STATUS: Record<string, [string, string]> = { pending: ['offen', 'amber'], approved: ['genehmigt', 'green'], rejected: ['abgelehnt', 'red'], withdrawn: ['zurückgezogen', ''] };
@@ -50,15 +51,26 @@ export default function ApprovalsPage() {
 
 function List({ scope, onOpen }: { scope: string; onOpen: (id: string) => void }) {
   const { data, reload } = useApi<any[]>(`/approvals/requests?scope=${scope}`, [scope]);
+  const [grouped, groupToggle] = useGrouping('approvals', false);
   useLive(reload);
   if (!data) return null;
   if (!data.length) return <Empty icon="approve" title={scope === 'todo' ? 'Nichts zu genehmigen' : 'Keine Anträge'}>{scope === 'mine' ? 'Über „Antrag“ eine Anschaffung, Weiterbildung oder etwas anderes zur Genehmigung einreichen.' : undefined}</Empty>;
+  if (scope === 'mine') return <RequestTable rows={data} onOpen={onOpen} />;
   return (
-    <table className="table"><thead><tr><th>Nummer</th><th>Antrag</th>{scope !== 'mine' && <th>von</th>}<th>Betrag</th><th>Stufe</th><th>Status</th><th>Datum</th></tr></thead>
-      <tbody>{data.map((r) => (
+    <div>
+      <div className="toolbar">{groupToggle}</div>
+      {grouped ? <ProjectGroups rows={data} tab="approvals">{(rows) => <RequestTable rows={rows} showUser onOpen={onOpen} />}</ProjectGroups> : <RequestTable rows={data} showUser onOpen={onOpen} />}
+    </div>
+  );
+}
+
+function RequestTable({ rows, showUser, onOpen }: { rows: any[]; showUser?: boolean; onOpen: (id: string) => void }) {
+  return (
+    <table className="table"><thead><tr><th>Nummer</th><th>Antrag</th>{showUser && <th>von</th>}<th>Betrag</th><th>Stufe</th><th>Status</th><th>Datum</th></tr></thead>
+      <tbody>{rows.map((r) => (
         <tr key={r.id} className="click" onClick={() => onOpen(r.id)}>
           <td className="mono small">{r.number}</td><td><b>{r.title}</b><div className="small muted">{r.typeName}</div></td>
-          {scope !== 'mine' && <td>{r.userName}</td>}<td className="num">{r.amount !== null ? fmtEuro2(r.amount) : ''}</td>
+          {showUser && <td>{r.userName}</td>}<td className="num">{r.amount !== null ? fmtEuro2(r.amount) : ''}</td>
           <td className="small">{r.status === 'pending' ? `${r.step + 1} von ${r.steps.length}` : ''}</td>
           <td><Pill tone={STATUS[r.status]![1]}>{STATUS[r.status]![0]}</Pill></td><td>{fmtDate(r.createdAt)}</td>
         </tr>
@@ -66,13 +78,34 @@ function List({ scope, onOpen }: { scope: string; onOpen: (id: string) => void }
   );
 }
 
-function NewRequest({ onClose, onDone }: { onClose: () => void; onDone: (id: string) => void }) {
+/** Projekt-Reiter „Freigaben“: Anträge zum Projekt (Leitung alle, sonst eigene und zu genehmigende) */
+export function ProjectApprovals({ project }: TabProps) {
+  const { data, reload } = useApi<any[]>(`/approvals/requests?scope=project&projectId=${project.id}`);
+  useLive(reload);
+  const [create, setCreate] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
+  const approved = (data ?? []).filter((r) => r.status === 'approved').reduce((a, r) => a + (r.amount ?? 0), 0);
+  return (
+    <div>
+      <div className="kpi-row">
+        <div className="kpi"><div className="v">{(data ?? []).filter((r) => r.status === 'pending').length}</div><div className="l">offen</div></div>
+        <div className="kpi"><div className="v">{fmtEuro2(approved)}</div><div className="l">genehmigt</div></div>
+      </div>
+      <TabHead hint="z. B. Anschaffungen oder Fremdleistungen für das Projekt" to="/approvals" toLabel="Alle Freigaben" newLabel="Antrag" onNew={() => setCreate(true)} />
+      {data && !data.length ? <Empty icon="approve" title="Keine Anträge zu diesem Projekt" /> : data && <RequestTable rows={data} showUser onOpen={setOpen} />}
+      {create && <NewRequest projectId={project.id} onClose={() => setCreate(false)} onDone={(id) => { setCreate(false); void reload(); setOpen(id); }} />}
+      {open && <RequestPanel id={open} onClose={() => { setOpen(null); void reload(); }} />}
+    </div>
+  );
+}
+
+function NewRequest({ onClose, onDone, projectId: fixedProject }: { onClose: () => void; onDone: (id: string) => void; projectId?: string }) {
   const { data: types } = useApi<any[]>('/approvals/types');
   const act = useAction();
   const [type, setType] = useState<any | null>(null);
   const [data, setData] = useState<Record<string, unknown>>({});
   const [title, setTitle] = useState('');
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(fixedProject ?? null);
   const [files, setFiles] = useState<File[]>([]);
   if (!type) return (
     <Modal title="Was möchtest du beantragen?" onClose={onClose}>

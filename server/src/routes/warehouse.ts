@@ -305,6 +305,7 @@ export default async function warehouseRoutes(app: FastifyInstance, ctx: AppCont
   app.get('/warehouse/incoming', async (req) => {
     staff(req);
     return sql`select pi.id, pi.designation, pi.number, pi.manufacturer_no as "manufacturerNo", (pi.qty - pi.delivered_qty)::float as open, pi.unit, pi.status,
+      pi.qty::float as qty, pi.delivered_qty::float as "deliveredQty", pi.location_id as "locationId",
       coalesce(pi.confirmed_delivery, pi.planned_delivery)::text as "expected", p.id as "projectId", p.number as "projectNumber", p.name as "projectName",
       s.name as "supplierName", o.number as "orderNumber",
       coalesce(pi.wh_article_id, (select a.id from wh_articles a where a.active and ((pi.cad_item_id is not null and a.cad_item_id = pi.cad_item_id)

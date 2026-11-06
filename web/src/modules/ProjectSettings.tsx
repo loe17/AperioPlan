@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PROJECT_MODULES } from '@aperio/shared';
+import { PROJECT_TAB_INFO, PROJECT_TABS, isLegacyModule } from '@aperio/shared';
 import { patch, post, put, invalidate } from '../lib/api';
 import { useApi } from '../lib/hooks';
 import { fmtBytes } from '../lib/format';
@@ -8,20 +8,8 @@ import { CustomerPicker } from './CrmShared';
 import { Avatar, Confirm, Field, Pill, useAction } from '../components/ui';
 import { EntityIcon, Icon, IconPicker } from '../components/Icon';
 
-export const MODULE_LABELS: Record<string, { label: string; icon: string }> = {
-  kanban: { label: 'Kanban-Board', icon: 'projects' },
-  list: { label: 'Aufgabenliste', icon: 'list' },
-  gantt: { label: 'Gantt-Diagramm', icon: 'chart' },
-  whiteboard: { label: 'Whiteboard', icon: 'whiteboard' },
-  report: { label: 'Abschlussbericht', icon: 'report' },
-  files: { label: 'Dateien', icon: 'folder' },
-  cad: { label: 'CAD-Dateien', icon: 'cad' },
-  pcb: { label: 'Leiterplatten', icon: 'bolt' },
-  chat: { label: 'Chat', icon: 'chat' },
-  time: { label: 'Zeiterfassung', icon: 'timer' },
-  purchasing: { label: 'Einkauf', icon: 'truck' },
-  calculation: { label: 'Kalkulation', icon: 'euro' },
-};
+/** Name und Symbol jedes Projekt-Reiters (Werkzeuge und Apps) */
+export const MODULE_LABELS: Record<string, { label: string; icon: string; hint?: string }> = { ...PROJECT_TAB_INFO, invoices: { label: 'Rechnungen', icon: 'euro' } };
 
 export const STATUS_OPTIONS = [
   ['planned', 'Geplant'], ['active', 'Aktiv'], ['paused', 'Pausiert'], ['done', 'Abgeschlossen'], ['archived', 'Archiviert'],
@@ -68,19 +56,9 @@ export function ProjectSettings({ project }: { project: any }) {
       </div>
       <Field label="Beschreibung"><textarea value={p.description} onChange={set('description')} /></Field>
 
-      <h2 style={{ margin: '20px 0 10px' }}>Werkzeuge in diesem Projekt</h2>
-      <div className="card flat" style={{ padding: 8 }}>
-        {[...mods, ...PROJECT_MODULES.filter((m) => !mods.includes(m))].filter(moduleOk).map((m) => {
-          const on = mods.includes(m);
-          return (
-            <div key={m} className="row" style={{ padding: '4px 6px' }}>
-              <input type="checkbox" checked={on} onChange={() => setP({ ...p, modules: on ? mods.filter((x) => x !== m) : [...mods, m] })} />
-              <span className="row" style={{ gap: 6 }}><Icon name={MODULE_LABELS[m]?.icon ?? 'square'} /> {MODULE_LABELS[m]?.label}</span>
-              {on && <span className="right row" style={{ gap: 4 }}><button className="btn ghost sm" onClick={() => moveMod(m, -1)}>↑</button><button className="btn ghost sm" onClick={() => moveMod(m, 1)}>↓</button></span>}
-            </div>
-          );
-        })}
-      </div>
+      <h2 style={{ margin: '20px 0 4px' }}>Reiter in diesem Projekt</h2>
+      <p className="hint" style={{ marginTop: 0 }}>Werkzeuge und installierte Apps. Jede App zeigt im Projekt nur ihre Einträge zu diesem Projekt; die Gesamtübersicht über alle Projekte bleibt links unter „Werkzeuge“.</p>
+      <ModuleChooser value={mods} onChange={(modules) => setP({ ...p, modules })} onMove={moveMod} moduleOk={moduleOk} />
       <div className="spacer" />
       <button className="btn primary" onClick={async () => {
         await act(() => patch(`/projects/${project.id}`, {
@@ -168,5 +146,33 @@ function StorageBox({ project }: { project: any }) {
         confirmLabel="Verschieben" onClose={() => setConfirm(false)}
         onConfirm={async () => { if (await act(() => post(`/projects/${project.id}/move-storage`, { locationId: target }), 'Projektordner verschoben')) { setTarget(''); invalidate(`/projects/${project.id}`); invalidate('/storage/locations'); } }} />}
     </>
+  );
+}
+
+/** Reiter auswählen und sortieren – erst die Grundwerkzeuge, dann die Apps */
+export function ModuleChooser({ value, onChange, onMove, moduleOk }: { value: string[]; onChange: (v: string[]) => void; onMove?: (m: string, dir: -1 | 1) => void; moduleOk: (m: string) => boolean }) {
+  const all = PROJECT_TABS.filter(moduleOk);
+  const groups: [string, string[]][] = [['Grundwerkzeuge', all.filter(isLegacyModule)], ['Apps', all.filter((m) => !isLegacyModule(m))]];
+  const order = (list: string[]) => [...value.filter((m) => list.includes(m)), ...list.filter((m) => !value.includes(m))];
+  return (
+    <div className="card flat" style={{ padding: 8 }}>
+      {groups.filter(([, list]) => list.length).map(([title, list]) => (
+        <div key={title}>
+          <div className="small muted" style={{ padding: '6px 6px 2px', fontWeight: 600 }}>{title}</div>
+          {order(list).map((m) => {
+            const on = value.includes(m);
+            const info = MODULE_LABELS[m];
+            return (
+              <div key={m} className="row" style={{ padding: '4px 6px' }}>
+                <input type="checkbox" checked={on} onChange={() => onChange(on ? value.filter((x) => x !== m) : [...value, m])} />
+                <span className="row" style={{ gap: 6 }}><Icon name={info?.icon ?? 'square'} /> {info?.label ?? m}</span>
+                {info?.hint && <span className="small muted">{info.hint}</span>}
+                {on && onMove && <span className="right row" style={{ gap: 4 }}><button className="btn ghost sm" onClick={() => onMove(m, -1)}>↑</button><button className="btn ghost sm" onClick={() => onMove(m, 1)}>↓</button></span>}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
   );
 }

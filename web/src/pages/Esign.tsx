@@ -10,6 +10,8 @@ import { Confirm, Empty, Field, Modal, Pill, SlideOver, Tabs, useAction, useToas
 import { Icon } from '../components/Icon';
 import { SignaturePad, type Stroke } from '../modules/Signature';
 import { useAdminSettings } from './Settings';
+import { ProjectSelect } from '../modules/Pickers';
+import { ProjectGroups, TabHead, useGrouping, type TabProps } from '../modules/ProjectApps';
 
 const STATUS: Record<string, [string, string]> = { draft: ['Entwurf', ''], sent: ['zur Unterschrift', 'amber'], completed: ['unterschrieben', 'green'], declined: ['abgelehnt', 'red'], cancelled: ['zurückgezogen', ''], expired: ['abgelaufen', ''] };
 const SIGNER: Record<string, [string, string]> = { pending: ['offen', 'amber'], signed: ['unterschrieben', 'green'], declined: ['abgelehnt', 'red'] };
@@ -27,6 +29,7 @@ export default function EsignPage() {
   const [create, setCreate] = useState(false);
   const open = params.get('envelope');
   const setOpen = (id: string | null) => { if (id) params.set('envelope', id); else params.delete('envelope'); setParams(params, { replace: true }); };
+  const [grouped, groupToggle] = useGrouping('esign', false);
   useLive(reload);
   return (
     <div className="page wide">
@@ -36,11 +39,11 @@ export default function EsignPage() {
         {data.toSign.map((s) => <div key={s.token} className="row small" style={{ gap: 8, padding: '3px 0' }}><span className="grow">{s.title} · von {s.createdByName}</span><a className="btn sm primary" href={`/sign/${s.token}`}><Icon name="signature" /> Unterschreiben</a></div>)}</div>}
       {me?.role === 'admin' && <Tabs value={tab} onChange={setTab} tabs={[{ id: 'mine', label: 'Meine Vorgänge' }, { id: 'all', label: 'Alle' }]} />}
       {data && !data.envelopes.length ? <Empty icon="signature" title="Noch keine Vorgänge">Vertrag, Angebot oder Abnahmeprotokoll als PDF hochladen, Unterzeichner eintragen, absenden – alle unterschreiben im Browser.</Empty>
-        : <table className="table"><thead><tr><th>Nummer</th><th>Dokument</th><th>Unterschriften</th><th>Status</th><th>Erstellt</th></tr></thead>
-          <tbody>{data?.envelopes.map((e) => (
-            <tr key={e.id} className="click" onClick={() => setOpen(e.id)}><td className="mono small">{e.number}</td><td><b>{e.title}</b><div className="small muted">{e.fileName}{tab === 'all' ? ` · ${e.createdByName}` : ''}</div></td>
-              <td>{e.signed} / {e.signers}</td><td><Pill tone={STATUS[e.status]![1]}>{STATUS[e.status]![0]}</Pill></td><td>{fmtDate(e.createdAt)}</td></tr>
-          ))}</tbody></table>}
+        : data && <>
+          <div className="toolbar">{groupToggle}</div>
+          {grouped ? <ProjectGroups rows={data.envelopes} tab="esign">{(rows) => <EnvelopeTable rows={rows} showUser={tab === 'all'} onOpen={setOpen} />}</ProjectGroups>
+            : <EnvelopeTable rows={data.envelopes} showUser={tab === 'all'} onOpen={setOpen} />}
+        </>}
       <p className="hint">Einfache elektronische Signatur: geeignet für Angebote, Aufträge, Abnahmen, Arbeitsanweisungen und die meisten Verträge. Nicht ausreichend, wo das Gesetz Schriftform verlangt (z. B. Kündigung eines Arbeitsvertrags).</p>
       {tab === 'all' && <EsignSettings />}
       {create && <NewEnvelope onClose={() => setCreate(false)} onDone={(id) => { setCreate(false); setOpen(id); }} />}
@@ -49,24 +52,53 @@ export default function EsignPage() {
   );
 }
 
-function NewEnvelope({ onClose, onDone }: { onClose: () => void; onDone: (id: string) => void }) {
+function EnvelopeTable({ rows, showUser, onOpen }: { rows: any[]; showUser?: boolean; onOpen: (id: string) => void }) {
+  return (
+    <table className="table"><thead><tr><th>Nummer</th><th>Dokument</th><th>Unterschriften</th><th>Status</th><th>Erstellt</th></tr></thead>
+      <tbody>{rows.map((e) => (
+        <tr key={e.id} className="click" onClick={() => onOpen(e.id)}><td className="mono small">{e.number}</td><td><b>{e.title}</b><div className="small muted">{e.fileName}{showUser ? ` · ${e.createdByName}` : ''}</div></td>
+          <td>{e.signed} / {e.signers}</td><td><Pill tone={STATUS[e.status]![1]}>{STATUS[e.status]![0]}</Pill></td><td>{fmtDate(e.createdAt)}</td></tr>
+      ))}</tbody></table>
+  );
+}
+
+/** Projekt-Reiter „Unterschriften“: Dokumente des Projekts zur Unterschrift (z. B. Abnahmeprotokoll) */
+export function ProjectEsign({ project, canEdit }: TabProps) {
+  const { data, reload } = useApi<{ envelopes: any[] }>(`/esign/envelopes?projectId=${project.id}`);
+  useLive(reload);
+  const [create, setCreate] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
+  return (
+    <div>
+      <TabHead hint="z. B. Auftragsbestätigung, Abnahmeprotokoll, Änderungsvereinbarung" to="/esign" toLabel="Alle Vorgänge" newLabel="Dokument zur Unterschrift" onNew={canEdit && (() => setCreate(true))} />
+      {data && !data.envelopes.length ? <Empty icon="signature" title="Keine Dokumente zur Unterschrift in diesem Projekt" /> : data && <EnvelopeTable rows={data.envelopes} showUser onOpen={setOpen} />}
+      {create && <NewEnvelope projectId={project.id} onClose={() => setCreate(false)} onDone={(id) => { setCreate(false); void reload(); setOpen(id); }} />}
+      {open && <EnvelopePanel id={open} onClose={() => { setOpen(null); void reload(); }} />}
+    </div>
+  );
+}
+
+function NewEnvelope({ onClose, onDone, projectId }: { onClose: () => void; onDone: (id: string) => void; projectId?: string }) {
   const { users } = useSession();
   const act = useAction();
   const [file, setFile] = useState<File | null>(null);
-  const [f, setF] = useState({ title: '', message: '', sequential: false, expiresAt: '' });
+  const [f, setF] = useState({ title: '', message: '', sequential: false, expiresAt: '', projectId: projectId ?? '' });
   const [signers, setSigners] = useState<{ name: string; email: string; userId: string | null }[]>([{ name: '', email: '', userId: null }]);
   const setS = (i: number, x: any) => setSigners(signers.map((s, k) => (k === i ? { ...s, ...x } : s)));
   return (
     <Modal size="lg" title="Dokument zur Unterschrift" onClose={onClose} footer={<><button className="btn" onClick={onClose}>Abbrechen</button>
       <button className="btn primary" disabled={!file || signers.some((s) => !s.name.trim() || !s.email.trim())} onClick={async () => {
         const fd = new FormData();
-        for (const [k, v] of Object.entries({ ...f, sequential: String(f.sequential), signers: JSON.stringify(signers) })) fd.append(k, v);
+        for (const [k, v] of Object.entries({ ...f, sequential: String(f.sequential), signers: JSON.stringify(signers) })) if (k !== 'projectId' || v) fd.append(k, v);
         fd.append('file', file!, file!.name);
         const r = await act(async () => { const res = await fetch('/api/esign/envelopes', { method: 'POST', body: fd }); const j = await res.json(); if (!res.ok) throw new Error(j.error ?? 'Fehler'); return j; });
         if (r) onDone(r.id);
       }}>Anlegen</button></>}>
       <Field label="PDF-Dokument"><input type="file" accept="application/pdf,.pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
-      <Field label="Titel" hint="leer = Dateiname"><input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></Field>
+      <div className="grid2">
+        <Field label="Titel" hint="leer = Dateiname"><input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></Field>
+        <Field label="Projekt"><ProjectSelect value={f.projectId || null} onChange={(v) => setF({ ...f, projectId: v ?? '' })} /></Field>
+      </div>
       <Field label="Nachricht an die Unterzeichner"><textarea rows={3} value={f.message} onChange={(e) => setF({ ...f, message: e.target.value })} /></Field>
       <h3 style={{ margin: '8px 0 4px' }}>Unterzeichner</h3>
       {signers.map((s, i) => (

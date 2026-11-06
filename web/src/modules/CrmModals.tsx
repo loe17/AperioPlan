@@ -212,14 +212,14 @@ export function QuoteEditor({ quote, accountId, opportunityId, projectId, initia
 }
 
 // ---------------------------------------------------------------- Reklamation / Serviceanfrage
-export function CaseModal({ item, accountId, onClose, onSaved }: { item?: any; accountId?: string; onClose: () => void; onSaved: () => void }) {
+export function CaseModal({ item, accountId, projectId, onClose, onSaved }: { item?: any; accountId?: string; projectId?: string; onClose: () => void; onSaved: () => void }) {
   const act = useAction();
   const { users } = useSession();
   const { data: projects } = useApi<any[]>('/projects');
   const [c, setC] = useState({
     account: item ? { id: item.accountId, name: item.accountName } : accountId ? { id: accountId, name: '' } : null as { id: string; name: string } | null,
     type: item?.type ?? 'complaint', title: item?.title ?? '', description: item?.description ?? '', priority: item?.priority ?? 'normal', status: item?.status ?? 'open',
-    resolution: item?.resolution ?? '', assigneeId: item?.assigneeId ?? '', projectId: item?.projectId ?? '', contactId: item?.contactId ?? '',
+    resolution: item?.resolution ?? '', assigneeId: item?.assigneeId ?? '', projectId: item?.projectId ?? projectId ?? '', contactId: item?.contactId ?? '',
   });
   const contacts = useContacts(c.account?.id);
   const save = async () => {

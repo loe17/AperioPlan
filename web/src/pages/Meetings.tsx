@@ -10,6 +10,7 @@ import { Confirm, Empty, Field, Modal, Pill, useAction, useToast } from '../comp
 import { UserPicker } from '../components/UserPicker';
 import { Icon } from '../components/Icon';
 import { VideoCall } from '../modules/Video';
+import { TabHead, type TabProps } from '../modules/ProjectApps';
 
 interface Meeting {
   id: string; title: string; description: string; startsAt: string; endsAt: string; hostId: string; hostName: string; channelId: string; projectId: string | null; projectNumber: string | null;
@@ -71,7 +72,7 @@ function MeetingList() {
   );
 }
 
-function MeetingModal({ meeting, instant, onClose, onSaved }: { meeting?: any; instant?: boolean; onClose: () => void; onSaved: (id: string) => void }) {
+function MeetingModal({ meeting, instant, projectId, onClose, onSaved }: { meeting?: any; instant?: boolean; projectId?: string; onClose: () => void; onSaved: (id: string) => void }) {
   const { users, me } = useSession();
   const act = useAction();
   const { data: projects } = useApi<any[]>('/projects');
@@ -83,7 +84,7 @@ function MeetingModal({ meeting, instant, onClose, onSaved }: { meeting?: any; i
     start: local(start), duration: meeting ? Math.round((new Date(meeting.endsAt).getTime() - start.getTime()) / 60000) : 60,
     participantIds: (meeting?.participants ?? []).map((p: any) => p.id).filter((id: string) => id !== meeting?.hostId) as string[],
     invitees: (meeting?.invitees ?? []).map((i: any) => i.email).join(', '), guestsAllowed: meeting?.guestsAllowed ?? true, lobby: meeting?.lobby ?? true,
-    pin: meeting?.pin ?? '', projectId: meeting?.projectId ?? '',
+    pin: meeting?.pin ?? '', projectId: meeting?.projectId ?? projectId ?? '',
   });
   const emails = f.invitees.split(/[,;\s]+/).map((x: string) => x.trim()).filter(Boolean);
   const badMail = emails.find((e: string) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
@@ -197,3 +198,35 @@ function MeetingDetail({ id }: { id: string }) {
   );
 }
 
+/** Projekt-Reiter „Meetings“: Besprechungen zu diesem Projekt (an denen ich teilnehme) */
+export function ProjectMeetings({ project, canEdit }: TabProps) {
+  const nav = useNavigate();
+  const { me } = useSession();
+  const { data, reload } = useApi<Meeting[]>(`/meetings?projectId=${project.id}`);
+  const [create, setCreate] = useState<'plan' | 'now' | null>(null);
+  useEffect(() => (me ? realtime.subscribe(`user:${me.id}`, (e) => { if (e === 'meetings.changed') void reload(); }) : undefined), [me, reload]);
+  const now = Date.now();
+  const upcoming = (data ?? []).filter((m) => new Date(m.endsAt).getTime() >= now).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const past = (data ?? []).filter((m) => new Date(m.endsAt).getTime() < now).sort((a, b) => b.startsAt.localeCompare(a.startsAt));
+  const row = (m: Meeting, live: boolean) => (
+    <div key={m.id} className={`card meeting-row ${m.cancelledAt ? 'muted' : ''}`} onClick={() => nav(`/meetings/${m.id}`)}>
+      <div className="meeting-time"><b>{fmtDate(m.startsAt)}</b><span className="small muted">{fmtTime(m.startsAt)}–{fmtTime(m.endsAt)}</span></div>
+      <div className="grow" style={{ minWidth: 0 }}>
+        <div className="row" style={{ gap: 6 }}><b>{m.title}</b>{m.live && <Pill tone="green">läuft</Pill>}{m.cancelledAt && <Pill tone="red">abgesagt</Pill>}</div>
+        <div className="small muted">{m.hostName}{m.guestsAllowed ? ' · Gäste erlaubt' : ''}</div>
+      </div>
+      {live && !m.cancelledAt && <Link className="btn primary sm" to={`/meetings/${m.id}?join=1`} onClick={(e) => e.stopPropagation()}><Icon name="video" /> Beitreten</Link>}
+    </div>
+  );
+  return (
+    <div>
+      <TabHead hint="Videokonferenzen zu diesem Projekt, an denen Sie teilnehmen" to="/meetings" toLabel="Alle Meetings" newLabel="Meeting planen" onNew={canEdit && (() => setCreate('plan'))}>
+        {canEdit && <button className="btn" onClick={() => setCreate('now')}><Icon name="video" /> Jetzt starten</button>}
+      </TabHead>
+      {data && !data.length && <Empty icon="video" title="Keine Meetings zu diesem Projekt" />}
+      {upcoming.length > 0 && <section style={{ marginBottom: 18 }}><h3 className="muted" style={{ marginBottom: 6 }}>Anstehend</h3>{upcoming.map((m) => row(m, true))}</section>}
+      {past.length > 0 && <section><h3 className="muted" style={{ marginBottom: 6 }}>Vergangen</h3>{past.map((m) => row(m, false))}</section>}
+      {create && <MeetingModal instant={create === 'now'} projectId={project.id} onClose={() => setCreate(null)} onSaved={(id) => { setCreate(null); nav(`/meetings/${id}${create === 'now' ? '?join=1' : ''}`); }} />}
+    </div>
+  );
+}

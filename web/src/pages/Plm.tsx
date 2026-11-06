@@ -10,6 +10,7 @@ import { Avatar, Confirm, Empty, Field, Modal, Pill, SlideOver, UserSelect, useA
 import { Icon } from '../components/Icon';
 import { UserPicker } from '../components/UserPicker';
 import { ProjectSelect } from '../modules/Pickers';
+import { ProjectGroups, TabHead, useGrouping, type TabProps } from '../modules/ProjectApps';
 
 const STATUS: Record<string, [string, string]> = { draft: ['Entwurf', ''], review: ['in Prüfung', 'blue'], approved: ['freigegeben', 'green'], rejected: ['abgelehnt', 'red'], implemented: ['umgesetzt', 'green'], cancelled: ['zurückgezogen', ''] };
 const KIND: Record<string, string> = { change: 'Änderung', deviation: 'Abweichungsgenehmigung', new: 'Neuteil' };
@@ -31,6 +32,7 @@ export default function PlmPage() {
   const [create, setCreate] = useState(false);
   const { data, reload } = useApi<any[]>(`/plm/changes?${new URLSearchParams({ ...(status ? { status } : {}), ...(mine ? { mine: '1' } : {}), ...(q ? { q } : {}) })}`);
   const { me } = useSession();
+  const [grouped, groupToggle] = useGrouping('plm', false);
   useLive(reload);
   const open = params.get('change');
   const setOpen = (id: string | null) => { if (id) params.set('change', id); else params.delete('change'); setParams(params, { replace: true }); };
@@ -45,21 +47,10 @@ export default function PlmPage() {
         <input placeholder="Nummer, Titel oder Teil …" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 240 }} />
         <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: 'auto' }}><option value="open">offen</option><option value="">alle</option>{Object.entries(STATUS).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</select>
         <label className="row small"><input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} /> mich betreffend</label>
+        {groupToggle}
       </div>
       {data && !data.length && <Empty icon="repeat" title="Keine Änderungsanträge">Ein Antrag beschreibt, was sich warum ändern soll und welche Teile betroffen sind. Die eingetragenen Prüfer geben ihn frei.</Empty>}
-      {data && data.length > 0 && <table className="table"><thead><tr><th>Nr.</th><th>Änderung</th><th>Teile</th><th>Antragsteller</th><th>Prüfung</th><th>Datum</th><th>Status</th></tr></thead>
-        <tbody>{data.map((c) => {
-          const ok = c.approvers.filter((a: any) => a.decision === 'approve').length;
-          return (
-            <tr key={c.id} className="click" onClick={() => setOpen(c.id)}>
-              <td className="mono small">{c.number}</td>
-              <td><b>{c.title}</b><div className="small muted">{KIND[c.kind]}{c.priority !== 'normal' ? ` · ${PRIO[c.priority]}` : ''}{c.projectNumber ? ` · ${c.projectNumber}` : ''}</div></td>
-              <td className="small">{c.items.slice(0, 2).map((i: any) => i.number).join(', ')}{c.items.length > 2 ? ` +${c.items.length - 2}` : ''}</td>
-              <td>{c.requestedByName}</td><td>{c.approvers.length ? `${ok} / ${c.approvers.length}` : '–'}</td><td>{fmtDate(c.createdAt)}</td>
-              <td><Pill tone={STATUS[c.status]![1]}>{STATUS[c.status]![0]}</Pill></td>
-            </tr>
-          );
-        })}</tbody></table>}
+      {data && data.length > 0 && (grouped ? <ProjectGroups rows={data} tab="changes">{(rows) => <ChangeTable rows={rows} onOpen={setOpen} />}</ProjectGroups> : <ChangeTable rows={data} onOpen={setOpen} />)}
       {create && <ChangeModal onClose={() => setCreate(false)} onSaved={(id) => { setCreate(false); void reload(); if (id) setOpen(id); }} />}
       {open && <ChangePanel id={open} onClose={() => setOpen(null)} />}
     </div>
@@ -85,11 +76,48 @@ function ItemSearch({ onAdd }: { onAdd: (i: any) => void }) {
   );
 }
 
-function ChangeModal({ change, onClose, onSaved }: { change?: any; onClose: () => void; onSaved: (id?: string) => void }) {
+function ChangeTable({ rows, onOpen }: { rows: any[]; onOpen: (id: string) => void }) {
+  return (
+    <table className="table"><thead><tr><th>Nr.</th><th>Änderung</th><th>Teile</th><th>Antragsteller</th><th>Prüfung</th><th>Datum</th><th>Status</th></tr></thead>
+      <tbody>{rows.map((c) => {
+        const ok = c.approvers.filter((a: any) => a.decision === 'approve').length;
+        return (
+          <tr key={c.id} className="click" onClick={() => onOpen(c.id)}>
+            <td className="mono small">{c.number}</td>
+            <td><b>{c.title}</b><div className="small muted">{KIND[c.kind]}{c.priority !== 'normal' ? ` · ${PRIO[c.priority]}` : ''}{c.projectNumber ? ` · ${c.projectNumber}` : ''}</div></td>
+            <td className="small">{c.items.slice(0, 2).map((i: any) => i.number).join(', ')}{c.items.length > 2 ? ` +${c.items.length - 2}` : ''}</td>
+            <td>{c.requestedByName}</td><td>{c.approvers.length ? `${ok} / ${c.approvers.length}` : '–'}</td><td>{fmtDate(c.createdAt)}</td>
+            <td><Pill tone={STATUS[c.status]![1]}>{STATUS[c.status]![0]}</Pill></td>
+          </tr>
+        );
+      })}</tbody></table>
+  );
+}
+
+/** Projekt-Reiter „Änderungen“: Änderungsanträge des Projekts */
+export function ProjectChanges({ project, canEdit }: TabProps) {
+  const [status, setStatus] = useState('');
+  const [create, setCreate] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
+  const { data, reload } = useApi<any[]>(`/plm/changes?${new URLSearchParams({ projectId: project.id, ...(status ? { status } : {}) })}`);
+  useLive(reload);
+  return (
+    <div>
+      <TabHead to="/plm" toLabel="Alle Änderungsanträge" newLabel="Änderungsantrag" onNew={canEdit && (() => setCreate(true))}>
+        <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: 'auto' }}><option value="">alle</option><option value="open">offen</option>{Object.entries(STATUS).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</select>
+      </TabHead>
+      {data && !data.length ? <Empty icon="repeat" title="Keine Änderungsanträge zu diesem Projekt" /> : data && <ChangeTable rows={data} onOpen={setOpen} />}
+      {create && <ChangeModal projectId={project.id} onClose={() => setCreate(false)} onSaved={(id) => { setCreate(false); void reload(); if (id) setOpen(id); }} />}
+      {open && <ChangePanel id={open} onClose={() => setOpen(null)} />}
+    </div>
+  );
+}
+
+function ChangeModal({ change, projectId, onClose, onSaved }: { change?: any; projectId?: string; onClose: () => void; onSaved: (id?: string) => void }) {
   const { users } = useSession();
   const act = useAction();
   const [f, setF] = useState<any>(() => change ? { ...change, approverIds: change.approvers.map((a: any) => a.userId), effectiveDate: change.effectiveDate ?? '' }
-    : { title: '', reason: '', description: '', kind: 'change', priority: 'normal', projectId: null, items: [], impact: { stock: 'use', cost: null, production: '', customer: '', notes: '' }, approverIds: [], effectiveDate: '', ownerId: null });
+    : { title: '', reason: '', description: '', kind: 'change', priority: 'normal', projectId: projectId ?? null, items: [], impact: { stock: 'use', cost: null, production: '', customer: '', notes: '' }, approverIds: [], effectiveDate: '', ownerId: null });
   const imp = f.impact;
   return (
     <Modal size="lg" title={change ? `Antrag ${change.number} bearbeiten` : 'Neuer Änderungsantrag'} onClose={onClose} footer={<><button className="btn" onClick={onClose}>Abbrechen</button>

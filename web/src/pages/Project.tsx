@@ -1,5 +1,5 @@
-import { InvoiceList } from '../modules/Invoices';
 import { MindmapList } from './Mindmaps';
+import { AddTabButton, ProjectAppTab, hasAppTab } from '../modules/ProjectApps';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { TASK_PRIORITIES, TASK_STATUSES } from '@aperio/shared';
@@ -49,7 +49,8 @@ export default function ProjectPage() {
   const [filter, setFilter] = useState({ q: '', assignee: '', team: '', priority: '', status: '' });
   const [newTask, setNewTask] = useState(false);
 
-  const tab = params.get('tab') ?? rememberedTab(`project:${id}`) ?? project?.modules?.[0] ?? 'overview';
+  const rawTab = params.get('tab') ?? rememberedTab(`project:${id}`) ?? project?.modules?.[0] ?? 'overview';
+  const tab = rawTab === 'invoices' ? 'sales' : rawTab; // früherer Reiter „Rechnungen“ gehört jetzt zu „Verkauf“
   const taskId = params.get('task');
   const setTab = (v: string) => { rememberTab(`project:${id}`, v); params.set('tab', v); params.delete('task'); setParams(params, { replace: true }); };
   const openTask = (tid: string) => { params.set('task', tid); setParams(params); };
@@ -78,11 +79,12 @@ export default function ProjectPage() {
   if (error) return <div className="page"><ErrorBox error={error} /></div>;
   if (!project) return <Loading />;
 
+  // Link aus einer Gesamtübersicht auf einen Reiter, der im Projekt (noch) nicht eingeblendet ist: vorübergehend zeigen
+  const extraTab = !project.modules.includes(tab) && tab in MODULE_LABELS && tab !== 'invoices' && moduleOk(tab);
+  const shownTabs: string[] = extraTab ? [...project.modules, tab] : project.modules;
   const tabs = [
     { id: 'overview', label: `${t('Übersicht')}` },
-    ...project.modules.filter(moduleOk).map((m: string) => ({ id: m, label: t(MODULE_LABELS[m]?.label ?? m) })),
-    ...(can('mindmap') ? [{ id: 'mindmaps', label: 'Mindmaps' }] : []),
-    ...(can('crm') ? [{ id: 'invoices', label: 'Rechnungen' }] : []),
+    ...shownTabs.filter(moduleOk).map((m: string) => ({ id: m, label: t(MODULE_LABELS[m]?.label ?? m) })),
     ...pluginTabs.map((p) => ({ id: `plugin:${p.id}`, label: p.projectTab.label })),
     { id: 'documents', label: 'Dokumente' },
     { id: 'audit', label: `${t('Änderungsprotokoll')}` },
@@ -131,7 +133,7 @@ export default function ProjectPage() {
         </div>
       )}
 
-      <Tabs value={tab} onChange={setTab} tabs={tabs} />
+      <Tabs value={tab} onChange={setTab} tabs={tabs} extra={project.canManage && !project.locked ? <AddTabButton project={project} onAdded={setTab} /> : undefined} />
 
       {isTaskView && tab !== 'gantt' && (
         <div className="toolbar">
@@ -159,8 +161,14 @@ export default function ProjectPage() {
       {tab === 'list' && <TaskTable tasks={filtered} onOpen={openTask} />}
       {tab === 'gantt' && <Gantt projectId={project.id} tasks={tasks ?? []} onOpen={openTask} canEdit={project.canEdit} />}
       {tab === 'whiteboard' && <Whiteboards projectId={project.id} canEdit={project.canEdit} />}
+      {extraTab && (
+        <div className="locked-banner" style={{ borderColor: 'var(--line)' }}><Icon name="info" />
+          <span className="grow">Der Reiter „{MODULE_LABELS[tab]?.label}“ ist in diesem Projekt nicht eingeblendet.</span>
+          {project.canManage && !project.locked && <button className="btn sm" onClick={async () => { await act(() => patch(`/projects/${project.id}`, { modules: [...project.modules, tab] }), 'Reiter eingeblendet'); invalidate(`/projects/${project.id}`); }}>Dauerhaft einblenden</button>}
+        </div>
+      )}
       {tab === 'mindmaps' && <MindmapList projectId={project.id} canEdit={project.canEdit} />}
-      {tab === 'invoices' && <InvoiceList projectId={project.id} />}
+      {hasAppTab(tab) && moduleOk(tab) && <ProjectAppTab tab={tab} project={project} />}
       {tab === 'report' && <Report project={project} tasks={tasks ?? []} canEdit={project.canEdit} />}
       {tab === 'files' && <ProjectFiles projectId={project.id} project={project} canEdit={project.canEdit} />}
       {tab === 'cad' && <ProjectCad projectId={project.id} project={project} canEdit={project.canEdit} />}

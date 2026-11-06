@@ -1,4 +1,4 @@
-import { MODULE_TOOL } from '@aperio/shared';
+import { MODULE_TOOL, isLegacyModule } from '@aperio/shared';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { get, invalidate, setUnauthorizedHandler } from './lib/api';
 import { setAvatarVersions } from './lib/avatars';
@@ -37,6 +37,7 @@ export interface PublicSettings {
   company: { name: string; logoText: string };
   projectNumbers: { format: 'sequential' | 'year'; prefix: string; digits: number; step: number };
   defaultModules: string[];
+  defaultProjectTabs?: string[];
   cadMask: {
     fields: { key: string; label: string; type: string; required: boolean; catalog?: string; defaultValue?: string; appliesTo?: string[] }[];
     catalogs: { name: string; label: string; values: string[] }[];
@@ -79,7 +80,10 @@ export function useModuleOk() {
   const { me } = useContext(Ctx);
   return (m: string) => {
     const tool = MODULE_TOOL[m];
-    if (!tool || !me || me.role === 'guest') return true;
+    if (!me) return true;
+    // Gäste sehen nur die Grundwerkzeuge; App-Reiter (Verkauf, Service …) nicht
+    if (me.role === 'guest') return !tool || isLegacyModule(m);
+    if (!tool) return true;
     return (me.tools ?? []).includes(tool);
   };
 }

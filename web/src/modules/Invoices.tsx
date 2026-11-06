@@ -4,6 +4,7 @@ import { E_INVOICE_FORMAT, INVOICE_KIND, INVOICE_STATUS, invoiceTotals, position
 import { ApiError, api, del, get, patch, post } from '../lib/api';
 import { useApi } from '../lib/hooks';
 import { realtime } from '../lib/realtime';
+import { ProjectGroups, useGrouping } from './ProjectApps';
 import { fmtDate, fmtEuro2, isoDate } from '../lib/format';
 import { Confirm, Empty, Field, Modal, Pill, SlideOver, useAction, useToast } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -31,7 +32,8 @@ export function InvoiceTable({ rows, onOpen, hideAccount }: { rows: any[]; onOpe
 }
 
 /** Rechnungsliste – für CRM, Kunde oder Projekt */
-export function InvoiceList({ accountId, projectId }: { accountId?: string; projectId?: string }) {
+export function InvoiceList({ accountId, projectId, groupable }: { accountId?: string; projectId?: string; groupable?: boolean }) {
+  const [grouped, groupToggle] = useGrouping('crm-invoices');
   const [status, setStatus] = useState('');
   const [open, setOpen] = useState<string | null>(null);
   const [create, setCreate] = useState(false);
@@ -47,13 +49,16 @@ export function InvoiceList({ accountId, projectId }: { accountId?: string; proj
           <option value="">alle Rechnungen</option><option value="draft">Entwürfe</option><option value="unpaid">offen</option><option value="overdue">überfällig</option><option value="paid">bezahlt</option><option value="cancelled">storniert</option>
         </select>
         <span className="small muted">{data?.length ?? 0} Rechnungen · offen {fmtEuro2(unpaid)}</span>
+        {groupable && groupToggle}
         <span className="right row" style={{ gap: 6 }}>
           {!accountId && !projectId && <button className="btn" onClick={() => setExp(true)}><Icon name="download" /> An Buchhaltung</button>}
           <button className="btn primary" onClick={() => setCreate(true)}><Icon name="plus" /> Rechnung</button>
         </span>
       </div>
       {data && !data.length && <Empty icon="file-text" title="Keine Rechnungen">Rechnungen entstehen aus einem Angebot (Knopf „Rechnung“ im Angebot), aus den Stunden eines Projekts oder frei.</Empty>}
-      {data && data.length > 0 && <InvoiceTable rows={data} onOpen={setOpen} hideAccount={Boolean(accountId)} />}
+      {data && data.length > 0 && (groupable && grouped
+        ? <ProjectGroups rows={data} tab="sales">{(rows) => <InvoiceTable rows={rows} onOpen={setOpen} />}</ProjectGroups>
+        : <InvoiceTable rows={data} onOpen={setOpen} hideAccount={Boolean(accountId)} />)}
       {open && <InvoicePanel id={open} onClose={() => setOpen(null)} onChanged={reload} onOpen={setOpen} />}
       {create && <NewInvoice accountId={accountId} projectId={projectId} onClose={() => setCreate(false)} onCreated={(id) => { setCreate(false); reload(); setOpen(id); }} />}
       {exp && <ExportModal onClose={() => setExp(false)} />}

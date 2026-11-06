@@ -118,6 +118,7 @@ export default async function financeRoutes(app: FastifyInstance, ctx: AppContex
   /** Belege hochladen: jede Datei wird eine Eingangsrechnung; E-Rechnungen werden automatisch ausgelesen */
   app.post('/finance/bills/upload', async (req) => {
     const u = staff(req);
+    const { projectId } = parse(z.object({ projectId: z.string().uuid().optional() }), req.query);
     const created: { id: string; eInvoice: boolean; supplierName: string; gross: number }[] = [];
     for await (const part of req.parts()) {
       if (part.type !== 'file') continue;
@@ -139,14 +140,16 @@ export default async function financeRoutes(app: FastifyInstance, ctx: AppContex
         const tt = totals(signed);
         let xmlPath: string | null = null;
         if (!/\.xml$/i.test(name)) { xmlPath = `.aperio/finance/bills/${id}/e-rechnung.xml`; await storage.write(xmlPath, Readable.from(Buffer.from(e.xml, 'utf8'))); }
+        // Bestellnummer aus der E-Rechnung gehört zu einer Bestellung im Einkauf? Dann gleich dem Projekt zuordnen
+        const [po] = inv.orderReference ? await sql<{ project_id: string | null }[]>`select project_id from purchase_orders where number = ${inv.orderReference}` : [];
         await sql`insert into fin_bills (id, supplier_id, supplier_name, supplier_vat_id, number, bill_date, due_date, service_date, lines, total_net, total_tax, total_gross, iban, bic,
-            file_path, file_name, e_invoice, xml_path, notes, created_by)
+            file_path, file_name, e_invoice, xml_path, project_id, notes, created_by)
           values (${id}, ${supplierId}, ${inv.seller.name}, ${inv.seller.vatId}, ${inv.number}, ${inv.issueDate}, ${inv.dueDate}, ${inv.serviceDate}, ${sql.json(signed as never)},
-            ${tt.net}, ${tt.tax}, ${tt.gross}, ${inv.iban}, ${inv.bic}, ${path}, ${name}, true, ${xmlPath},
+            ${tt.net}, ${tt.tax}, ${tt.gross}, ${inv.iban}, ${inv.bic}, ${path}, ${name}, true, ${xmlPath}, ${projectId ?? po?.project_id ?? null},
             ${[credit ? 'Gutschrift/Storno des Lieferanten' : '', inv.orderReference ? `Bestellnummer: ${inv.orderReference}` : '', Math.abs(tt.gross - (inv.gross * sign)) > 0.02 ? `Achtung: Summe laut E-Rechnung ${eur(inv.gross)}` : ''].filter(Boolean).join('\n')}, ${u.id})`;
         created.push({ id, eInvoice: true, supplierName: inv.seller.name, gross: tt.gross });
       } else {
-        await sql`insert into fin_bills (id, file_path, file_name, created_by) values (${id}, ${path}, ${name}, ${u.id})`;
+        await sql`insert into fin_bills (id, file_path, file_name, project_id, created_by) values (${id}, ${path}, ${name}, ${projectId ?? null}, ${u.id})`;
         created.push({ id, eInvoice: false, supplierName: '', gross: 0 });
       }
     }

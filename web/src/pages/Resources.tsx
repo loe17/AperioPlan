@@ -8,6 +8,7 @@ import { useSession } from '../session';
 import { fmtDate, fmtDateTime, fmtTime, isoDate } from '../lib/format';
 import { Avatar, Confirm, Empty, Field, Modal, Pill, Tabs, useAction } from '../components/ui';
 import { Icon } from '../components/Icon';
+import { TabHead, type TabProps } from '../modules/ProjectApps';
 
 export interface Resource { id: string; name: string; kind: string; location: string; capacity: number | null; description: string; color: string; requiresApproval: boolean; approverId: string | null; approverName: string | null; allowedTeamIds: string[]; active: boolean; canBook: boolean }
 export interface Booking { extra?: Record<string, string | number | null>; returnedAt?: string | null; id: string; resourceId: string; resourceName: string; resourceKind: string; color: string; userId: string; userName: string; startsAt: string; endsAt: string; status: string; seriesId: string | null; title: string | null; note: string | null; mine: boolean; projectNumber: string | null }
@@ -177,10 +178,10 @@ export function ResourceLabel({ r }: { r: Pick<Resource, 'name' | 'kind' | 'colo
   );
 }
 
-function BookingDialog({ resources, initial, onClose, onDone }: { resources: Resource[]; initial: { resourceId?: string; start: Date; end: Date }; onClose: () => void; onDone: () => void }) {
+function BookingDialog({ resources, initial, onClose, onDone }: { resources: Resource[]; initial: { resourceId?: string; start: Date; end: Date; projectId?: string; title?: string }; onClose: () => void; onDone: () => void }) {
   const act = useAction();
   const { data: projects } = useApi<any[]>('/projects');
-  const [d, setD] = useState({ resourceId: initial.resourceId ?? resources[0]?.id ?? '', start: toLocalInput(initial.start), end: toLocalInput(initial.end), title: '', note: '', projectId: '', repeat: false, until: '' });
+  const [d, setD] = useState({ resourceId: initial.resourceId ?? resources[0]?.id ?? '', start: toLocalInput(initial.start), end: toLocalInput(initial.end), title: initial.title ?? '', note: '', projectId: initial.projectId ?? '', repeat: false, until: '' });
   const [error, setError] = useState<{ message: string; alternatives: { id: string; name: string }[] } | null>(null);
   const [free, setFree] = useState<{ id: string; name: string }[] | null>(null);
   const r = resources.find((x) => x.id === d.resourceId);
@@ -292,6 +293,42 @@ function BookingDetail({ booking: b, onClose, onChanged }: { booking: Booking; o
         onChanged();
       }} />}
     </Modal>
+  );
+}
+
+/** Projekt-Reiter „Ressourcen“: Räume, Fahrzeuge und Geräte, die für das Projekt gebucht sind */
+export function ProjectResources({ project }: TabProps) {
+  const { data: resources } = useApi<Resource[]>('/resources');
+  const { data, reload } = useApi<Booking[]>(`/resources/bookings?projectId=${project.id}`);
+  useResourceUpdates(reload);
+  const [dialog, setDialog] = useState(false);
+  const [detail, setDetail] = useState<Booking | null>(null);
+  const [past, setPast] = useState(false);
+  const now = Date.now();
+  const rows = (data ?? []).filter((b) => past || new Date(b.endsAt).getTime() >= now).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const bookable = (resources ?? []).filter((r) => r.active && r.canBook);
+  const start = new Date(); start.setMinutes(0, 0, 0); start.setHours(start.getHours() + 1);
+  return (
+    <div>
+      <TabHead to="/resources" toLabel="Belegungsplan" newLabel="Buchen" onNew={bookable.length > 0 && (() => setDialog(true))}>
+        <label className="row small"><input type="checkbox" checked={past} onChange={(e) => setPast(e.target.checked)} /> auch vergangene</label>
+      </TabHead>
+      {!rows.length ? <Empty icon="car" title="Keine Buchungen für dieses Projekt">z. B. Firmenwagen für die Montage, Besprechungsraum für die Abnahme, Messgerät.</Empty> : (
+        <div className="table-wrap"><table className="table">
+          <thead><tr><th>Ressource</th><th>Zeitraum</th><th>Anlass</th><th>gebucht von</th><th>Status</th></tr></thead>
+          <tbody>{rows.map((b) => (
+            <tr key={b.id} className="click" onClick={() => setDetail(b)}>
+              <td><span className="row" style={{ gap: 6 }}><Icon name={KIND_META[b.resourceKind]?.icon ?? 'box'} style={{ color: b.color }} />{b.resourceName}</span></td>
+              <td>{fmtDateTime(b.startsAt)} – {fmtDate(b.endsAt) === fmtDate(b.startsAt) ? fmtTime(b.endsAt) : fmtDateTime(b.endsAt)}</td>
+              <td>{b.title || <span className="muted">–</span>}</td><td>{b.userName}</td>
+              <td>{b.status === 'pending' ? <Pill tone="amber">wartet auf Genehmigung</Pill> : <Pill tone="green">bestätigt</Pill>}</td>
+            </tr>
+          ))}</tbody>
+        </table></div>
+      )}
+      {dialog && <BookingDialog resources={bookable} initial={{ start, end: new Date(start.getTime() + 2 * 3600000), projectId: project.id, title: `${project.number} ${project.name}` }} onClose={() => setDialog(false)} onDone={() => { setDialog(false); reload(); }} />}
+      {detail && <BookingDetail booking={detail} onClose={() => setDetail(null)} onChanged={() => { setDetail(null); reload(); }} />}
+    </div>
   );
 }
 

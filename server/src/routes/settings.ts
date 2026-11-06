@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { validateNumberPattern, validatePcbPattern } from '@aperio/shared';
+import { PROJECT_TABS, isLegacyModule, validateNumberPattern, validatePcbPattern } from '@aperio/shared';
 import type { AppContext } from '../context';
 import { z, parse } from '../lib/validate';
 import { requireRole, requireUser } from '../lib/auth';
@@ -61,6 +61,15 @@ export default async function settingsRoutes(app: FastifyInstance, ctx: AppConte
     if (k === 'pcbMask') {
       const err = validatePcbPattern(String((value as { numberPattern?: string }).numberPattern ?? ''));
       if (err) throw badRequest(`Nummer der Leiterplatten: ${err}`);
+    }
+    if (k === 'defaultProjectTabs' || k === 'defaultModules') {
+      // nur bekannte Reiter; die Grundwerkzeuge zusätzlich in der alten Einstellung (für ältere Versionen)
+      const tabs = [...new Set((value as unknown[]).filter((x): x is string => typeof x === 'string' && (PROJECT_TABS as readonly string[]).includes(x)))];
+      await settings.set('defaultModules', tabs.filter(isLegacyModule));
+      if (k === 'defaultModules') return { ok: true };
+      await settings.set('defaultProjectTabs', tabs as SettingsMap['defaultProjectTabs']);
+      await audit(sql, u, { action: 'settings.update', entityType: 'settings', entityId: key, summary: 'Standard-Reiter für neue Projekte geändert' });
+      return { ok: true };
     }
     const merged = await settings.mergeSecrets(k, value as SettingsMap[typeof k]);
     await settings.set(k, merged);

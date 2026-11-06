@@ -10,6 +10,7 @@ import { Confirm, Empty, Field, Modal, Pill, SlideOver, Tabs, useAction, useToas
 import { Icon } from '../components/Icon';
 import { LocationSelect, ProjectSelect } from '../modules/Pickers';
 import { qrSvg } from '../modules/Scan';
+import { ProjectGroups, TabHead, useGrouping, type TabProps } from '../modules/ProjectApps';
 
 type Tab = 'orders' | 'floor' | 'load' | 'workcenters';
 const STATUS: Record<string, [string, string]> = { planned: ['geplant', ''], released: ['freigegeben', 'blue'], in_progress: ['in Arbeit', 'amber'], done: ['fertig', 'green'], cancelled: ['storniert', ''] };
@@ -45,45 +46,72 @@ function Orders({ onOpen }: { onOpen: (id: string) => void }) {
   const [q, setQ] = useState('');
   const [create, setCreate] = useState(false);
   const { data, reload } = useApi<any[]>(`/manufacturing/orders?${new URLSearchParams({ ...(status ? { status } : {}), ...(q ? { q } : {}) })}`);
+  const [grouped, groupToggle] = useGrouping('manufacturing', false);
   useLive(reload);
   return (
     <div>
       <div className="toolbar">
         <input placeholder="Suchen …" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 200 }} />
         <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: 'auto' }}><option value="active">offen</option><option value="">alle</option>{Object.entries(STATUS).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</select>
+        {groupToggle}
         <span className="right"><button className="btn primary" onClick={() => setCreate(true)}><Icon name="plus" /> Fertigungsauftrag</button></span>
       </div>
       {data && !data.length && <Empty icon="factory" title="Keine Fertigungsaufträge">Am schnellsten aus einer Baugruppe der CAD-Bridge: die Stückliste wird übernommen, Kaufteile sind mit dem Lager verknüpft.</Empty>}
-      {data && data.length > 0 && <table className="table"><thead><tr><th>Nr.</th><th>Auftrag</th><th>Projekt</th><th style={{ textAlign: 'right' }}>Menge</th><th>Fortschritt</th><th>Termin</th><th>Status</th></tr></thead>
-        <tbody>{data.map((o) => {
-          const done = o.operations.filter((x: any) => x.status === 'done').length;
-          return (
-            <tr key={o.id} className="click" onClick={() => onOpen(o.id)}>
-              <td className="mono small">{o.number}</td><td><b>{o.title}</b></td><td>{o.projectNumber ?? '–'}</td>
-              <td style={{ textAlign: 'right' }}>{n3(o.qtyDone)} / {n3(o.qty)}</td>
-              <td style={{ width: 140 }}><div className="mfg-progress"><span style={{ width: `${o.operations.length ? (done / o.operations.length) * 100 : 0}%` }} /></div><div className="small muted">{done} von {o.operations.length} Arbeitsgängen</div></td>
-              <td className={o.overdue ? 'text-red' : ''}>{fmtDate(o.dueDate)}</td><td><Pill tone={STATUS[o.status]![1]}>{STATUS[o.status]![0]}</Pill></td>
-            </tr>
-          );
-        })}</tbody></table>}
+      {data && data.length > 0 && (grouped ? <ProjectGroups rows={data} tab="manufacturing">{(rows) => <OrderTable rows={rows} onOpen={onOpen} />}</ProjectGroups> : <OrderTable rows={data} onOpen={onOpen} showProject />)}
       {create && <NewOrder onClose={() => setCreate(false)} onDone={(id) => { setCreate(false); void reload(); onOpen(id); }} />}
     </div>
   );
 }
 
-function NewOrder({ onClose, onDone }: { onClose: () => void; onDone: (id: string) => void }) {
+function OrderTable({ rows, onOpen, showProject }: { rows: any[]; onOpen: (id: string) => void; showProject?: boolean }) {
+  return (
+    <table className="table"><thead><tr><th>Nr.</th><th>Auftrag</th>{showProject && <th>Projekt</th>}<th style={{ textAlign: 'right' }}>Menge</th><th>Fortschritt</th><th>Termin</th><th>Status</th></tr></thead>
+      <tbody>{rows.map((o) => {
+        const done = o.operations.filter((x: any) => x.status === 'done').length;
+        return (
+          <tr key={o.id} className="click" onClick={() => onOpen(o.id)}>
+            <td className="mono small">{o.number}</td><td><b>{o.title}</b></td>{showProject && <td>{o.projectNumber ?? '–'}</td>}
+            <td style={{ textAlign: 'right' }}>{n3(o.qtyDone)} / {n3(o.qty)}</td>
+            <td style={{ width: 140 }}><div className="mfg-progress"><span style={{ width: `${o.operations.length ? (done / o.operations.length) * 100 : 0}%` }} /></div><div className="small muted">{done} von {o.operations.length} Arbeitsgängen</div></td>
+            <td className={o.overdue ? 'text-red' : ''}>{fmtDate(o.dueDate)}</td><td><Pill tone={STATUS[o.status]![1]}>{STATUS[o.status]![0]}</Pill></td>
+          </tr>
+        );
+      })}</tbody></table>
+  );
+}
+
+/** Projekt-Reiter „Fertigung“: Fertigungsaufträge des Projekts */
+export function ProjectManufacturing({ project, canEdit }: TabProps) {
+  const [status, setStatus] = useState('');
+  const [create, setCreate] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
+  const { data, reload } = useApi<any[]>(`/manufacturing/orders?${new URLSearchParams({ projectId: project.id, ...(status ? { status } : {}) })}`);
+  useLive(reload);
+  return (
+    <div>
+      <TabHead to="/manufacturing" toLabel="Alle Aufträge" newLabel="Fertigungsauftrag" onNew={canEdit && (() => setCreate(true))}>
+        <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: 'auto' }}><option value="">alle</option><option value="active">offen</option>{Object.entries(STATUS).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</select>
+      </TabHead>
+      {data && !data.length ? <Empty icon="factory" title="Keine Fertigungsaufträge zu diesem Projekt">Am schnellsten aus einer Baugruppe des Projekts: die Stückliste wird übernommen.</Empty> : data && <OrderTable rows={data} onOpen={setOpen} />}
+      {create && <NewOrder projectId={project.id} onClose={() => setCreate(false)} onDone={(id) => { setCreate(false); void reload(); setOpen(id); }} />}
+      {open && <OrderPanel id={open} onClose={() => setOpen(null)} />}
+    </div>
+  );
+}
+
+function NewOrder({ onClose, onDone, projectId }: { onClose: () => void; onDone: (id: string) => void; projectId?: string }) {
   const can = useCan();
   const act = useAction();
   const [mode, setMode] = useState<'cad' | 'manual'>(can('cad') ? 'cad' : 'manual');
   const [q, setQ] = useState('');
   const [items, setItems] = useState<any[]>([]);
   const [item, setItem] = useState<any | null>(null);
-  const [f, setF] = useState({ title: '', qty: 1, dueDate: '', projectId: null as string | null });
+  const [f, setF] = useState({ title: '', qty: 1, dueDate: '', projectId: (projectId ?? null) as string | null });
   useEffect(() => {
     if (mode !== 'cad' || q.trim().length < 2) { setItems([]); return; }
-    const t = setTimeout(() => { void get<any[]>(`/cad/items?q=${encodeURIComponent(q)}&limit=30`).then((r) => setItems(r.filter((x) => x.type !== 'drawing'))).catch(() => setItems([])); }, 250);
+    const t = setTimeout(() => { void get<any[]>(`/cad/items?q=${encodeURIComponent(q)}&limit=30${projectId ? `&projectId=${projectId}` : ''}`).then((r) => setItems(r.filter((x) => x.type !== 'drawing'))).catch(() => setItems([])); }, 250);
     return () => clearTimeout(t);
-  }, [q, mode]);
+  }, [q, mode, projectId]);
   return (
     <Modal title="Neuer Fertigungsauftrag" onClose={onClose} footer={<><button className="btn" onClick={onClose}>Abbrechen</button>
       <button className="btn primary" disabled={mode === 'cad' ? !item : !f.title.trim()} onClick={async () => {
@@ -101,7 +129,7 @@ function NewOrder({ onClose, onDone }: { onClose: () => void; onDone: (id: strin
           : <div className="mfg-pick">{items.map((x) => <button key={x.id} className="row" onClick={() => setItem(x)}><Icon name={x.type === 'assembly' ? 'assembly' : 'part'} /> <span className="mono">{x.number}</span> {x.designation}</button>)}</div>}
       </> : <>
         <Field label="Bezeichnung"><input autoFocus value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></Field>
-        <Field label="Projekt"><ProjectSelect value={f.projectId} onChange={(v) => setF({ ...f, projectId: v })} /></Field>
+        {!projectId && <Field label="Projekt"><ProjectSelect value={f.projectId} onChange={(v) => setF({ ...f, projectId: v })} /></Field>}
       </>}
       <div className="grid2">
         <Field label="Menge"><input type="number" min={1} value={f.qty} onChange={(e) => setF({ ...f, qty: Number(e.target.value) })} /></Field>

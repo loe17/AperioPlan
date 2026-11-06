@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useCrumbs } from '../components/Layout';
 import { useApi } from '../lib/hooks';
 import { del, patch, post } from '../lib/api';
 import { realtime } from '../lib/realtime';
 import { useSession } from '../session';
-import { fmtDateTime, isoDate } from '../lib/format';
+import { fmtDate, fmtDateTime, isoDate } from '../lib/format';
 import { Confirm, Empty, Field, Modal, Pill, SlideOver, useAction, useToast } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { UserPicker } from '../components/UserPicker';
@@ -13,6 +13,8 @@ import { CustomerPicker } from '../modules/CrmShared';
 import { InvoicePanel } from '../modules/Invoices';
 import { SignaturePad, type Stroke } from '../modules/Signature';
 import { CustomFields } from '../modules/CustomFields';
+import { ProjectSelect } from '../modules/Pickers';
+import { ProjectGroups, TabHead, useGrouping, type TabProps } from '../modules/ProjectApps';
 
 export const SVC_STATUS: Record<string, [string, string]> = { planned: ['geplant', 'blue'], on_way: ['unterwegs', 'amber'], in_progress: ['vor Ort', 'amber'], done: ['erledigt', 'green'], invoiced: ['abgerechnet', ''], cancelled: ['storniert', ''] };
 const localInput = (iso: string | null) => (iso ? new Date(new Date(iso).getTime() - new Date(iso).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '');
@@ -30,11 +32,10 @@ export default function ServicePage() {
   const [q, setQ] = useState('');
   const [create, setCreate] = useState(false);
   const { data, reload } = useApi<any[]>(`/service/jobs?${new URLSearchParams({ ...(status ? { status } : {}), ...(mine ? { mine: '1' } : {}), ...(q ? { q } : {}) })}`);
-  const { users } = useSession();
+  const [byProject, groupToggle] = useGrouping('service', false);
   useLive(reload);
   const open = params.get('job');
   const setOpen = (id: string | null) => { if (id) params.set('job', id); else params.delete('job'); setParams(params, { replace: true }); };
-  const name = (id: string) => users.find((u) => u.id === id)?.displayName ?? '';
   // nach Tagen gruppieren
   const groups = new Map<string, any[]>();
   for (const j of data ?? []) { const k = j.startAt ? isoDate(new Date(j.startAt)) : 'ohne Termin'; groups.set(k, [...(groups.get(k) ?? []), j]); }
@@ -49,24 +50,56 @@ export default function ServicePage() {
         <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: 'auto' }}><option value="open">offen</option><option value="billable">erledigt, nicht abgerechnet</option><option value="">alle</option>
           {Object.entries(SVC_STATUS).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</select>
         <label className="row small"><input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} /> nur meine</label>
+        {groupToggle}
       </div>
       {data && !data.length && <Empty icon="tools" title="Keine Einsätze">Einsatz anlegen: Kunde, Termin und Techniker. Vor Ort erfasst der Techniker Arbeitszeit und Material und lässt den Kunden unterschreiben.</Empty>}
-      {[...groups.entries()].map(([k, list]) => (
+      {byProject ? <ProjectGroups rows={data ?? []} tab="service">{(list) => <JobTable rows={list} onOpen={setOpen} withDate />}</ProjectGroups>
+        : [...groups.entries()].map(([k, list]) => (
         <div key={k} style={{ marginBottom: 14 }}>
           <h3 style={{ margin: '6px 0' }}>{label(k)}</h3>
-          <table className="table"><tbody>{list.map((j) => (
-            <tr key={j.id} className="click" onClick={() => setOpen(j.id)}>
-              <td style={{ width: 70 }}>{j.startAt ? new Date(j.startAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : ''}</td>
-              <td><b>{j.title}</b><div className="small muted">{j.number}</div></td>
-              <td>{j.accountName ?? '–'}<div className="small muted">{j.address}</div></td>
-              <td className="small">{j.technicianIds.map(name).join(', ') || <span className="muted">kein Techniker</span>}</td>
-              <td>{j.signed && <Icon name="signature" />}</td>
-              <td><Pill tone={SVC_STATUS[j.status]![1]}>{SVC_STATUS[j.status]![0]}</Pill></td>
-            </tr>
-          ))}</tbody></table>
+          <JobTable rows={list} onOpen={setOpen} />
         </div>
       ))}
       {create && <NewJob onClose={() => setCreate(false)} onDone={(id) => { setCreate(false); void reload(); setOpen(id); }} />}
+      {open && <JobPanel id={open} onClose={() => setOpen(null)} />}
+    </div>
+  );
+}
+
+function JobTable({ rows, onOpen, withDate }: { rows: any[]; onOpen: (id: string) => void; withDate?: boolean }) {
+  const { users } = useSession();
+  const name = (id: string) => users.find((u) => u.id === id)?.displayName ?? '';
+  return (
+    <table className="table"><tbody>{rows.map((j) => (
+      <tr key={j.id} className="click" onClick={() => onOpen(j.id)}>
+        <td style={{ width: withDate ? 120 : 70 }}>{j.startAt ? (withDate ? `${fmtDate(j.startAt)} ` : '') + new Date(j.startAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : <span className="muted">ohne Termin</span>}</td>
+        <td><b>{j.title}</b><div className="small muted">{j.number}</div></td>
+        <td>{j.accountName ?? '–'}<div className="small muted">{j.address}</div></td>
+        <td className="small">{j.technicianIds.map(name).join(', ') || <span className="muted">kein Techniker</span>}</td>
+        <td>{j.signed && <Icon name="signature" />}</td>
+        <td><Pill tone={SVC_STATUS[j.status]![1]}>{SVC_STATUS[j.status]![0]}</Pill></td>
+      </tr>
+    ))}</tbody></table>
+  );
+}
+
+/** Projekt-Reiter „Service“: Service- und Montageeinsätze des Projekts */
+export function ProjectService({ project, canEdit }: TabProps) {
+  const [status, setStatus] = useState('');
+  const [create, setCreate] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
+  const { data, reload } = useApi<any[]>(`/service/jobs?${new URLSearchParams({ projectId: project.id, ...(status ? { status } : {}) })}`);
+  useLive(reload);
+  const sorted = [...(data ?? [])].sort((a, b) => (b.startAt ?? '').localeCompare(a.startAt ?? ''));
+  return (
+    <div>
+      <TabHead to="/service" toLabel="Alle Einsätze" newLabel="Einsatz" onNew={canEdit && (() => setCreate(true))}>
+        <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: 'auto' }}><option value="">alle</option><option value="open">offen</option><option value="billable">erledigt, nicht abgerechnet</option>
+          {Object.entries(SVC_STATUS).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</select>
+      </TabHead>
+      {data && !data.length ? <Empty icon="tools" title="Keine Einsätze zu diesem Projekt">z. B. Montage, Inbetriebnahme oder Service beim Kunden – mit Bericht und Unterschrift.</Empty> : <JobTable rows={sorted} onOpen={setOpen} withDate />}
+      {create && <NewJob initial={{ projectId: project.id, account: project.customerId ? { id: project.customerId, name: project.customer ?? '' } : null, title: '' }}
+        onClose={() => setCreate(false)} onDone={(id) => { setCreate(false); void reload(); setOpen(id); }} />}
       {open && <JobPanel id={open} onClose={() => setOpen(null)} />}
     </div>
   );
@@ -80,10 +113,13 @@ export function NewJob({ onClose, onDone, initial }: { onClose: () => void; onDo
     <Modal title="Neuer Service-Einsatz" onClose={onClose} footer={<><button className="btn" onClick={onClose}>Abbrechen</button>
       <button className="btn primary" disabled={!f.title.trim()} onClick={async () => {
         const r = await act(() => post<{ id: string }>('/service/jobs', { accountId: f.account?.id ?? null, title: f.title, description: f.description, contactName: f.contactName, contactPhone: f.contactPhone,
-          address: f.address, asset: f.asset, technicianIds: f.technicianIds, startAt: fromLocal(f.start), ticketId: f.ticketId ?? null, contractId: f.contractId ?? null }), 'Angelegt');
+          address: f.address, asset: f.asset, technicianIds: f.technicianIds, startAt: fromLocal(f.start), ticketId: f.ticketId ?? null, contractId: f.contractId ?? null, projectId: f.projectId ?? null }), 'Angelegt');
         if (r) onDone(r.id);
       }}>Anlegen</button></>}>
-      <Field label="Kunde"><CustomerPicker value={f.account} onChange={(a) => setF({ ...f, account: a })} /></Field>
+      <div className="grid2">
+        <Field label="Kunde"><CustomerPicker value={f.account} onChange={(a) => setF({ ...f, account: a })} /></Field>
+        <Field label="Projekt"><ProjectSelect value={f.projectId ?? null} onChange={(v) => setF({ ...f, projectId: v })} /></Field>
+      </div>
       <Field label="Auftrag"><input autoFocus value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="z. B. Pumpe fördert nicht" /></Field>
       <Field label="Beschreibung"><textarea rows={2} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Field>
       <div className="grid2">
@@ -124,6 +160,7 @@ function JobPanel({ id, onClose }: { id: string; onClose: () => void }) {
       <div className="row wrap" style={{ gap: 6, marginBottom: 10 }}>
         <Pill tone={SVC_STATUS[j.status]![1]}>{SVC_STATUS[j.status]![0]}</Pill>
         {j.accountName && <span className="small"><b>{j.accountName}</b></span>}
+        {j.projectId && <Link className="small" to={`/projects/${j.projectId}?tab=service`}><Icon name="projects" /> Projekt {j.projectNumber}</Link>}
         {j.address && <a className="small" href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(j.address)}`} target="_blank" rel="noreferrer"><Icon name="location" /> {j.address}</a>}
         {j.contactPhone && <a className="small" href={`tel:${j.contactPhone}`}><Icon name="phone" /> {j.contactPhone}</a>}
       </div>

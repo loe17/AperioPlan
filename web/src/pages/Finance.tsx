@@ -12,6 +12,8 @@ import { UserPicker } from '../components/UserPicker';
 import { CustomerPicker } from '../modules/CrmShared';
 import { InvoicePanel } from '../modules/Invoices';
 import { useAdminSettings } from './Settings';
+import { ProjectSelect } from '../modules/Pickers';
+import { ProjectGroups, TabHead, useGrouping, type TabProps } from '../modules/ProjectApps';
 
 type Tab = 'overview' | 'bills' | 'bank' | 'dunning' | 'vat' | 'export' | 'settings';
 const BILL_STATUS: Record<string, [string, string]> = { draft: ['zu erfassen', 'amber'], approval: ['wartet auf Freigabe', 'blue'], approved: ['freigegeben', ''], partial: ['teilweise bezahlt', 'amber'], paid: ['bezahlt', 'green'], rejected: ['abgelehnt', 'red'] };
@@ -80,8 +82,9 @@ function Overview({ onTab }: { onTab: (t: Tab) => void }) {
 }
 
 // ---------------------------------------------------------------- Eingangsrechnungen
-function Bills() {
+function Bills({ projectId }: { projectId?: string } = {}) {
   const [params, setParams] = useSearchParams();
+  const [grouped, groupToggle] = useGrouping('finance-bills', false);
   const [status, setStatus] = useState('');
   const [q, setQ] = useState('');
   const [over, setOver] = useState(false);
@@ -89,7 +92,7 @@ function Bills() {
   const [run, setRun] = useState(false);
   const toast = useToast();
   const input = useRef<HTMLInputElement>(null);
-  const qs = new URLSearchParams({ ...(status ? { status } : {}), ...(q ? { q } : {}) });
+  const qs = new URLSearchParams({ ...(status ? { status } : {}), ...(q ? { q } : {}), ...(projectId ? { projectId } : {}) });
   const { data, reload } = useApi<any[]>(`/finance/bills?${qs}`);
   useLive(reload);
   const open = params.get('bill');
@@ -98,7 +101,7 @@ function Bills() {
     if (!files.length) return;
     const fd = new FormData(); for (const f of files) fd.append('file', f, f.name);
     try {
-      const r = await upload('/finance/bills/upload', fd) as any[];
+      const r = await upload(`/finance/bills/upload${projectId ? `?projectId=${projectId}` : ''}`, fd) as any[];
       const e = r.filter((x) => x.eInvoice).length;
       toast(`${r.length} Beleg(e) hochgeladen${e ? `, ${e} E-Rechnung(en) automatisch ausgelesen` : ''}`);
       reload(); if (r.length === 1) setOpen(r[0].id);
@@ -112,6 +115,7 @@ function Bills() {
         <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: 'auto' }}>
           <option value="">alle</option><option value="todo">zu bearbeiten</option><option value="approval">wartet auf Freigabe</option><option value="unpaid">offen (freigegeben)</option><option value="paid">bezahlt</option>
         </select>
+        {!projectId && groupToggle}
         {payable.length > 0 && <button className="btn" onClick={() => setRun(true)}><Icon name="send" /> Zahlungslauf ({payable.length})</button>}
         <span className="right row" style={{ gap: 6 }}>
           <button className="btn primary" onClick={() => input.current?.click()}><Icon name="upload" /> Belege hochladen</button>
@@ -120,19 +124,45 @@ function Bills() {
       </div>
       <div className={`fin-drop ${over ? 'over' : ''}`}>Rechnungen hierher ziehen – PDF, Foto oder E-Rechnung (XRechnung/ZUGFeRD). E-Rechnungen werden automatisch ausgelesen.</div>
       {data && !data.length && <Empty icon="file-text" title="Keine Eingangsrechnungen" />}
-      {data && data.length > 0 && <table className="table"><thead><tr><th style={{ width: 28 }} /><th>Lieferant</th><th>Nr.</th><th>Datum</th><th>Fällig</th><th style={{ textAlign: 'right' }}>Brutto</th><th>Status</th></tr></thead>
-        <tbody>{data.map((b) => (
-          <tr key={b.id} className="click" onClick={() => setOpen(b.id)}>
-            <td onClick={(e) => e.stopPropagation()}>{['approved', 'partial'].includes(b.status) && <input type="checkbox" checked={sel.has(b.id)} onChange={() => { const n = new Set(sel); if (n.has(b.id)) n.delete(b.id); else n.add(b.id); setSel(n); }} />}</td>
-            <td><b>{b.supplierName || <span className="muted">unbekannt</span>}</b>{b.eInvoice && <span className="pill small" style={{ marginLeft: 6 }}>E-Rechnung</span>}</td>
-            <td className="mono small">{b.number}</td><td>{fmtDate(b.billDate)}</td>
-            <td className={b.overdue ? 'text-red' : ''}>{fmtDate(b.dueDate)}</td>
-            <td style={{ textAlign: 'right' }}>{fmtEuro2(b.totalGross)}</td>
-            <td><Pill tone={BILL_STATUS[b.status]![1]}>{BILL_STATUS[b.status]![0]}</Pill></td>
-          </tr>
-        ))}</tbody></table>}
+      {data && data.length > 0 && (grouped && !projectId
+        ? <ProjectGroups rows={data} tab="bills">{(rows) => <BillTable rows={rows} sel={sel} setSel={setSel} onOpen={setOpen} />}</ProjectGroups>
+        : <BillTable rows={data} sel={sel} setSel={setSel} onOpen={setOpen} />)}
       {open && <BillPanel id={open} onClose={() => setOpen(null)} onChanged={reload} />}
       {run && <PaymentRun bills={payable} onClose={() => setRun(false)} />}
+    </div>
+  );
+}
+
+function BillTable({ rows, sel, setSel, onOpen }: { rows: any[]; sel: Set<string>; setSel: (s: Set<string>) => void; onOpen: (id: string) => void }) {
+  return (
+    <table className="table"><thead><tr><th style={{ width: 28 }} /><th>Lieferant</th><th>Nr.</th><th>Datum</th><th>Fällig</th><th style={{ textAlign: 'right' }}>Brutto</th><th>Status</th></tr></thead>
+      <tbody>{rows.map((b) => (
+        <tr key={b.id} className="click" onClick={() => onOpen(b.id)}>
+          <td onClick={(e) => e.stopPropagation()}>{['approved', 'partial'].includes(b.status) && <input type="checkbox" checked={sel.has(b.id)} onChange={() => { const n = new Set(sel); if (n.has(b.id)) n.delete(b.id); else n.add(b.id); setSel(n); }} />}</td>
+          <td><b>{b.supplierName || <span className="muted">unbekannt</span>}</b>{b.eInvoice && <span className="pill small" style={{ marginLeft: 6 }}>E-Rechnung</span>}</td>
+          <td className="mono small">{b.number}</td><td>{fmtDate(b.billDate)}</td>
+          <td className={b.overdue ? 'text-red' : ''}>{fmtDate(b.dueDate)}</td>
+          <td style={{ textAlign: 'right' }}>{fmtEuro2(b.totalGross)}</td>
+          <td><Pill tone={BILL_STATUS[b.status]![1]}>{BILL_STATUS[b.status]![0]}</Pill></td>
+        </tr>
+      ))}</tbody></table>
+  );
+}
+
+/** Projekt-Reiter „Eingangsrechnungen“: Lieferantenrechnungen zum Projekt; Belege hier hochladen ordnet sie gleich zu */
+export function ProjectBills({ project }: TabProps) {
+  const { data } = useApi<any[]>(`/finance/bills?projectId=${project.id}`);
+  const net = (data ?? []).filter((b) => b.status !== 'rejected').reduce((a, b) => a + (b.totalNet ?? 0), 0);
+  const open = (data ?? []).filter((b) => ['approved', 'partial', 'approval', 'draft'].includes(b.status)).reduce((a, b) => a + (b.totalGross ?? 0) - (b.paidAmount ?? 0), 0);
+  return (
+    <div>
+      <div className="kpi-row">
+        <div className="kpi"><div className="v">{(data ?? []).length}</div><div className="l">Eingangsrechnungen</div></div>
+        <div className="kpi"><div className="v">{fmtEuro2(net)}</div><div className="l">Kosten netto</div></div>
+        <div className="kpi"><div className="v">{fmtEuro2(open)}</div><div className="l">noch nicht bezahlt</div></div>
+      </div>
+      <TabHead hint="E-Rechnungen mit einer Bestellnummer aus dem Einkauf werden automatisch dem Projekt zugeordnet." to="/finance?tab=bills" toLabel="Alle Eingangsrechnungen" />
+      <Bills projectId={project.id} />
     </div>
   );
 }
@@ -146,12 +176,12 @@ function BillPanel({ id, onClose, onChanged }: { id: string; onClose: () => void
   const [pay, setPay] = useState(false);
   const [remove, setRemove] = useState(false);
   useEffect(() => { if (b) setF({ supplier: b.supplierId ? { id: b.supplierId, name: b.supplierName } : null, supplierName: b.supplierName, number: b.number, billDate: b.billDate ?? '', dueDate: b.dueDate ?? '',
-    iban: b.iban, lines: b.lines.length ? b.lines : [{ text: '', account: settings?.expenseAccounts?.[0]?.account ?? '3400', net: 0, rate: 19 }], notes: b.notes }); }, [b?.id, b?.status, settings]); // eslint-disable-line react-hooks/exhaustive-deps
+    iban: b.iban, lines: b.lines.length ? b.lines : [{ text: '', account: settings?.expenseAccounts?.[0]?.account ?? '3400', net: 0, rate: 19 }], notes: b.notes, projectId: b.projectId ?? null }); }, [b?.id, b?.status, settings]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!b || !f) return null;
   const editable = ['draft', 'approval', 'rejected'].includes(b.status);
   const changed = () => { void reload(); onChanged(); };
   const save = async () => act(() => patch(`/finance/bills/${id}`, { supplierId: f.supplier?.id ?? null, supplierName: f.supplier?.name ?? f.supplierName, number: f.number, billDate: f.billDate || null,
-    dueDate: f.dueDate || null, iban: f.iban, notes: f.notes, lines: f.lines.map((l: any) => ({ ...l, net: Number(l.net), rate: Number(l.rate) })) }), 'Gespeichert');
+    dueDate: f.dueDate || null, iban: f.iban, notes: f.notes, projectId: f.projectId ?? null, lines: f.lines.map((l: any) => ({ ...l, net: Number(l.net), rate: Number(l.rate) })) }), 'Gespeichert');
   const totals = f.lines.reduce((a: any, l: any) => { const n = Number(l.net) || 0; const t = Math.round(n * Number(l.rate)) / 100; return { net: a.net + n, tax: a.tax + t }; }, { net: 0, tax: 0 });
   const isPdf = /\.pdf$/i.test(b.fileName ?? ''), isImg = /\.(png|jpe?g)$/i.test(b.fileName ?? '');
   const approver = me?.role === 'admin' || settings?.approverIds?.includes(me?.id);
@@ -170,7 +200,10 @@ function BillPanel({ id, onClose, onChanged }: { id: string; onClose: () => void
               <Field label="Rechnungsdatum"><input type="date" value={f.billDate} onChange={(e) => setF({ ...f, billDate: e.target.value })} /></Field>
               <Field label="Fällig am"><input type="date" value={f.dueDate} onChange={(e) => setF({ ...f, dueDate: e.target.value })} /></Field>
             </div>
-            <Field label="IBAN des Lieferanten"><input className="mono" value={f.iban} onChange={(e) => setF({ ...f, iban: e.target.value })} /></Field>
+            <div className="grid2">
+              <Field label="IBAN des Lieferanten"><input className="mono" value={f.iban} onChange={(e) => setF({ ...f, iban: e.target.value })} /></Field>
+              <Field label="Projekt" hint="Kosten zählen zum Projekt"><ProjectSelect value={f.projectId} onChange={(v) => setF({ ...f, projectId: v })} /></Field>
+            </div>
             <table className="table small"><thead><tr><th>Konto</th><th>Text</th><th style={{ width: 100 }}>Netto €</th><th style={{ width: 70 }}>USt %</th><th /></tr></thead>
               <tbody>{f.lines.map((l: any, i: number) => (
                 <tr key={i}>

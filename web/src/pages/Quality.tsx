@@ -12,6 +12,7 @@ import { Icon } from '../components/Icon';
 import { UserPicker } from '../components/UserPicker';
 import { CustomerPicker } from '../modules/CrmShared';
 import { ProjectSelect, uploadForm } from '../modules/Pickers';
+import { ProjectGroups, TabHead, useGrouping, type TabProps } from '../modules/ProjectApps';
 
 type Tab = 'inspections' | 'plans' | 'gauges' | '8d';
 const RESULT: Record<string, [string, string]> = { open: ['offen', 'blue'], pass: ['i. O.', 'green'], fail: ['n. i. O.', 'red'], conditional: ['mit Auflage', 'amber'] };
@@ -53,6 +54,7 @@ function Inspections() {
   const [q, setQ] = useState('');
   const [create, setCreate] = useState(false);
   const { data, reload } = useApi<any[]>(`/quality/inspections?${new URLSearchParams({ ...(result ? { result } : {}), ...(q ? { q } : {}) })}`);
+  const [grouped, groupToggle] = useGrouping('quality-inspections', false);
   useLive(reload);
   const open = params.get('inspection');
   const setOpen = (id: string | null) => { if (id) params.set('inspection', id); else params.delete('inspection'); setParams(params, { replace: true }); };
@@ -61,27 +63,34 @@ function Inspections() {
       <div className="toolbar">
         <input placeholder="Suchen …" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 200 }} />
         <select value={result} onChange={(e) => setResult(e.target.value)} style={{ width: 'auto' }}><option value="">alle</option>{Object.entries(RESULT).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</select>
+        {groupToggle}
         <span className="right"><button className="btn primary" onClick={() => setCreate(true)}><Icon name="plus" /> Prüfung</button></span>
       </div>
       {data && !data.length && <Empty icon="check-circle" title="Noch keine Prüfungen">Eine Prüfung entsteht aus einem Prüfplan – die Merkmale werden übernommen und die Messwerte eingetragen.</Empty>}
-      {data && data.length > 0 && <table className="table"><thead><tr><th>Nr.</th><th>Prüfung</th><th>Art</th><th>Bezug</th><th>Prüfer</th><th>Datum</th><th>Ergebnis</th></tr></thead>
-        <tbody>{data.map((i) => (
-          <tr key={i.id} className="click" onClick={() => setOpen(i.id)}>
-            <td className="mono small">{i.number}</td><td><b>{i.title}</b>{i.lot && <div className="small muted">Charge {i.lot}</div>}</td><td>{INSPECTION_KIND[i.kind]}</td>
-            <td className="small">{[i.reference, i.supplierName, i.projectNumber].filter(Boolean).join(' · ') || '–'}</td><td>{i.inspectorName ?? '–'}</td>
-            <td>{fmtDate(i.inspectedAt ?? i.createdAt)}</td><td><Pill tone={RESULT[i.result]![1]}>{RESULT[i.result]![0]}</Pill></td>
-          </tr>
-        ))}</tbody></table>}
+      {data && data.length > 0 && (grouped ? <ProjectGroups rows={data} tab="quality">{(rows) => <InspectionTable rows={rows} onOpen={setOpen} />}</ProjectGroups> : <InspectionTable rows={data} onOpen={setOpen} />)}
       {create && <NewInspection onClose={() => setCreate(false)} onDone={(id) => { setCreate(false); void reload(); setOpen(id); }} />}
       {open && <InspectionPanel id={open} onClose={() => setOpen(null)} />}
     </div>
   );
 }
 
-function NewInspection({ onClose, onDone }: { onClose: () => void; onDone: (id: string) => void }) {
+function InspectionTable({ rows, onOpen }: { rows: any[]; onOpen: (id: string) => void }) {
+  return (
+    <table className="table"><thead><tr><th>Nr.</th><th>Prüfung</th><th>Art</th><th>Bezug</th><th>Prüfer</th><th>Datum</th><th>Ergebnis</th></tr></thead>
+      <tbody>{rows.map((i) => (
+        <tr key={i.id} className="click" onClick={() => onOpen(i.id)}>
+          <td className="mono small">{i.number}</td><td><b>{i.title}</b>{i.lot && <div className="small muted">Charge {i.lot}</div>}</td><td>{INSPECTION_KIND[i.kind]}</td>
+          <td className="small">{[i.reference, i.supplierName, i.projectNumber].filter(Boolean).join(' · ') || '–'}</td><td>{i.inspectorName ?? '–'}</td>
+          <td>{fmtDate(i.inspectedAt ?? i.createdAt)}</td><td><Pill tone={RESULT[i.result]![1]}>{RESULT[i.result]![0]}</Pill></td>
+        </tr>
+      ))}</tbody></table>
+  );
+}
+
+function NewInspection({ onClose, onDone, projectId }: { onClose: () => void; onDone: (id: string) => void; projectId?: string }) {
   const { data: plans } = useApi<any[]>('/quality/plans');
   const act = useAction();
-  const [f, setF] = useState({ planId: '', title: '', kind: 'incoming', reference: '', lot: '', qty: '', supplier: null as any, projectId: null as string | null });
+  const [f, setF] = useState({ planId: '', title: '', kind: 'incoming', reference: '', lot: '', qty: '', supplier: null as any, projectId: (projectId ?? null) as string | null });
   return (
     <Modal title="Neue Prüfung" onClose={onClose} footer={<><button className="btn" onClick={onClose}>Abbrechen</button>
       <button className="btn primary" disabled={!f.title.trim()} onClick={async () => {
@@ -331,39 +340,49 @@ function EightDs() {
   const [params, setParams] = useSearchParams();
   const { data, reload } = useApi<any[]>('/quality/8d');
   const [create, setCreate] = useState(false);
+  const [grouped, groupToggle] = useGrouping('quality-8d', false);
   useLive(reload);
   const open = params.get('report');
   const setOpen = (id: string | null) => { if (id) params.set('report', id); else params.delete('report'); setParams(params, { replace: true }); };
   return (
     <div>
-      <div className="toolbar"><span className="right"><button className="btn primary" onClick={() => setCreate(true)}><Icon name="plus" /> 8D-Report</button></span></div>
+      <div className="toolbar">{groupToggle}<span className="right"><button className="btn primary" onClick={() => setCreate(true)}><Icon name="plus" /> 8D-Report</button></span></div>
       {data && !data.length && <Empty icon="report" title="Keine 8D-Reports">Für Reklamationen von Kunden oder an Lieferanten: in acht Schritten von der Sofortmaßnahme bis zur Abstellung der Ursache.</Empty>}
-      {data && data.length > 0 && <table className="table"><thead><tr><th>Nr.</th><th>Thema</th><th>Kunde / Lieferant</th><th>Verantwortlich</th><th>Termin</th><th>Status</th></tr></thead>
-        <tbody>{data.map((e) => (
-          <tr key={e.id} className="click" onClick={() => setOpen(e.id)}>
-            <td className="mono small">{e.number}</td><td><b>{e.title}</b>{e.reference && <div className="small muted">{e.reference}</div>}</td><td>{e.accountName ?? '–'}</td>
-            <td>{e.ownerName ?? '–'}</td><td className={e.overdue ? 'text-red' : ''}>{fmtDate(e.dueDate)}</td><td><Pill tone={e.status === 'closed' ? 'green' : 'amber'}>{EIGHT_D_STATUS[e.status]}</Pill></td>
-          </tr>
-        ))}</tbody></table>}
+      {data && data.length > 0 && (grouped ? <ProjectGroups rows={data} tab="quality">{(rows) => <EightDTable rows={rows} onOpen={setOpen} />}</ProjectGroups> : <EightDTable rows={data} onOpen={setOpen} />)}
       {create && <NewEightD onClose={() => setCreate(false)} onDone={(id) => { setCreate(false); void reload(); setOpen(id); }} />}
       {open && <EightDPanel id={open} onClose={() => setOpen(null)} />}
     </div>
   );
 }
 
-function NewEightD({ onClose, onDone }: { onClose: () => void; onDone: (id: string) => void }) {
+function EightDTable({ rows, onOpen }: { rows: any[]; onOpen: (id: string) => void }) {
+  return (
+    <table className="table"><thead><tr><th>Nr.</th><th>Thema</th><th>Kunde / Lieferant</th><th>Verantwortlich</th><th>Termin</th><th>Status</th></tr></thead>
+      <tbody>{rows.map((e) => (
+        <tr key={e.id} className="click" onClick={() => onOpen(e.id)}>
+          <td className="mono small">{e.number}</td><td><b>{e.title}</b>{e.reference && <div className="small muted">{e.reference}</div>}</td><td>{e.accountName ?? '–'}</td>
+          <td>{e.ownerName ?? '–'}</td><td className={e.overdue ? 'text-red' : ''}>{fmtDate(e.dueDate)}</td><td><Pill tone={e.status === 'closed' ? 'green' : 'amber'}>{EIGHT_D_STATUS[e.status]}</Pill></td>
+        </tr>
+      ))}</tbody></table>
+  );
+}
+
+function NewEightD({ onClose, onDone, projectId, account }: { onClose: () => void; onDone: (id: string) => void; projectId?: string; account?: { id: string; name: string } | null }) {
   const act = useAction();
-  const [f, setF] = useState({ title: '', source: 'customer', account: null as any, reference: '', dueDate: '' });
+  const [f, setF] = useState({ title: '', source: 'customer', account: (account ?? null) as any, reference: '', dueDate: '', projectId: (projectId ?? null) as string | null });
   return (
     <Modal title="Neuer 8D-Report" onClose={onClose} footer={<><button className="btn" onClick={onClose}>Abbrechen</button>
-      <button className="btn primary" disabled={!f.title.trim()} onClick={async () => { const r = await act(() => post<{ id: string }>('/quality/8d', { title: f.title, source: f.source, accountId: f.account?.id ?? null, reference: f.reference, dueDate: f.dueDate || null })); if (r) onDone(r.id); }}>Anlegen</button></>}>
+      <button className="btn primary" disabled={!f.title.trim()} onClick={async () => { const r = await act(() => post<{ id: string }>('/quality/8d', { title: f.title, source: f.source, accountId: f.account?.id ?? null, reference: f.reference, dueDate: f.dueDate || null, projectId: f.projectId })); if (r) onDone(r.id); }}>Anlegen</button></>}>
       <Field label="Thema"><input autoFocus value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="z. B. Riss im Gehäuse" /></Field>
       <div className="grid2">
         <Field label="Herkunft"><select value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })}><option value="customer">Kundenreklamation</option><option value="supplier">Lieferantenreklamation</option><option value="internal">intern</option></select></Field>
         <Field label="Termin"><input type="date" value={f.dueDate} onChange={(e) => setF({ ...f, dueDate: e.target.value })} /></Field>
       </div>
       <Field label={f.source === 'supplier' ? 'Lieferant' : 'Kunde'}><CustomerPicker kind={f.source === 'supplier' ? 'supplier' : 'customer'} value={f.account} onChange={(a) => setF({ ...f, account: a })} /></Field>
-      <Field label="Bezug" hint="Reklamationsnummer des Kunden, Lieferschein, Charge"><input value={f.reference} onChange={(e) => setF({ ...f, reference: e.target.value })} /></Field>
+      <div className="grid2">
+        <Field label="Bezug" hint="Reklamationsnummer des Kunden, Lieferschein, Charge"><input value={f.reference} onChange={(e) => setF({ ...f, reference: e.target.value })} /></Field>
+        <Field label="Projekt"><ProjectSelect value={f.projectId} onChange={(v) => setF({ ...f, projectId: v })} /></Field>
+      </div>
     </Modal>
   );
 }
@@ -392,5 +411,34 @@ function EightDPanel({ id, onClose }: { id: string; onClose: () => void }) {
       ))}
       <button className="btn primary" onClick={async () => { if (await save()) void reload(); }}>Speichern</button>
     </SlideOver>
+  );
+}
+
+/** Projekt-Reiter „Qualität“: Prüfungen und 8D-Reports des Projekts */
+export function ProjectQuality({ project, canEdit }: TabProps) {
+  const { data: ins, reload: reloadIns } = useApi<any[]>(`/quality/inspections?projectId=${project.id}`);
+  const { data: eds, reload: reloadEds } = useApi<any[]>(`/quality/8d?projectId=${project.id}`);
+  useLive(reloadIns);
+  useLive(reloadEds);
+  const [create, setCreate] = useState<'inspection' | '8d' | null>(null);
+  const [openIns, setOpenIns] = useState<string | null>(null);
+  const [open8d, setOpen8d] = useState<string | null>(null);
+  const failed = (ins ?? []).filter((i) => i.result === 'fail').length;
+  return (
+    <div>
+      <div className="kpi-row">
+        <div className="kpi"><div className="v">{(ins ?? []).filter((i) => i.result === 'open').length}</div><div className="l">offene Prüfungen</div></div>
+        <div className="kpi"><div className="v" style={{ color: failed ? 'var(--red)' : undefined }}>{failed}</div><div className="l">n. i. O.</div></div>
+        <div className="kpi"><div className="v">{(eds ?? []).filter((e) => e.status !== 'closed').length}</div><div className="l">offene 8D-Reports</div></div>
+      </div>
+      <TabHead to="/quality" toLabel="Qualität gesamt" newLabel="Prüfung" onNew={canEdit && (() => setCreate('inspection'))} />
+      {ins && !ins.length ? <Empty icon="check-circle" title="Noch keine Prüfungen zu diesem Projekt">z. B. Wareneingangsprüfung, Erstmuster oder Endabnahme.</Empty> : ins && <InspectionTable rows={ins} onOpen={setOpenIns} />}
+      <div className="app-section"><h3><span className="grow">8D-Reports</span>{canEdit && <button className="btn sm" onClick={() => setCreate('8d')}><Icon name="plus" /> 8D-Report</button>}</h3>
+        {!eds?.length ? <div className="muted small">Keine</div> : <EightDTable rows={eds} onOpen={setOpen8d} />}</div>
+      {create === 'inspection' && <NewInspection projectId={project.id} onClose={() => setCreate(null)} onDone={(id) => { setCreate(null); void reloadIns(); setOpenIns(id); }} />}
+      {create === '8d' && <NewEightD projectId={project.id} account={project.customerId ? { id: project.customerId, name: project.customer ?? '' } : null} onClose={() => setCreate(null)} onDone={(id) => { setCreate(null); void reloadEds(); setOpen8d(id); }} />}
+      {openIns && <InspectionPanel id={openIns} onClose={() => setOpenIns(null)} />}
+      {open8d && <EightDPanel id={open8d} onClose={() => setOpen8d(null)} />}
+    </div>
   );
 }

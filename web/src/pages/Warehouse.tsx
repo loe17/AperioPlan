@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { LOCATION_KIND, MOVE_KIND } from '@aperio/shared';
 import { useCrumbs } from '../components/Layout';
 import { useApi, useTabState } from '../lib/hooks';
@@ -11,6 +11,8 @@ import { Confirm, Empty, Field, Modal, Pill, SlideOver, Tabs, useAction, useToas
 import { Icon } from '../components/Icon';
 import { LabelButton, ScanButton, type Label } from '../modules/Scan';
 import { CustomFields } from '../modules/CustomFields';
+import { ProjectMaterial, ReceiptModal } from '../modules/Purchasing';
+import { ProjectGroups, TabHead, useGrouping, useLiveReload, type TabProps } from '../modules/ProjectApps';
 
 const qty = (n: number | null | undefined, unit = '') => `${(n ?? 0).toLocaleString('de-DE', { maximumFractionDigits: 3 })}${unit ? ` ${unit}` : ''}`;
 type Loc = { id: string; parentId: string | null; name: string; code: string; kind: string; active: boolean; articles: number };
@@ -64,7 +66,7 @@ export default function WarehousePage() {
       <Tabs value={tab} onChange={setTab} tabs={[{ id: 'stock', label: 'Bestand' }, { id: 'incoming', label: 'Wareneingang' }, { id: 'moves', label: 'Bewegungen' },
         { id: 'reorder', label: 'Bestellvorschlag' }, { id: 'counts', label: 'Inventur' }, { id: 'locations', label: 'Lagerorte' }]} />
       {tab === 'stock' && <Stock onOpen={setArticle} locFilter={locFilter} setLocFilter={setLocFilter} locs={locs} />}
-      {tab === 'incoming' && <Incoming locs={locs} onOpen={setArticle} />}
+      {tab === 'incoming' && <Incoming onOpen={setArticle} />}
       {tab === 'moves' && <Moves onOpen={setArticle} />}
       {tab === 'reorder' && <Reorder onOpen={setArticle} />}
       {tab === 'counts' && <Counts locs={locs} />}
@@ -195,10 +197,16 @@ function ArticlePanel({ id, locs, onClose }: { id: string; locs: ReturnType<type
       {!a.stockByLocation.length ? <p className="muted small">Kein Bestand.</p> : <table className="table small"><tbody>{a.stockByLocation.map((s: any) => (
         <tr key={s.locationId + s.lot}><td>{s.locationName} <span className="muted mono">{s.locationCode}</span></td><td>{s.lot && <span className="mono">{a.tracking === 'serial' ? 'SN ' : 'Ch. '}{s.lot}</span>}</td><td style={{ textAlign: 'right' }}><b>{qty(s.qty, a.unit)}</b></td></tr>
       ))}</tbody></table>}
-      {a.purchases.length > 0 && <>
-        <h3 style={{ margin: '18px 0 6px' }}>Offene Bestellungen</h3>
-        <table className="table small"><tbody>{a.purchases.map((p: any) => <tr key={p.id}><td>Projekt {p.projectNumber}</td><td>{qty(p.open, a.unit)}</td><td className="muted">{p.plannedDelivery ? `erwartet ${fmtDate(p.plannedDelivery)}` : ''}</td></tr>)}</tbody></table>
-      </>}
+      <h3 style={{ margin: '18px 0 6px' }} className="row"><span className="grow">Offene Bestellungen</span>
+        <button className="btn sm" title="Bestellung für das Lager im Einkauf anlegen" onClick={async () => {
+          const n = a.reorderQty || Math.max(1, (a.minQty ?? 0) - (a.stock ?? 0)) || 1;
+          if (await act(() => post('/warehouse/reorder', { projectId: null, items: [{ articleId: a.id, qty: n }] }), `Lagerbestellung über ${qty(n, a.unit)} angelegt – im Einkauf unter „Lagerbestellungen“ bestellen`)) reload();
+        }}><Icon name="truck" /> Nachbestellen</button></h3>
+      {!a.purchases.length ? <p className="muted small">Keine.</p> : <table className="table small"><tbody>{a.purchases.map((p: any) => (
+        <tr key={p.id}><td>{p.projectId ? <Link to={`/projects/${p.projectId}?tab=purchasing`}>Projekt {p.projectNumber}</Link> : <Link to="/purchasing?tab=stock">Lager</Link>}</td>
+          <td>{p.orderNumber ? <span className="mono">{p.orderNumber}</span> : <span className="muted">noch nicht bestellt</span>}{p.supplierName && <span className="muted"> · {p.supplierName}</span>}</td>
+          <td style={{ textAlign: 'right' }}>{qty(p.open, a.unit)}</td><td className="muted">{p.plannedDelivery ? `erwartet ${fmtDate(p.plannedDelivery)}` : ''}</td></tr>
+      ))}</tbody></table>}
       <h3 style={{ margin: '18px 0 6px' }}>Bewegungen</h3>
       <MoveTable rows={a.moves} unit={a.unit} />
       {move && <MoveModal kind={move} article={a} locs={locs} onClose={() => setMove(null)} onDone={() => { setMove(null); reload(); }} />}
@@ -263,51 +271,30 @@ function MoveModal({ kind, article: a, locs, onClose, onDone }: { kind: 'receipt
 }
 
 // ---------------------------------------------------------------- Wareneingang
-function Incoming({ locs, onOpen }: { locs: ReturnType<typeof useLocations>; onOpen: (id: string) => void }) {
+function Incoming({ onOpen }: { onOpen: (id: string) => void }) {
   const { data, reload } = useApi<any[]>('/warehouse/incoming');
+  useLiveReload(['global'], ['purchasing.changed', 'warehouse.changed'], reload);
   const [recv, setRecv] = useState<any | null>(null);
+  const [grouped, groupToggle] = useGrouping('warehouse-incoming');
+  const table = (rows: any[], showProject: boolean) => (
+    <table className="table"><thead><tr><th>Erwartet</th><th>Position</th>{showProject && <th>Projekt</th>}<th>Lieferant</th><th style={{ textAlign: 'right' }}>offen</th><th /></tr></thead>
+      <tbody>{rows.map((i) => (
+        <tr key={i.id}>
+          <td className={i.expected && i.expected < new Date().toISOString().slice(0, 10) ? 'text-red' : ''}>{i.expected ? fmtDate(i.expected) : '–'}</td>
+          <td><b>{i.designation}</b>{i.manufacturerNo && <span className="small muted"> · {i.manufacturerNo}</span>}{i.articleId && <button className="link small" onClick={() => onOpen(i.articleId)}> · Lagerartikel</button>}</td>
+          {showProject && <td className="small">{i.projectNumber ?? 'Lager'}</td>}<td className="small">{i.supplierName}{i.orderNumber && <span className="muted"> · {i.orderNumber}</span>}</td>
+          <td style={{ textAlign: 'right' }}>{qty(i.open, i.unit)}</td>
+          <td><button className="btn sm primary" onClick={() => setRecv(i)}>Einbuchen</button></td>
+        </tr>
+      ))}</tbody></table>
+  );
   return (
     <div>
-      <p className="muted small">Bestellte Positionen aus dem Einkauf. Beim Einbuchen wird die Lieferung im Einkauf vermerkt und – je nach Wahl – ins Lager gelegt oder gleich dem Projekt zugeordnet.</p>
+      <div className="toolbar"><span className="muted small grow">Bestellte Positionen aus dem Einkauf. Beim Einbuchen wird die Lieferung im Einkauf vermerkt (mit Lieferschein, Charge oder Seriennummer) und – je nach Wahl – ins Lager gelegt oder gleich dem Projekt zugeordnet.</span>{groupToggle}</div>
       {data && !data.length && <Empty icon="truck" title="Keine offenen Lieferungen">Sobald im Einkauf etwas bestellt ist, erscheint es hier.</Empty>}
-      {data && data.length > 0 && <table className="table"><thead><tr><th>Erwartet</th><th>Position</th><th>Projekt</th><th>Lieferant</th><th style={{ textAlign: 'right' }}>offen</th><th /></tr></thead>
-        <tbody>{data.map((i) => (
-          <tr key={i.id}>
-            <td className={i.expected && i.expected < new Date().toISOString().slice(0, 10) ? 'text-red' : ''}>{i.expected ? fmtDate(i.expected) : '–'}</td>
-            <td><b>{i.designation}</b>{i.manufacturerNo && <span className="small muted"> · {i.manufacturerNo}</span>}{i.articleId && <button className="link small" onClick={() => onOpen(i.articleId)}> · Lagerartikel</button>}</td>
-            <td className="small">{i.projectNumber}</td><td className="small">{i.supplierName}{i.orderNumber && <span className="muted"> · {i.orderNumber}</span>}</td>
-            <td style={{ textAlign: 'right' }}>{qty(i.open, i.unit)}</td>
-            <td><button className="btn sm primary" onClick={() => setRecv(i)}>Einbuchen</button></td>
-          </tr>
-        ))}</tbody></table>}
-      {recv && <ReceiveModal item={recv} locs={locs} onClose={() => setRecv(null)} onDone={() => { setRecv(null); reload(); }} />}
+      {data && data.length > 0 && (grouped ? <ProjectGroups rows={data} tab="purchasing" noneLabel="Lagerbestellungen" noneFirst>{(rows) => table(rows, false)}</ProjectGroups> : table(data, true))}
+      {recv && <ReceiptModal item={{ ...recv, whArticleId: recv.articleId }} onClose={() => setRecv(null)} onDone={() => { setRecv(null); reload(); }} />}
     </div>
-  );
-}
-
-function ReceiveModal({ item, locs, onClose, onDone }: { item: any; locs: ReturnType<typeof useLocations>; onClose: () => void; onDone: () => void }) {
-  const act = useAction();
-  const { data: art } = useApi<any>(item.articleId ? `/warehouse/articles/${item.articleId}` : null);
-  const [n, setN] = useState(String(item.open));
-  const [loc, setLoc] = useState('');
-  const [lot, setLot] = useState('');
-  const [toProject, setToProject] = useState(false);
-  useEffect(() => { if (art?.defaultLocationId && !loc) setLoc(art.defaultLocationId); }, [art]); // eslint-disable-line react-hooks/exhaustive-deps
-  const needsLot = art && art.tracking !== 'none';
-  return (
-    <Modal title={`Wareneingang: ${item.designation}`} onClose={onClose} footer={<><button className="btn" onClick={onClose}>Abbrechen</button>
-      <button className="btn primary" disabled={!loc || !(Number(n) > 0) || (needsLot && !lot.trim())} onClick={async () => {
-        if (await act(() => post('/warehouse/receive', { purchaseItemId: item.id, qty: Number(n), locationId: loc, lot, articleId: item.articleId, createArticle: !item.articleId, toProject }), 'Eingebucht')) onDone();
-      }}>Einbuchen</button></>}>
-      <p className="small muted" style={{ marginTop: 0 }}>Projekt {item.projectNumber} · {item.supplierName ?? 'ohne Lieferant'} · offen {qty(item.open, item.unit)}</p>
-      {item.articleId ? <p className="small">Lagerartikel: <b>{art?.number} {art?.name}</b></p> : <p className="small">Für diese Position gibt es noch keinen Lagerartikel – er wird beim Einbuchen angelegt.</p>}
-      <div className="grid2">
-        <Field label={`Menge (${item.unit})`}><input type="number" min={0} step="any" value={n} onChange={(e) => setN(e.target.value)} /></Field>
-        <Field label="Lagerort"><LocSelect value={loc} onChange={setLoc} options={locs.options} /></Field>
-        {needsLot && <Field label={art.tracking === 'serial' ? 'Seriennummer' : 'Charge'} required><input className="mono" value={lot} onChange={(e) => setLot(e.target.value)} /></Field>}
-      </div>
-      <label className="row"><input type="checkbox" checked={toProject} onChange={(e) => setToProject(e.target.checked)} /> Direkt ins Projekt geben (nicht auf Lager legen)</label>
-    </Modal>
   );
 }
 
@@ -336,7 +323,7 @@ function Reorder({ onOpen }: { onOpen: (id: string) => void }) {
   const chosen = Object.entries(sel).filter(([, q]) => q > 0);
   return (
     <div>
-      <p className="muted small">Artikel, deren Bestand plus bereits bestellte Menge unter dem Mindestbestand liegt. Ausgewählte Mengen werden als Einkaufspositionen in einem Projekt angelegt (z. B. einem Projekt „Lager“ für Gemeinkosten) und dort wie gewohnt bestellt.</p>
+      <p className="muted small">Artikel, deren Bestand plus bereits bestellte Menge unter dem Mindestbestand liegt. Ausgewählte Mengen werden im Einkauf als Lagerbestellung angelegt (oder für ein Projekt) und dort wie gewohnt bestellt. Beim Wareneingang landen sie wieder hier im Lager.</p>
       {data && !data.length && <Empty icon="check-circle" title="Alles ausreichend vorrätig" />}
       {data && data.length > 0 && <>
         <table className="table"><thead><tr><th /><th>Artikel</th><th>Lieferant</th><th style={{ textAlign: 'right' }}>Bestand</th><th style={{ textAlign: 'right' }}>bestellt</th><th style={{ textAlign: 'right' }}>Mindestbestand</th><th style={{ width: 120 }}>Bestellen</th></tr></thead>
@@ -350,12 +337,13 @@ function Reorder({ onOpen }: { onOpen: (id: string) => void }) {
             </tr>
           ))}</tbody></table>
         <div className="row" style={{ marginTop: 10 }}>
-          <select value={projectId} onChange={(e) => setProjectId(e.target.value)} style={{ width: 320 }}><option value="">– Projekt für die Bestellung –</option>
-            {projects?.filter((p) => p.status !== 'archived').map((p) => <option key={p.id} value={p.id}>{p.number} {p.name}</option>)}</select>
-          <button className="btn primary" disabled={!projectId || !chosen.length} onClick={async () => {
-            const r = await act(() => post<{ created: number }>('/warehouse/reorder', { projectId, items: chosen.map(([articleId, q]) => ({ articleId, qty: q })) }));
-            if (r) { reload(); window.dispatchEvent(new CustomEvent('aperio:warning', { detail: `${r.created} Position(en) im Einkauf angelegt – dort bestellen.` })); }
+          <select value={projectId} onChange={(e) => setProjectId(e.target.value)} style={{ width: 320 }}><option value="">Lagerbestellung (ohne Projekt)</option>
+            {projects?.filter((p) => p.status !== 'archived').map((p) => <option key={p.id} value={p.id}>für Projekt {p.number} {p.name}</option>)}</select>
+          <button className="btn primary" disabled={!chosen.length} onClick={async () => {
+            const r = await act(() => post<{ created: number }>('/warehouse/reorder', { projectId: projectId || null, items: chosen.map(([articleId, q]) => ({ articleId, qty: q })) }));
+            if (r) { reload(); window.dispatchEvent(new CustomEvent('aperio:warning', { detail: `${r.created} Position(en) im Einkauf angelegt – dort unter ${projectId ? '„Einkauf“ im Projekt' : '„Lagerbestellungen“'} bestellen.` })); }
           }}>{chosen.length} Position(en) in den Einkauf</button>
+          <Link className="btn ghost" to="/purchasing?tab=stock">Lagerbestellungen ansehen</Link>
         </div>
       </>}
     </div>
@@ -507,5 +495,63 @@ function Locations({ locs, onFilter }: { locs: ReturnType<typeof useLocations>; 
       </Modal>}
       {remove && <Confirm danger text={`Lagerort „${remove.name}“ löschen?`} onClose={() => setRemove(null)} onConfirm={async () => { if (await act(() => del(`/warehouse/locations/${remove.id}`), 'Erledigt')) locs.reload(); }} />}
     </div>
+  );
+}
+
+/** Projekt-Reiter „Material“: was aus dem Lager für das Projekt entnommen oder zurückgegeben wurde */
+export function ProjectMaterialTab({ project, canEdit }: TabProps) {
+  const locs = useLocations();
+  const { data: moves, reload } = useApi<any[]>(`/warehouse/moves?projectId=${project.id}`);
+  useLiveReload([`project:${project.id}`, 'global'], ['warehouse.changed'], reload);
+  const [article, setArticle] = useState<string | null>(null);
+  const [pick, setPick] = useState<'issue' | 'return' | null>(null);
+  return (
+    <div>
+      <TabHead hint="Entnahmen aus dem Lager zählen als Materialkosten des Projekts." to="/warehouse" toLabel="Lager">
+        {canEdit && <><button className="btn primary" onClick={() => setPick('issue')}><Icon name="arrow-up" /> Entnahme fürs Projekt</button>
+          <button className="btn" onClick={() => setPick('return')}><Icon name="arrow-down" /> Rückgabe ins Lager</button></>}
+      </TabHead>
+      <ProjectMaterial projectId={project.id} title="Material im Projekt" />
+      <h3 style={{ margin: '22px 0 6px' }}>Bewegungen</h3>
+      {moves && <MoveTable rows={moves} showArticle onOpen={setArticle} />}
+      {pick && <ProjectMoveModal kind={pick} projectId={project.id} locs={locs} onClose={() => setPick(null)} onDone={() => { setPick(null); void reload(); }} />}
+      {article && <ArticlePanel id={article} locs={locs} onClose={() => setArticle(null)} />}
+    </div>
+  );
+}
+
+/** Entnahme für ein Projekt oder Rückgabe aus dem Projekt ins Lager */
+function ProjectMoveModal({ kind, projectId, locs, onClose, onDone }: { kind: 'issue' | 'return'; projectId: string; locs: ReturnType<typeof useLocations>; onClose: () => void; onDone: () => void }) {
+  const act = useAction();
+  const { data: articles } = useApi<any[]>('/warehouse/articles');
+  const [articleId, setArticleId] = useState('');
+  const { data: a } = useApi<any>(articleId ? `/warehouse/articles/${articleId}` : null);
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [n, setN] = useState('');
+  const [lot, setLot] = useState('');
+  const [note, setNote] = useState('');
+  useEffect(() => { setFrom(''); setLot(''); if (a) { setTo(a.defaultLocationId ?? ''); if (a.stockByLocation.length === 1) setFrom(`${a.stockByLocation[0].locationId}|${a.stockByLocation[0].lot}`); } }, [a?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [fromLoc, fromLot] = from.split('|');
+  const avail = a?.stockByLocation.find((s: any) => s.locationId === fromLoc && s.lot === (fromLot ?? ''))?.qty ?? 0;
+  const ok = a && Number(n) > 0 && (kind === 'issue' ? from && Number(n) <= avail + 1e-9 : to && (a.tracking === 'none' || lot.trim()));
+  return (
+    <Modal title={kind === 'issue' ? 'Material für das Projekt entnehmen' : 'Material ins Lager zurückgeben'} onClose={onClose} footer={<><button className="btn" onClick={onClose}>Abbrechen</button>
+      <button className="btn primary" disabled={!ok} onClick={async () => {
+        const body = { kind, articleId, qty: Number(n), lot: kind === 'issue' ? fromLot ?? '' : lot, fromLocationId: kind === 'issue' ? fromLoc : null, toLocationId: kind === 'return' ? to : null, projectId, note };
+        if (await act(() => post('/warehouse/moves', body), 'Gebucht')) onDone();
+      }}>Buchen</button></>}>
+      <Field label="Artikel" required><select value={articleId} onChange={(e) => setArticleId(e.target.value)} autoFocus><option value="">– Artikel wählen –</option>
+        {articles?.filter((x) => x.active && (kind === 'return' || x.stock > 0)).map((x) => <option key={x.id} value={x.id}>{x.number} {x.name}{kind === 'issue' ? ` (${qty(x.stock, x.unit)})` : ''}</option>)}</select></Field>
+      {a && kind === 'issue' && <Field label="Aus Lagerort"><select value={from} onChange={(e) => setFrom(e.target.value)}><option value="">– Lagerort –</option>
+        {a.stockByLocation.map((s: any) => <option key={s.locationId + s.lot} value={`${s.locationId}|${s.lot}`}>{s.locationName}{s.lot ? ` · ${s.lot}` : ''} ({qty(s.qty, a.unit)})</option>)}</select></Field>}
+      {a && kind === 'return' && <Field label="In Lagerort"><LocSelect value={to} onChange={setTo} options={locs.options} /></Field>}
+      {a && <div className="grid2">
+        <Field label={`Menge (${a.unit})`}><input type="number" min={0} step="any" value={n} onChange={(e) => setN(e.target.value)} /></Field>
+        {kind === 'return' && a.tracking !== 'none' && <Field label={a.tracking === 'serial' ? 'Seriennummer' : 'Charge'} required><input className="mono" value={lot} onChange={(e) => setLot(e.target.value)} /></Field>}
+      </div>}
+      {a && kind === 'issue' && from && <p className="small muted" style={{ marginTop: -6 }}>Verfügbar: {qty(avail, a.unit)}</p>}
+      <Field label="Bemerkung"><input value={note} onChange={(e) => setNote(e.target.value)} placeholder={kind === 'return' ? 'z. B. übrig nach Montage' : ''} /></Field>
+    </Modal>
   );
 }

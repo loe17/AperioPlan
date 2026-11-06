@@ -9,6 +9,7 @@ import { Empty, Field, Modal, Tabs, useAction, useToast } from '../components/ui
 import { Icon } from '../components/Icon';
 import { UserPicker } from '../components/UserPicker';
 import { ProjectSelect } from '../modules/Pickers';
+import { TabHead, type TabProps } from '../modules/ProjectApps';
 import { Chart } from '../modules/Chart';
 import { useAdminSettings } from './Settings';
 
@@ -84,16 +85,52 @@ function Entries({ year, manager }: { year: number; manager: boolean }) {
     <div>
       {manager && <div className="toolbar"><span className="right"><button className="btn primary" onClick={() => setEdit({ date: `${year}-01-01`, periodEnd: `${year}-12-31`, factorId: factors?.[0]?.id ?? '', quantity: '', projectId: null, site: '', note: '' })}><Icon name="plus" /> Verbrauch</button></span></div>}
       {data && !data.length ? <Empty icon="leaf" title="Keine Verbräuche">{manager ? 'Zählerstände oder Jahresrechnungen eintragen – je Standort oder Projekt.' : undefined}</Empty>
-        : <table className="table"><thead><tr><th>Zeitraum</th><th>Energieträger</th><th className="num">Menge</th><th className="num">kg CO₂</th><th>Projekt / Standort</th><th>Herkunft</th><th /></tr></thead>
-          <tbody>{data?.map((e) => (
-            <tr key={e.id} className={manager && e.origin === 'manual' ? 'click' : ''} onClick={() => manager && e.origin === 'manual' && setEdit({ ...e, quantity: String(e.quantity) })}>
-              <td>{fmtDate(e.date)}{e.periodEnd ? ` – ${fmtDate(e.periodEnd)}` : ''}</td><td>{e.factorLabel}<div className="small muted">Scope {e.scope}</div></td>
-              <td className="num">{e.quantity.toLocaleString('de-DE')} {e.unit}</td><td className="num">{Math.round(e.kg).toLocaleString('de-DE')}</td>
-              <td>{[e.projectNumber, e.site].filter(Boolean).join(' · ')}<div className="small muted">{e.note}</div></td><td className="small">{ORIGIN[e.origin]}</td>
-              <td>{manager && e.origin === 'manual' && <button className="btn ghost sm" onClick={async (ev) => { ev.stopPropagation(); if (await act(() => del(`/sustainability/entries/${e.id}`))) void reload(); }}><Icon name="trash" /></button>}</td>
-            </tr>
-          ))}</tbody></table>}
+        : data && <EntryTable rows={data} manager={manager} onEdit={setEdit} onDeleted={reload} />}
       {edit && <EntryModal e={edit} factors={factors ?? []} onClose={() => setEdit(null)} onDone={() => { setEdit(null); void reload(); }} />}
+    </div>
+  );
+}
+
+function EntryTable({ rows, manager, onEdit, onDeleted }: { rows: any[]; manager: boolean; onEdit: (e: any) => void; onDeleted: () => void }) {
+  const act = useAction();
+  return (
+    <table className="table"><thead><tr><th>Zeitraum</th><th>Energieträger</th><th className="num">Menge</th><th className="num">kg CO₂</th><th>Projekt / Standort</th><th>Herkunft</th><th /></tr></thead>
+      <tbody>{rows.map((e) => (
+        <tr key={e.id} className={manager && e.origin === 'manual' ? 'click' : ''} onClick={() => manager && e.origin === 'manual' && onEdit({ ...e, quantity: String(e.quantity) })}>
+          <td>{fmtDate(e.date)}{e.periodEnd ? ` – ${fmtDate(e.periodEnd)}` : ''}</td><td>{e.factorLabel}<div className="small muted">Scope {e.scope}</div></td>
+          <td className="num">{e.quantity.toLocaleString('de-DE')} {e.unit}</td><td className="num">{Math.round(e.kg).toLocaleString('de-DE')}</td>
+          <td>{[e.projectNumber, e.site].filter(Boolean).join(' · ')}<div className="small muted">{e.note}</div></td><td className="small">{ORIGIN[e.origin]}</td>
+          <td>{manager && e.origin === 'manual' && <button className="btn ghost sm" onClick={async (ev) => { ev.stopPropagation(); if (await act(() => del(`/sustainability/entries/${e.id}`))) void onDeleted(); }}><Icon name="trash" /></button>}</td>
+        </tr>
+      ))}</tbody></table>
+  );
+}
+
+/** Projekt-Reiter „CO₂“: Emissionen des Projekts (Fuhrpark, Dienstreisen, erfasste Verbräuche) */
+export function ProjectCo2({ project }: TabProps) {
+  const { data: s, reload: reloadSum } = useApi<{ total: number; scopes: { k: string; t: number }[]; sources: { k: string; t: number }[]; years: { k: string; t: number }[] }>(`/sustainability/projects/${project.id}`);
+  const { data: rows, reload } = useApi<any[]>(`/sustainability/entries?projectId=${project.id}`);
+  const { data: factors } = useApi<any[]>('/sustainability/factors');
+  const { data: access } = useApi<{ manager: boolean }>('/sustainability/access');
+  const [edit, setEdit] = useState<any | null>(null);
+  useLive(reload);
+  useLive(reloadSum);
+  const mgr = !!access?.manager;
+  const year = new Date().getFullYear();
+  return (
+    <div>
+      <div className="kpi-row">
+        <div className="card kpi"><div className="small muted">CO₂ gesamt</div><div className="v">{t(s?.total ?? 0)}</div></div>
+        {(s?.scopes ?? []).map((x) => <div key={x.k} className="card kpi"><div className="small muted">{x.k}</div><div className="v">{t(x.t)}</div></div>)}
+      </div>
+      {s && s.sources.length > 0 && <div className="grid2" style={{ alignItems: 'start', marginBottom: 12 }}>
+        <div className="card"><b>Nach Energieträger</b><Chart kind="hbar" rows={s.sources.map((x) => ({ key: x.k, values: [x.t] }))} series={[]} format={t} unit="t" /></div>
+        {s.years.length > 0 && <div className="card"><b>Nach Jahr</b><Chart kind="bar" rows={s.years.map((x) => ({ key: x.k, values: [x.t] }))} series={[]} format={t} unit="t" height={200} /></div>}
+      </div>}
+      <TabHead hint="Tankbelege aus dem Fuhrpark und Dienstfahrten aus den Spesen mit Projekt werden automatisch übernommen." to="/sustainability" toLabel="CO₂-Bilanz der Firma"
+        newLabel="Verbrauch" onNew={mgr && (() => setEdit({ date: `${year}-01-01`, periodEnd: '', factorId: factors?.[0]?.id ?? '', quantity: '', projectId: project.id, site: '', note: '' }))} />
+      {rows && !rows.length ? <Empty icon="leaf" title="Noch keine Emissionen zu diesem Projekt" /> : rows && <EntryTable rows={rows} manager={mgr} onEdit={setEdit} onDeleted={() => { void reload(); void reloadSum(); }} />}
+      {edit && <EntryModal e={edit} factors={factors ?? []} onClose={() => setEdit(null)} onDone={() => { setEdit(null); void reload(); void reloadSum(); }} />}
     </div>
   );
 }
