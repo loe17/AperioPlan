@@ -57,9 +57,16 @@ Jedes Werkzeug ist eine App. Für eine neue App sind diese Stellen zu ergänzen:
 | `server/src/services/daily.ts` | tägliche Aufgabe in `DAILY_JOBS` (Erinnerungen, Fristen); sie muss selbst prüfen, ob die App installiert ist |
 | `server/src/services/backup.ts` | neue Tabellen in `BACKUP_TABLES` |
 | `web/src/pages/<App>.tsx` | Seite; Route in `web/src/App.tsx` |
+| Reiter im Projekt (optional) | Kennung in `PROJECT_TABS` (`shared/src/domain.ts`) und `PROJECT_TAB_INFO` (`shared/src/apps.ts`, mit `tool`); Bauteil `export function Project<App>({ project, canEdit }: TabProps)` in der Seite der App und Eintrag in `APP_TABS` (`web/src/modules/ProjectApps.tsx`, wird erst bei Bedarf geladen). Listen der Schnittstelle bekommen einen Filter `?projectId=` |
 | `server/test/`, `e2e/testplan.mjs` | Server-Test und ein Schritt im Browser-Test |
 
 **Öffentliche Seiten** (ohne Anmeldung) liegen auf dem Server unter `/api/pub/…` mit Begrenzung der Anfragen (`config: { rateLimit: … }`) und prüfen, ob die App installiert ist. In der Oberfläche fängt `App.tsx` den Pfad vor der Anmeldung ab (`/support`, `/book/`, `/event/`, `/jobs/`, `/sign/`). Formulare erhalten ein verstecktes Feld `website` gegen Spam-Programme.
+
+**Projekt-Reiter und ältere Versionen:** Die Spalte `projects.modules` enthält nur die Reiter, die schon 0.2 kannte (`PROJECT_MODULES`); die vollständige, geordnete Liste steht in `projects.tabs`. Gelesen wird über `projectTabsExpr()` (`server/src/services/projects.ts`), das beide zusammenführt – so bleiben Änderungen einer älteren Version erhalten. Gesamtübersichten gruppieren mit `<ProjectGroups rows tab>` und dem Schalter aus `useGrouping(key)`; Kopfzeile eines Reiters: `<TabHead>`.
+
+**Mindmaps:** Grunddaten (Text, Farbe, Notiz, Link, Aufgabe, Kinder) stehen in `mindmaps.data`, alle weiteren Eigenschaften je Knoten (Schrift, Formen, Symbole, Wolken, Pfeile, Attribute, Erinnerungen, Zeitstempel) in `mindmaps.node_props`. `splitMindmap()` und `mergeMindmap()` in `server/src/routes/mindmaps.ts` trennen und verbinden; ältere Versionen sehen nur die Grunddaten und lassen den Rest unangetastet. Import und Export (FreeMind .mm 1.0.1, HTML, Markdown, Text, PDF) liegen in `web/src/modules/MindmapFormats.ts`.
+
+**3D-Ansicht:** `open3D({ fileId | src | cadItemId })` aus `web/src/modules/View3D.tsx` öffnet `/view3d` im selben Fenster. Die Formatlisten stehen in `shared/src/view3d.ts`. Native CAD-Dateien: `GET /files/:id/view3d` (Art, Stand der Umwandlung), `GET /files/:id/view3d/preview` (Vorschaubild aus der Datei, `server/src/services/cadPreview.ts` liest auch Compound Files), `POST /files/:id/view3d/convert`, `GET /files/:id/view3d/model`. Der Umwandlungsdienst holt Aufträge mit `POST /view3d/conversions/claim` (`{worker, formats, programs}`) und meldet `POST /view3d/conversions/:id/complete` (multipart, STEP) bzw. `…/fail`.
 
 **Diagramme** zeichnet `web/src/modules/Chart.tsx` (Säulen, Balken, Linie) mit den Farben `--viz-1` bis `--viz-8` für hell und dunkel. **Eigene Felder** bindet `<CustomFields entity="…" id={…} />` aus `web/src/modules/CustomFields.tsx` in eine Detailansicht ein; neue Datensatzarten in `CF_ENTITIES` (`server/src/routes/studio.ts`) und in der Prüfbedingung der Tabelle `cf_fields` ergänzen.
 
@@ -84,6 +91,10 @@ Wichtige Endpunkte (Auswahl):
 | Freigabelinks | `GET/POST /projects/:id/links`, `DELETE /links/:id`, öffentlich: `/public/links/:token/…` |
 | CAD | `GET /cad/mask`, `POST /cad/numbers/preview`, `POST /cad/items`, `GET /cad/items?projectId=`, `GET /cad/resolve?fileName=`, `POST /cad/items/:id/checkout|checkin|undo-checkout|revise|state`, `GET /cad/items/:id/bom|where-used` |
 | Ableitungen | `POST /cad/exports/claim`, `POST /cad/exports/:id/complete|fail` |
+| 3D-Ansicht | `GET /files/:id/view3d`, `GET /files/:id/view3d/preview|model`, `POST /files/:id/view3d/convert`, `GET /view3d/cad/:id`; Umwandlungsdienst: `POST /view3d/conversions/claim`, `POST /view3d/conversions/:id/complete|fail`, `GET /view3d/workers` |
+| Einkauf | `GET/POST /purchasing/projects/:id/items`, `GET/POST /purchasing/stock/items` (Lagerbestellungen), `PATCH/DELETE /purchasing/items/:id`, `POST /purchasing/items/:id/receipts` (`{qty, deliveryNote, target: none|stock|project, locationId, lot, serials, articleId, createArticle}`), `GET /purchasing/items/:id/history`, `GET /purchasing/items?status=&articleId=`, `POST /purchasing/bulk` |
+| Lager | `GET /warehouse/incoming`, `POST /warehouse/receive`, `GET/POST /warehouse/reorder` (`projectId: null` = Lagerbestellung), `GET /warehouse/moves?projectId=`, `GET /warehouse/projects/:id/material` |
+| Mindmaps | `GET/POST /mindmaps` (`?projectId=`), `GET/PUT/PATCH/DELETE /mindmaps/:id` (PUT mit `version`, sonst 409), `PUT /mindmaps/:id/shares`, `POST /mindmaps/:id/duplicate` |
 | Zeit | `GET /time/current`, `POST /time/clock-in|clock-out`, `GET /time/entries`, `POST /time/corrections`, `GET /time/export` |
 | Urlaub | `GET /absences/balance`, `POST /absences`, `POST /absences/:id/decide`, `GET /calendar/team` |
 | Chat | `GET /chat/channels`, `GET/POST /chat/channels/:id/messages`, `POST /chat/direct` |
@@ -94,7 +105,8 @@ Wichtige Endpunkte (Auswahl):
 | Lohn | `/payroll/employees`, `/payroll/runs`, `/payroll/runs/:id/finalize|datev.csv|sepa`, `/me/payslips` |
 | Produktion, Service | `/maintenance/…`, `/quality/…`, `/manufacturing/…`, `/plm/…`, `/service/jobs`, `/helpdesk/tickets`, `/contracts`, `/booking/…`, `/events/…` |
 | Personal | `/expenses/reports`, `/planning/week|shifts`, `/hr/…`, `/me/hr`, `/training/…`, `/fleet/…` |
-| Freigaben | `GET /approvals/types`, `GET/POST /approvals/requests` (`?scope=mine|todo|all`), `POST /approvals/requests/:id/decide|withdraw` |
+| Projektfilter | `?projectId=` an `/crm/opportunities|quotes|cases|invoices`, `/service/jobs`, `/quality/inspections|8d`, `/manufacturing/orders`, `/plm/changes`, `/meetings`, `/finance/bills`, `/resources/bookings`, `/sustainability/entries`, `/esign/envelopes`; `?scope=project&projectId=` an `/expenses/reports` und `/approvals/requests`; `GET /sustainability/projects/:id` |
+| Freigaben | `GET /approvals/types`, `GET/POST /approvals/requests` (`?scope=mine|todo|all|project`), `POST /approvals/requests/:id/decide|withdraw` |
 | E-Signatur | `GET/POST /esign/envelopes` (multipart: `file`, `signers` als JSON), `POST /esign/envelopes/:id/send|remind|cancel`, `GET /esign/envelopes/:id/protocol`; öffentlich `/pub/sign/:token` |
 | Auswertungen | `GET /bi/sources`, `POST /bi/run` (`{source, dim, dim2, measure, period, chart}`), `GET/POST /bi/reports`, `POST /bi/export.xlsx` |
 | Eigene Felder | `GET/POST /custom-fields`, `GET/PUT /custom-values/:entity/:id` |
@@ -181,6 +193,8 @@ Typische Ereignisse: `project.create`, `task.create`, `task.update`, `cad.create
 ## CAD-Wächter erweitern
 
 Der API-Client in `cad-bridge/src/AperioPlan.Core` ist frei von externen Paketen und läuft unter .NET 4.8 und .NET 8. Er kann auch für Anbindungen anderer CAD-Systeme (Inventor, Creo …) verwendet werden – die Schnittstelle ist dieselbe wie für SolidWorks. Das Kommandozeilenwerkzeug `aperio-cad` zeigt alle Abläufe in kompakter Form.
+
+Der Umwandlungsdienst `cad-bridge/src/AperioPlan.ViewConverter` spricht die CAD-Programme spät gebunden über ihre Windows-Automatisierung an (`Type.GetTypeFromProgID` und `InvokeMember`) und braucht deshalb zum Bauen keine CAD-Bibliotheken. Ein weiteres Programm ergänzen: Klasse von `Converter` ableiten (ProgID, Dateiendungen, `ToStep`) und in `Converter.All()` eintragen; die Endungen zusätzlich in `VIEW3D_NATIVE` (`shared/src/view3d.ts`).
 
 ## Mehrsprachigkeit
 

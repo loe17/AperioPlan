@@ -22,14 +22,16 @@ Unter **Einstellungen → Profil** stellen Sie Sprache (Deutsch/Englisch) und Fa
 ┌────────────────────┬──────────────────────────────────────────────────────┐
 │ Seitenleiste       │ Brotkrumen-Pfad        Blitzsuche   Glocke   Profil  │
 │  Mein Schreibtisch ├──────────────────────────────────────────────────────┤
-│  Meine Teams       │                                                      │
-│  Werkzeuge         │                 Arbeitsbereich                       │
-│                    │                                                      │
-│ v0.2.0 ● Verbunden │                                                      │
+│  Favoriten         │                                                      │
+│  Meine Teams       │                 Arbeitsbereich                       │
+│  Werkzeuge         │                                                      │
+│  App-Store         │                                                      │
+│  Einstellungen     │                                                      │
+│ v0.3.0 ● Verbunden │                                                      │
 └────────────────────┴──────────────────────────────────────────────────────┘
 ```
 
-* **Seitenleiste:** Schnellzugriff auf Ihren Schreibtisch, Ihre Teams mit Projekten und die Werkzeuge. Mit `«` oder **Strg + \\** einklappen, mit dem Menü-Symbol wieder öffnen.
+* **Seitenleiste:** Schnellzugriff auf Ihren Schreibtisch, Ihre Teams mit Projekten und die Werkzeuge. Ein Klick auf eine Überschrift (z. B. **Werkzeuge**, **Favoriten**, **Meine Teams**) klappt den Abschnitt ein oder aus – AperioPlan merkt sich das. App-Store und Einstellungen stehen getrennt ganz unten. Mit `«` oder **Strg + \\** klappen Sie die ganze Leiste ein, mit dem Menü-Symbol wieder auf.
 * **Brotkrumen-Pfad:** zeigt immer, wo Sie gerade sind – jeder Teil ist anklickbar.
 * **Blitzsuche – Strg + K:** zwei Buchstaben genügen, um zu einem Projekt, einer Baugruppe, einer Aufgabe, Datei oder einem Kollegen zu springen. Mit Pfeiltasten auswählen, Enter öffnet.
 * **Glocke:** neue Aufgaben, Erwähnungen, Freigaben und Genehmigungen.
@@ -42,6 +44,7 @@ Unter **Einstellungen → Profil** stellen Sie Sprache (Deutsch/Englisch) und Fa
 
 * **Übersicht:** Begrüßung, Stempeluhr, Ihre offenen Aufgaben, Favoriten.
 * **Posteingang:** alle Benachrichtigungen.
+* **Chat** und **E-Mail:** Ihre Unterhaltungen und Ihr Postfach.
 * **Mein Kalender:** Fristen Ihrer Aufgaben, eigene Abwesenheiten, Feiertage.
 * **Stempeluhr, Urlaubskonto, Private Notizen** (nur für Sie sichtbar).
 
@@ -77,7 +80,31 @@ Projekte markieren Sie mit dem Stern neben dem Namen als Favorit.
 | Dokumente | Schriftverkehr, Verträge, Berichte mit Nummer (`0100-DOK-001`) |
 | Änderungsprotokoll | Wer hat wann was geändert? |
 
-Welche Reiter ein Projekt hat, legen Projektverantwortliche unter **Einstellungen** im Projekt fest.
+### Apps im Projekt
+
+Viele Apps aus dem App-Store haben zusätzlich einen eigenen Reiter im Projekt. Dort sehen Sie **nur die Einträge dieses Projekts**, legen neue an (das Projekt ist schon eingetragen), ändern den Status und verfolgen den Stand. Die **Gesamtübersicht über alle Projekte** bleibt links unter **Werkzeuge** – dort lassen sich die Listen mit **nach Projekt gruppieren** nach Projekten ordnen.
+
+| Reiter | App | Was Sie im Projekt sehen und tun |
+|---|---|---|
+| Einkauf | Einkauf | Bestellpositionen mit Status, Liefertermin, Wareneingang und Verlauf |
+| Verkauf | Kunden (CRM) | Angebote, Rechnungen, Verkaufschancen und Reklamationen zum Projekt. Die Kontakte bleiben im CRM |
+| Material | Lager | was für das Projekt aus dem Lager entnommen oder zurückgegeben wurde |
+| Service | Service-Einsätze | Montage, Inbetriebnahme und Service beim Kunden |
+| Qualität | Qualität | Prüfungen und 8D-Reports |
+| Fertigung | Fertigung | Fertigungsaufträge |
+| Änderungen | Änderungsmanagement | Änderungsanträge |
+| Reisekosten | Spesen | Abrechnungen zum Projekt (Projektleitung sieht alle, sonst die eigenen) |
+| Freigaben | Freigaben | Anträge zum Projekt, z. B. Anschaffungen |
+| Unterschriften | E-Signatur | Dokumente des Projekts zur Unterschrift |
+| CO₂ | Nachhaltigkeit | Emissionen des Projekts |
+| Eingangsrechnungen | Finanzbuchhaltung | Lieferantenrechnungen zum Projekt |
+| Ressourcen | Ressourcen | gebuchte Fahrzeuge, Räume und Geräte |
+| Meetings | Meetings | Besprechungen zum Projekt |
+| Mindmaps | Mindmaps | Mindmaps des Projekts |
+
+![Verkauf im Projekt](screenshots/39-projekt-verkauf.png)
+
+Reiter erscheinen nur für Apps, die bei Ihnen installiert sind und die Sie benutzen dürfen. **Weitere Reiter einblenden:** Projektverantwortliche klicken auf **＋** am Ende der Reiterleiste und wählen die App. Welche Reiter ein Projekt hat und in welcher Reihenfolge, steht unter **Einstellungen** im Projekt.
 
 ### Aufgaben
 
@@ -92,6 +119,7 @@ Welche Reiter ein Projekt hat, legen Projektverantwortliche unter **Einstellunge
 
 * **Hochladen:** Dateien einfach in das Fenster ziehen oder „Hochladen“ wählen. Gleichnamige Dateien werden nicht überschrieben, sondern als neue **Version** gespeichert (v2, v3 …) – ältere Stände bleiben abrufbar.
 * **Vorschau:** PDFs, Bilder und Videos öffnen sich direkt im Browser.
+* **3D-Dateien** öffnen sich mit einem Klick **im selben Fenster** (wie Word-Dateien); **Zurück** führt in den Ordner. Siehe [3D-Ansicht](#5a-3d-ansicht).
 * **Sperren (Schloss):** verhindert, dass Kollegen eine Datei gleichzeitig bearbeiten.
 * **Office (Bearbeiten-Knopf):** Word-, Excel- und PowerPoint-Dateien im Browser bearbeiten (falls eingerichtet).
 * Gelöschte Dateien landen im Papierkorb des Projekts.
@@ -106,6 +134,23 @@ Welche Reiter ein Projekt hat, legen Projektverantwortliche unter **Einstellunge
 | Gastzugang | Kunden, Statiker oder Partner sehen nur die freigegebenen Bereiche (Dateien, freigegebene Zeichnungen, Termine) |
 
 Jeder Link kann ein **Passwort**, ein **Ablaufdatum** und eine **maximale Anzahl Nutzungen** erhalten und jederzeit widerrufen werden. Bei Uploads über einen Anforderungslink werden Sie benachrichtigt.
+
+## 5a. 3D-Ansicht
+
+Ein Klick auf eine 3D-Datei im Projektordner, in der CAD-Zentrale (**3D ansehen**), bei Dokumenten oder E-Mail-Anhängen öffnet die 3D-Ansicht im ganzen Fenster:
+
+* **Drehen** mit der linken Maustaste, **Verschieben** mit der rechten, **Zoomen** mit dem Mausrad.
+* **Iso, Vorne, Oben, Rechts** und **Einpassen** wechseln die Ansicht.
+* **Schnitt X/Y/Z** schneidet das Modell auf, der Schieberegler verschiebt die Schnittebene.
+* **Messen:** zwei Punkte anklicken – Abstand und Maße in X, Y und Z in Millimetern.
+* **Baugruppe:** Teile im Baum ein- und ausblenden, Doppelklick zeigt nur dieses Teil; **Explosion** zieht Baugruppen auseinander.
+* Das Bild-Symbol speichert die aktuelle Ansicht als PNG.
+
+![3D-Ansicht](screenshots/43-3d-ansicht.png)
+
+**Direkt angezeigt** werden STEP, IGES, BREP, STL, OBJ, glTF/GLB, 3MF, PLY, FBX, Collada (DAE), VRML (WRL), AMF, 3DS, VTK und USDZ.
+
+**Native CAD-Dateien** (SolidWorks `.sldprt`/`.sldasm`, Inventor `.ipt`/`.iam`, Solid Edge `.par`/`.psm`/`.asm`, CATIA `.CATPart`/`.CATProduct`, Creo und NX `.prt`, Parasolid, ACIS, JT) kann nur das jeweilige CAD-Programm lesen. AperioPlan zeigt sofort das **Vorschaubild**, das das Programm in der Datei gespeichert hat. Gleichzeitig wird die Datei zur Umwandlung vorgemerkt: Ein Rechner mit dem CAD-Programm (Umwandlungsdienst, richtet Ihr Administrator ein) macht daraus einmalig ein STEP-Modell – danach lässt sie sich wie oben drehen, schneiden und messen. Für Creo und NX gibt es noch keine Umwandlung, dort bleibt es beim Vorschaubild.
 
 ## 6. CAD-Zentrale (SolidWorks)
 
@@ -225,8 +270,25 @@ Die folgenden Apps erscheinen in der Seitenleiste, sobald Ihre Firma sie install
 * **Telefonie:** Anrufe über die Firmen-Telefonanlage am PC führen; bekannte Anrufer werden aus dem CRM erkannt.
 * **Formulare:** Umfragen und Formulare erstellen, intern oder per Link verteilen, Ergebnisse auswerten.
 * **Schwarzes Brett:** Mitteilungen an alle und ein interner Marktplatz.
-* **Mindmaps** und **Wissensdatenbank:** Ideen sammeln; Anleitungen und Abläufe der Firma an einem Ort.
-* **3D-Viewer:** 3D-Modelle direkt im Browser drehen und ansehen.
+* **Mindmaps:** Ideen sammeln und ordnen – siehe unten.
+* **Wissensdatenbank:** Anleitungen und Abläufe der Firma an einem Ort.
+
+### Mindmaps
+
+In der Mitte steht das Thema, außen herum die Gedanken. Die Mindmaps orientieren sich an FreeMind; Dateien lassen sich mit FreeMind und Freeplane austauschen.
+
+* **Bearbeiten mit der Tastatur:** **Tab** legt einen Unterpunkt an, **Enter** einen Punkt auf gleicher Ebene, einfach **lostippen** oder **F2** ändert den Text, **Entf** löscht, **Leertaste** klappt ein und aus, **Pfeiltasten** wechseln, **Strg + ↑/↓** verschiebt einen Punkt unter seinen Nachbarn. Mit der Maus ziehen Sie Punkte auf andere.
+* **Kopieren und Einfügen:** **Strg + C / X / V** kopiert, schneidet aus und fügt Teilbäume ein – auch zwischen Mindmaps. Text aus Word oder einer Liste wird beim Einfügen zur Gliederung.
+* **Rückgängig:** Strg + Z, Wiederholen: Strg + Y.
+* **Details → Aussehen:** Farbe des Astes, Textfarbe, Hintergrund, **fett** (Strg + B) und *kursiv* (Strg + I), Schriftgröße, Form (Kasten, Blase, Linie), Verbindungslinie (Kurve, Gerade, Eckig) und Stärke, **Wolke** um einen ganzen Ast und **Symbole** wie Idee, Frage, Wichtig, Ziel oder **Priorität 1–5**.
+* **Details → Inhalt:** Notiz, Link (Webseite, E-Mail oder Seite in AperioPlan), **Verknüpfung** zu einem anderen Punkt (Klick auf den Pfeil springt hin), **Attribute** (Name und Wert, z. B. *Kosten: 2.400 €*), **Erinnerung** mit Datum und Uhrzeit (alle, mit denen die Mindmap geteilt ist, bekommen dann eine Nachricht), **Pfeile** zu beliebigen anderen Punkten mit Beschriftung, und im Projekt **Als Aufgabe anlegen**. Wann ein Punkt angelegt und zuletzt geändert wurde, steht darunter.
+* **Ansicht:** Alles aufklappen, Alles einklappen, Eine Ebene mehr oder weniger zeigen (für den gewählten Punkt und alles darunter), **Als Tabelle** – alle Punkte untereinander mit Notizen, Attributen und Erinnerungen.
+* **Suchen (Strg + F):** findet Text in Punkten, Notizen und Attributen; Enter springt zum nächsten Treffer und klappt den Weg dorthin auf. **Filter** blendet alles andere ab.
+* **Datei:** Exportieren als Bild (PNG), Vektorgrafik (SVG), PDF, Webseite (HTML), Gliederung (Markdown), Text oder FreeMind-Datei (.mm). **Importieren** fügt eine FreeMind-Datei oder eine Gliederung unter dem gewählten Punkt ein. Eine neue Mindmap können Sie auch **aus einer Datei** anlegen.
+
+![Mindmap](screenshots/44-mindmap.png)
+
+Mindmaps lassen sich mit Kollegen teilen (nur ansehen oder bearbeiten) oder einem Projekt zuordnen. Ändern zwei Personen gleichzeitig, lädt AperioPlan die neueste Fassung und weist darauf hin.
 
 ### Freigaben (Anträge)
 
@@ -285,10 +347,14 @@ Hat Ihre Firma eigene Felder angelegt (z. B. *Kostenstelle* am Projekt oder *Kun
 
 ### Lager, Fahrzeuge, Finanzen
 
-* **Lager:** Bestände je Lagerort, Zugang, Entnahme und Umlagern, Etiketten mit QR-Code.
+* **Lager:** Bestände je Lagerort, Zugang, Entnahme und Umlagern, Etiketten mit QR-Code. Am Artikel stehen die **offenen Bestellungen** (mit Bestellnummer, Lieferant und Projekt); **Nachbestellen** legt eine Lagerbestellung im Einkauf an. Der **Bestellvorschlag** zeigt, was unter den Mindestbestand fällt.
+* **Einkauf:** Unter **Alle Positionen** sehen Sie alle Bestellungen, nach Projekt geordnet; Bestellungen fürs Lager ohne Projekt stehen unter **Lagerbestellungen**. Eine Position kann mit einem **Lagerartikel** verknüpft sein – dann übernimmt AperioPlan Benennung, Lieferant und Preis.
+* **Wareneingang:** In der Bestellposition (oder im Lager unter **Wareneingang**) Menge, Datum und **Lieferschein-Nr.** eintragen und wählen, was mit der Ware passiert: **ins Lager einlagern**, **einlagern und gleich fürs Projekt entnehmen** oder **nur den Eingang buchen**. Bei Artikeln mit Charge oder Seriennummern werden diese abgefragt; fehlt der Lagerartikel, legt AperioPlan ihn an. Unter **Verlauf und Warenfluss** sehen Sie für jede Position, wann sie bestellt, geliefert, eingelagert und entnommen wurde.
+
+![Wareneingang](screenshots/42-wareneingang.png)
 * **Inventar:** Geräte und Maschinen mit Prüfterminen, Übergabe an Mitarbeiter, Abschreibung.
 * **Fuhrpark:** Fahrten ins elektronische Fahrtenbuch eintragen (Beginn, Ende, Zweck), Tankbelege und Schäden melden. Das Fahrtenbuch lässt sich nachträglich nicht ändern – nur die letzte Fahrt der vergangenen 7 Tage kann gelöscht werden.
-* **Rechnungen und Finanzen:** für die Buchhaltung – Rechnungen als E-Rechnung, Eingangsrechnungen freigeben, Zahlungen zuordnen, Mahnungen.
+* **Rechnungen und Finanzen:** für die Buchhaltung – Rechnungen als E-Rechnung, Eingangsrechnungen freigeben, Zahlungen zuordnen, Mahnungen. Eine Eingangsrechnung gehört zu einem Projekt, wenn Sie sie im Projekt hochladen, im Beleg das Projekt wählen – oder automatisch, wenn eine E-Rechnung die Bestellnummer aus dem Einkauf enthält.
 * **Nachhaltigkeit:** Strom-, Gas- und Kraftstoffverbrauch und daraus die CO₂-Bilanz je Monat, Projekt und Standort.
 
 ![Fuhrpark](screenshots/37-fuhrpark.png)
@@ -303,3 +369,7 @@ Hat Ihre Firma eigene Felder angelegt (z. B. *Kostenstelle* am Projekt oder *Kun
 | Strg + Enter | Kommentar senden |
 | Enter / Umschalt + Enter | Chat: senden / neue Zeile |
 | Entf | Whiteboard: Auswahl löschen |
+| Tab / Enter | Mindmap: Unterpunkt / Punkt auf gleicher Ebene |
+| Strg + C / X / V | Mindmap: Teilbaum kopieren, ausschneiden, einfügen |
+| Strg + B / I | Mindmap: fett / kursiv |
+| Strg + F | Mindmap: suchen |

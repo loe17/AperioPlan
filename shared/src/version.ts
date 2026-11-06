@@ -12,6 +12,26 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.3.0',
+    date: '2026-11-07',
+    title: 'Apps in Projekten, Lager und Einkauf verbunden, 3D-Ansicht und Mindmaps wie FreeMind',
+    changes: [
+      { type: 'neu', text: 'Apps als Reiter im Projekt: Verkauf (Angebote, Rechnungen, Reklamationen), Material, Service, Qualität, Fertigung, Änderungen, Reisekosten, Freigaben, Unterschriften, CO₂, Eingangsrechnungen, Ressourcen und Meetings – jeweils nur mit den Einträgen dieses Projekts, mit Anlegen und Status' },
+      { type: 'neu', text: 'Mit „+“ am Ende der Reiterleiste blendet die Projektleitung weitere Reiter ein; die Standard-Reiter für neue Projekte legt der Administrator fest' },
+      { type: 'neu', text: 'Gesamtübersichten (Einkauf, Angebote, Rechnungen, Service, Qualität, Fertigung, Änderungen, Freigaben, Spesen, E-Signatur, Eingangsrechnungen) lassen sich nach Projekt gruppieren' },
+      { type: 'neu', text: 'Einkauf: Lagerbestellungen ohne Projekt, Positionen mit Lagerartikel und Lagerort; Wareneingang mit Lieferschein, Charge und Seriennummern – wahlweise ins Lager oder gleich ins Projekt' },
+      { type: 'neu', text: 'Verlauf je Bestellposition: Änderungen, Bestellung, Lieferungen und Lagerbewegungen auf einen Blick' },
+      { type: 'neu', text: 'Lager: Nachbestellen direkt am Artikel, Bestellvorschlag als Lagerbestellung, Reiter „Material“ im Projekt mit Entnahme und Rückgabe' },
+      { type: 'neu', text: 'E-Rechnungen mit einer Bestellnummer aus dem Einkauf werden automatisch dem Projekt zugeordnet' },
+      { type: 'neu', text: '3D-Dateien öffnen sich im selben Fenster wie Word-Dateien – mit Schnitt und Messen; zusätzlich FBX, Collada, VRML, AMF, 3DS, VTK und USDZ' },
+      { type: 'neu', text: 'Native CAD-Dateien (SolidWorks, Inventor, Solid Edge, CATIA, Parasolid, JT u. a.): sofort mit dem gespeicherten Vorschaubild, als 3D-Modell nach Umwandlung durch einen CAD-Arbeitsplatz (neuer Umwandlungsdienst der CAD-Bridge)' },
+      { type: 'neu', text: 'Mindmaps wie FreeMind: Schrift, Farben, Formen, Linienarten, Symbole, Prioritäten, Wolken, Pfeile, Verknüpfungen, Attribute, Erinnerungen, Zeitstempel, Suche und Filter, Tabellenansicht, Klappen nach Ebenen, Kopieren und Einfügen' },
+      { type: 'neu', text: 'Mindmaps exportieren als PNG, SVG, PDF, HTML, Markdown, Text und FreeMind (.mm); FreeMind- und Freeplane-Dateien einlesen' },
+      { type: 'verbessert', text: 'Seitenleiste: E-Mail und Chat unter „Mein Schreibtisch“, App-Store und Einstellungen eigener Bereich, Abschnitte einklappbar' },
+      { type: 'verbessert', text: 'Der 3D-Viewer ist keine eigene App mehr – die 3D-Ansicht steht allen zur Verfügung' },
+    ],
+  },
+  {
     version: '0.2.1',
     date: '2026-11-04',
     title: 'Ältere Versionen installieren',

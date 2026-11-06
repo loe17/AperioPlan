@@ -2,14 +2,14 @@
 
 Der Testplan ist zweigeteilt:
 
-* **Automatische Server-Tests** (`pnpm test`, 164 Prüfungen: 131 Server in 34 Dateien, 33 Fachlogik) laufen gegen eine echte PostgreSQL-Datenbank.
-* **Browser-Test des Testplans** (`node e2e/testplan.mjs`, 50 Prüfungen) bedient die Oberfläche wie ein Mensch – inklusive echtem Videoanruf zwischen zwei Browsern.
+* **Automatische Server-Tests** (`pnpm test`, 218 Prüfungen: 185 Server in 38 Dateien, 33 Fachlogik) laufen gegen eine echte PostgreSQL-Datenbank.
+* **Browser-Test des Testplans** (`node e2e/testplan.mjs`, 53 Prüfungen) bedient die Oberfläche wie ein Mensch – inklusive echtem Videoanruf zwischen zwei Browsern.
 
 Beide laufen bei jedem Hochladen nach GitHub automatisch (GitHub Actions, `.github/workflows/ci.yml`), der Browser-Test lokal gegen eine frische Instanz.
 
 ## Ergebnis vom 03.11.2026 (Version 0.2.0)
 
-Alle 50 Schritte des Browser-Tests und alle 164 Server- und Fachlogik-Tests bestanden.
+Alle 53 Schritte des Browser-Tests und alle 218 Server- und Fachlogik-Tests bestanden (Version 0.3.0).
 
 | # | Prüfung | Ergebnis |
 |---|---|---|
@@ -51,8 +51,9 @@ Alle 50 Schritte des Browser-Tests und alle 164 Server- und Fachlogik-Tests best
 | 14.2 | Meeting mit Gast-Link: Gast wartet, wird eingelassen, beide sehen sich | bestanden |
 | 14.3 | Formular anlegen, öffentlich ausfüllen, Auswertung | bestanden |
 | 14.4 | Schwarzes Brett: Mitteilung mit Lesebestätigung, Marktplatz-Angebot | bestanden |
-| 14.5 | 3D-Viewer: Baugruppe öffnen, Teile im Baum, Messen | bestanden |
+| 14.5 | 3D-Ansicht: Baugruppe aus dem Projektordner im selben Fenster öffnen, Messen, native Datei mit Vorschau | bestanden |
 | 14.6 | Mindmap: mit Tastatur anlegen, speichern, als Gliederung exportieren | bestanden |
+| 14.6b | Mindmap wie FreeMind: fett, Symbol, Wolke, Attribut, Suche, Klappen, Export und Import als .mm | bestanden |
 | 14.7 | Wissensdatenbank: Artikel aus Vorlage, „/“-Befehl, Unterseite, Suche, öffentlicher Link | bestanden |
 | 14.8 | Lager: Lagerort, Artikel, Zugang, Entnahme fürs Projekt, Scan per Eingabe | bestanden |
 | 14.9 | Inventar: Gerät mit Prüftermin, Übergabe, Etikett | bestanden |
@@ -63,6 +64,8 @@ Alle 50 Schritte des Browser-Tests und alle 164 Server- und Fachlogik-Tests best
 | 14.14 | Service, Kundenanfragen, Verträge, Terminbuchung, Messe: Einsatz unterschreiben, Formular, Buchung | bestanden |
 | 14.15 | Spesen, Einsatzplanung, Personal, Unterweisungen, Fuhrpark: Abrechnung, Schicht, Bewerbung, Quiz, Fahrt | bestanden |
 | 14.16 | Freigaben, E-Signatur, Auswertungen, Eigene Felder, Nachhaltigkeit: Antrag, Unterschrift, Bericht, Feld, CO₂ | bestanden |
+| 14.17 | Apps im Projekt: Reiter mit „+“ einblenden, Angebot im Projekt, Gesamtübersicht nach Projekt | bestanden |
+| 14.18 | Lager und Einkauf: Lagerbestellung, Wareneingang mit Lieferschein ins Lager, Verlauf | bestanden |
 
 Zusätzlich durch Server-Tests abgedeckt: Teilprojekt-/Dokument-/Jahresnummern, Sichtbarkeit und Rechte,
 Abhängigkeiten mit Kreisbezugsschutz, Erwähnungen, Dateiversionen und Explorer-Abgleich, Pfadschutz,
@@ -79,6 +82,10 @@ Verpflegungspauschalen, Fahrtenbuch-Regeln (lückenlos, keine Überschneidung), 
 Löschfristen für Bewerbungen, mehrstufige Freigaben mit Wertgrenzen, E-Signatur nacheinander mit
 Signaturprotokoll, Rechte in den Auswertungen (eigene Zeiten), Prüfung eigener Felder, CO₂-Bilanz mit
 wiederholbarer Übernahme aus dem Fuhrpark und Vollständigkeit der Sicherung (jede Tabelle mit Primärschlüssel).
+Seit 0.3.0 zusätzlich: Projekt-Reiter bleiben beim Wechsel auf eine ältere Version erhalten, Projektfilter aller Apps,
+Lagerbestellungen und Wareneingang mit Seriennummern, Charge und Lieferschein, Verlauf je Bestellposition,
+E-Rechnung einem Projekt zuordnen, Vorschaubild aus nativen CAD-Dateien (auch Compound Files und Windows-Bitmaps),
+Umwandlungsauftrag für die 3D-Ansicht, Mindmap-Formatierung neben den Grunddaten und Mindmap-Erinnerungen.
 
 Das Installations- und Deinstallationsskript wurde mit `shellcheck` geprüft und in allen drei
 HTTPS-Varianten (eigenes Zertifikat, Let's Encrypt über DNS, Let's Encrypt öffentlich) mit
@@ -96,6 +103,7 @@ Diese Punkte benötigen Software bzw. Infrastruktur, die in der Entwicklungsumge
 |---|---|
 | SolidWorks-Add-in im echten SolidWorks | `cad-bridge` unter Windows bauen, `register.cmd`, Speichern eines neuen Teils, Zeichnung anlegen, Einchecken |
 | Export-Dienst PDF/DXF/STEP | `AperioPlan.ExportWorker.exe --once` nach einer Freigabe |
+| Umwandlungsdienst 3D-Ansicht | `AperioPlan.ViewConverter.exe --once` auf je einem Rechner mit SolidWorks, Inventor, Solid Edge bzw. CATIA V5; danach eine native Datei in AperioPlan öffnen – das 3D-Modell erscheint. Baugruppen vom Netzlaufwerk prüfen |
 | Installation und HTTPS | `sudo ./install.sh` auf dem Zielserver mit allen drei Wegen; Zertifikat im Browser prüfen, `aperioplan.local` von Windows/macOS aufrufen |
 | Let's Encrypt über DNS | Weg 2 mit echtem DuckDNS-/Cloudflare-Token; `docker compose logs caddy` zeigt „certificate obtained successfully“ |
 | Deinstallation | `sudo ./uninstall.sh` auf einem Testsystem; danach `docker ps -a` und `docker volume ls` leer |

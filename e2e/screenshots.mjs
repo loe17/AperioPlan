@@ -199,6 +199,45 @@ for (let m = 1; m <= new Date().getMonth(); m++) {
 await admin.post('/sustainability/entries', { date: `${year}-06-15`, factorId: fac('train_km'), quantity: 1800, projectId: p.id, note: 'Bahnreisen zum Kunden' });
 await admin.post('/sustainability/import', { year });
 
+
+// Projekt-Reiter der Apps: Angebote, Einkauf mit Lager, 3D-Modell, Mindmap
+await admin.post('/apps/mindmap/install', {});
+await admin.patch(`/projects/${p.id}`, { customerId: kunde.id, modules: ['kanban', 'list', 'gantt', 'files', 'cad', 'chat', 'time', 'sales', 'purchasing', 'material', 'service', 'mindmaps'] });
+const lieferant = await admin.post('/crm/accounts', { name: 'Hoffmann Antriebe GmbH', kind: 'supplier', city: 'Stuttgart' });
+const hauptlager = await admin.post('/warehouse/locations', { name: 'Hauptlager', kind: 'warehouse' });
+const servo = await admin.post('/warehouse/articles', { name: 'Servomotor 400 W', tracking: 'serial', defaultLocationId: hauptlager.id, purchasePrice: 412, supplierId: lieferant.id });
+const schraube = await admin.post('/warehouse/articles', { name: 'Zylinderschraube M8×20', minQty: 200, reorderQty: 1000, defaultLocationId: hauptlager.id, purchasePrice: 0.08, supplierId: lieferant.id });
+await admin.post(`/purchasing/projects/${p.id}/items`, { designation: '', qty: 2, whArticleId: servo.id, status: 'ordered', plannedDelivery: day(5), supplierId: lieferant.id });
+await admin.post(`/purchasing/projects/${p.id}/items`, { designation: 'Lichtschranke', manufacturer: 'Sick', manufacturerNo: 'WL12-3P2431', qty: 4, unitPrice: 89, status: 'open' });
+await admin.post(`/purchasing/projects/${p.id}/items`, { designation: 'Fördergurt 400 mm', manufacturer: 'Habasit', qty: 1, unitPrice: 640, status: 'confirmed', confirmedDelivery: day(9), supplierId: lieferant.id });
+await admin.post(`/purchasing/projects/${p.id}/items`, { designation: 'Linearführung 600 mm', manufacturer: 'Bosch Rexroth', qty: 2, unitPrice: 215, status: 'delivered' });
+await admin.post('/warehouse/reorder', { projectId: null, items: [{ articleId: schraube.id, qty: 1000 }] });
+const pos = (text, qty, price) => ({ text, description: '', qty, unit: 'Stk', price, discount: 0, optional: false });
+await admin.post('/crm/quotes', { accountId: kunde.id, projectId: p.id, title: 'Verpackungsmaschine VM-4', status: 'accepted', positions: [pos('Verpackungsmaschine VM-4', 1, 186000), pos('Inbetriebnahme vor Ort', 3, 1450)] });
+await admin.post('/crm/quotes', { accountId: kunde.id, projectId: p.id, title: 'Formatsatz 300 × 200 mm', status: 'sent', positions: [pos('Formatsatz', 1, 8400)] });
+await admin.post('/service/jobs', { accountId: kunde.id, projectId: p.id, title: 'Inbetriebnahme VM-4', startAt: at(workday(12), 8), technicianIds: [tom.id] });
+let obj = '', ov = 0;
+for (const [name, [x0, y0, z0, x1, y1, z1]] of [['Grundplatte', [0, 0, 0, 400, 260, 20]], ['Seitenwand links', [0, 0, 20, 20, 260, 300]], ['Seitenwand rechts', [380, 0, 20, 400, 260, 300]], ['Traverse', [0, 100, 300, 400, 160, 330]], ['Antrieb', [150, 90, 20, 250, 170, 120]]]) {
+  obj += `o ${name}\n`;
+  for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) obj += `v ${x} ${y} ${z}\n`;
+  for (const f of [[1, 2, 4, 3], [5, 7, 8, 6], [1, 5, 6, 2], [3, 4, 8, 7], [1, 3, 7, 5], [2, 6, 8, 4]]) obj += `f ${f.map((i) => i + ov).join(' ')}\n`;
+  ov += 8;
+}
+const fd3 = new FormData();
+fd3.append('file', new Blob([obj]), 'Gestell_VM-4.obj');
+const [model3d] = await admin.post(`/projects/${p.id}/files/upload?path=01_CAD`, fd3);
+const mm = await admin.post('/mindmaps', { title: 'Messe 2027', projectId: p.id, data: { id: 'root', text: 'Messe 2027', children: [
+  { id: 'a', text: 'Logistik', icons: ['launch'], children: [
+    { id: 'a1', text: 'Spedition', attrs: [{ k: 'Kosten', v: '2.400 €' }, { k: 'Anbieter', v: 'Müller' }], children: [] },
+    { id: 'a2', text: 'Aufbau', reminder: new Date(Date.now() + 20 * 86400000).toISOString(), icons: ['p1'], children: [] }] },
+  { id: 'b', text: 'Werbung', cloud: '#ffe4c4', children: [
+    { id: 'b1', text: 'Flyer', shape: 'fork', children: [] },
+    { id: 'b2', text: 'Gewinnspiel', shape: 'bubble', bg: '#fff7c2', bold: true, icons: ['idea', 'star'], children: [] }] },
+  { id: 'c', text: 'Personal', edgeStyle: 'angled', children: [
+    { id: 'c1', text: 'Standdienst', note: 'Schichtplan bis Ende November', children: [] },
+    { id: 'c2', text: 'Kleidung', italic: true, fg: '#b91c1c', arrows: [{ to: 'b2', label: 'mit Logo' }], children: [] }] },
+  { id: 'd', text: 'Budget', size: 18, ref: 'a1', icons: ['money'], children: [] }] } });
+
 // ------------------------------------------------------------ Bildschirmfotos
 console.log('Bildschirmfotos werden erstellt ...');
 const browser = await chromium.launch({ args: ['--lang=de-DE'] });
@@ -247,6 +286,12 @@ await shot('35-nachhaltigkeit', '/sustainability');
 await shot('36-freigaben', '/approvals?tab=todo');
 await shot('37-fuhrpark', '/fleet');
 await shot('38-e-signatur', envDetail.signers[0].link.replace(/^https?:\/\/[^/]+/, ''));
+await shot('39-projekt-verkauf', `${P}?tab=sales`);
+await shot('40-projekt-einkauf', `${P}?tab=purchasing`);
+await shot('41-einkauf-nach-projekt', '/purchasing?tab=items');
+await shot('42-wareneingang', `${P}?tab=purchasing`, async () => { await page.click('tr:has-text("Servomotor") button:has-text("Wareneingang")'); });
+await shot('43-3d-ansicht', `/view3d?file=${model3d.id}&name=Gestell_VM-4.obj`, async () => { await page.waitForSelector('.v3d-info', { timeout: 20000 }); });
+await shot('44-mindmap', `/mindmaps/${mm.id}`);
 
 await admin.patch('/me', { theme: 'dark' }).catch(() => {});
 await page.emulateMedia({ colorScheme: 'dark' });

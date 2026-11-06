@@ -34,19 +34,19 @@ Der Name kommt vom lateinischen *aperio* – „ich öffne, mache sichtbar“. A
 
 ## Was AperioPlan kann
 
-Jedes Werkzeug ist eine **App**. Eine neue Installation startet schlank mit **Chat** und **E-Mail**; alles Weitere schaltet der Administrator im **App-Store** mit einem Klick ein – und wieder aus, ohne dass Daten verloren gehen.
+Jedes Werkzeug ist eine **App**. Eine neue Installation startet schlank mit **Chat** und **E-Mail**; alles Weitere schaltet der Administrator im **App-Store** mit einem Klick ein – und wieder aus, ohne dass Daten verloren gehen. Viele Apps erscheinen zusätzlich als **Reiter im Projekt** (z. B. Einkauf, Verkauf, Service, Qualität) und zeigen dort nur die Einträge dieses Projekts; die Gesamtübersicht über alle Projekte bleibt in der Seitenleiste.
 
 ![App-Store](docs/screenshots/30-app-store.png)
 
 | Bereich | Apps |
 |---|---|
 | **Projekte** *(immer dabei)* | Automatische Projektnummern (`0100`, Teilprojekte `0100-A`), Kanban, Aufgabenliste, Gantt mit Abhängigkeiten, Whiteboard, Dateien mit Versionen und Freigabelinks, Office im Browser, Abschlussbericht |
-| **Zusammenarbeit** | Kalender mit Outlook-/Google-Abgleich, Schwarzes Brett mit Marktplatz, Formulare und Umfragen, Mindmaps |
+| **Zusammenarbeit** | Kalender mit Outlook-/Google-Abgleich, Schwarzes Brett mit Marktplatz, Formulare und Umfragen, Mindmaps nach dem Vorbild von FreeMind (Symbole, Wolken, Pfeile, Attribute, Erinnerungen, Export und Import als .mm) |
 | **Kommunikation** | Chat und Videoanrufe, Meetings mit Gast-Link und Warteraum, Telefonie über die Telefonanlage, E-Mail-Postfach mit Projektzuordnung |
 | **Kunden & Verkauf** | CRM mit Angeboten, Rechnungen als E-Rechnung (ZUGFeRD/XRechnung) und Reklamationen, Kalkulation, Kundenanfragen (Tickets), Wartungsverträge mit automatischer Rechnung, Terminbuchung per Link, Messen und Veranstaltungen, E-Signatur |
 | **Produktion & Service** | Instandhaltung mit Störmeldung per QR-Code, Qualität (Prüfpläne, Messmittel, 8D), Fertigungsaufträge, Service-Einsätze mit Unterschrift des Kunden |
-| **Technik** | CAD-Bridge für SolidWorks (Nummern, Speichermaske, Aus-/Einchecken, Stücklisten, Freigabe mit PDF/DXF/STEP), PCB-Bridge für KiCad, 3D-Viewer, Änderungsmanagement |
-| **Lager & Material** | Einkauf, Lager mit Lagerorten und Chargen, Inventar mit Prüfterminen, Ressourcen (Räume, Fahrzeuge, Geräte), Fuhrpark mit Fahrtenbuch |
+| **Technik** | CAD-Bridge für SolidWorks (Nummern, Speichermaske, Aus-/Einchecken, Stücklisten, Freigabe mit PDF/DXF/STEP), PCB-Bridge für KiCad, Änderungsmanagement, 3D-Ansicht im Browser mit Schnitt und Messen (auch native SolidWorks-, Inventor-, Solid-Edge- und CATIA-Dateien über einen CAD-Arbeitsplatz) |
+| **Lager & Material** | Einkauf mit Lagerbestellungen und Wareneingang (Lieferschein, Charge, Seriennummer, Verlauf je Position), Lager mit Lagerorten und Chargen, Inventar mit Prüfterminen, Ressourcen (Räume, Fahrzeuge, Geräte), Fuhrpark mit Fahrtenbuch |
 | **Personal** | Zeiterfassung mit gesetzlichen Regeln, Urlaub, Lohnabrechnung (Lohnsteuer nach PAP 2026), Spesen, Einsatzplanung, Personalakte mit Bewerbungen, Unterweisungen mit Nachweis |
 | **Finanzen** | Eingangsrechnungen mit Freigabe, Kontoauszug-Abgleich, Zahlungslauf, Mahnwesen, DATEV-Übergabe, CO₂-Bilanz |
 | **Wissen & Organisation** | Notizen, Wissensdatenbank, KVP-Ideenbox, Freigaben (Anträge), Auswertungen mit Diagrammen, eigene Felder, KI-Assistent (lokal oder extern) |
@@ -69,6 +69,9 @@ Alle Bilder zeigen erfundene Beispieldaten.
 | ![Kundenanfragen](docs/screenshots/33-kundenanfragen.png) **Kundenanfragen** – Tickets mit Antwortzeiten | ![Auswertungen](docs/screenshots/34-auswertungen.png) **Auswertungen** – eigene Berichte und Diagramme |
 | ![Nachhaltigkeit](docs/screenshots/35-nachhaltigkeit.png) **Nachhaltigkeit** – CO₂-Bilanz nach Scope 1 bis 3 | ![Freigaben](docs/screenshots/36-freigaben.png) **Freigaben** – Anträge mit mehrstufiger Genehmigung |
 | ![Fuhrpark](docs/screenshots/37-fuhrpark.png) **Fuhrpark** – Fahrzeuge, Kosten und Termine | ![E-Signatur](docs/screenshots/38-e-signatur.png) **E-Signatur** – Kunden unterschreiben im Browser |
+| ![Verkauf im Projekt](docs/screenshots/39-projekt-verkauf.png) **Verkauf im Projekt** – Angebote, Rechnungen und Reklamationen nur dieses Projekts | ![Einkauf im Projekt](docs/screenshots/40-projekt-einkauf.png) **Einkauf im Projekt** – Bestellungen mit Status, Liefertermin und Lagerartikel |
+| ![Einkauf nach Projekt](docs/screenshots/41-einkauf-nach-projekt.png) **Einkauf gesamt** – alle Bestellungen nach Projekt geordnet, Lagerbestellungen extra | ![Wareneingang](docs/screenshots/42-wareneingang.png) **Wareneingang** – mit Lieferschein und Seriennummern ins Lager oder direkt ins Projekt |
+| ![3D-Ansicht](docs/screenshots/43-3d-ansicht.png) **3D-Ansicht** – im selben Fenster drehen, schneiden und messen | ![Mindmap](docs/screenshots/44-mindmap.png) **Mindmaps** – Symbole, Wolken, Pfeile und Attribute wie in FreeMind |
 | ![Dunkelmodus](docs/screenshots/21-dunkel-kanban.png) **Dunkelmodus** – folgt auf Wunsch automatisch dem Betriebssystem | ![Anmeldung](docs/screenshots/01-anmeldung.png) **Anmeldung** – mit Firmenname, auf Wunsch über Active Directory |
 
 ## Installation
@@ -153,6 +156,8 @@ sudo git pull && sudo docker compose up -d --build
 ```
 
 > **Von 0.1.x auf 0.2.0:** Bisher genutzte Werkzeuge bleiben eingeschaltet. Die neuen Apps stehen im App-Store bereit und erscheinen erst, wenn der Administrator sie installiert.
+>
+> **Von 0.2.x auf 0.3.0:** Bestehende Projekte bekommen die Reiter **Verkauf** und **Mindmaps** (wo die Apps installiert sind) – bisher waren Rechnungen und Mindmaps dort fest eingeblendet. Weitere App-Reiter blendet die Projektleitung mit **＋** ein. Der 3D-Viewer ist keine eigene App mehr. Wer wieder auf 0.2.x wechselt, verliert keine Daten: Die neuen Reiter, Lagerbestellungen und die Mindmap-Formatierung werden dort nur nicht angezeigt.
 
 ## Deinstallieren
 

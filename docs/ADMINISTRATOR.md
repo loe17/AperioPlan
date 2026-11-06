@@ -74,6 +74,8 @@ Jedes Werkzeug ist eine **App**. Eine neue Installation startet bewusst schlank 
 * **Entfernen** blendet die App aus. **Daten bleiben erhalten** und sind nach erneutem Installieren wieder da.
 * Manche Apps bauen auf anderen auf (z. B. Wartungsverträge auf CRM, Terminbuchung auf Kalender). Der App-Store weist darauf hin und installiert die Voraussetzung mit.
 * Wer von 0.1.x aktualisiert, behält alle bisher festen Werkzeuge (Kalender, Zeiterfassung, CAD-Bridge, CRM …) eingeschaltet.
+* **Apps im Projekt:** Viele Apps bringen zusätzlich einen Reiter für Projekte mit (Einkauf, Verkauf, Material, Service, Qualität, Fertigung, Änderungen, Reisekosten, Freigaben, Unterschriften, CO₂, Eingangsrechnungen, Ressourcen, Meetings, Mindmaps). In der Seitenleiste bleibt die Gesamtübersicht über alle Projekte. Welche Reiter neue Projekte bekommen, steht unter **Einstellungen → Allgemein & Nummern → Standard-Reiter**; im Projekt blenden Projektverantwortliche weitere mit **＋** ein.
+* Die **3D-Ansicht** ist seit 0.3.0 keine eigene App mehr, sondern steht allen zur Verfügung. Eine früher installierte App „3D-Viewer“ verschwindet einfach aus der Seitenleiste.
 * Eigene Erweiterungen lassen sich als ZIP hochladen (**Plugin hochladen**), siehe Entwickler-Handbuch.
 
 | Bereich | Apps |
@@ -82,7 +84,7 @@ Jedes Werkzeug ist eine **App**. Eine neue Installation startet bewusst schlank 
 | Kommunikation | Chat und Videoanrufe, Meetings (mit Gast-Link), Telefonie, E-Mail |
 | Kunden & Verkauf | CRM, Kalkulation, Kundenanfragen, Wartungs- und Serviceverträge, Terminbuchung, Messen und Veranstaltungen, E-Signatur |
 | Produktion & Service | Instandhaltung, Qualität, Fertigung, Service-Einsätze |
-| Technik | CAD-Bridge, PCB-Bridge, 3D-Viewer, Änderungsmanagement |
+| Technik | CAD-Bridge, PCB-Bridge, Änderungsmanagement |
 | Lager & Material | Einkauf, Lager, Inventar, Ressourcen, Fuhrpark |
 | Personal | Zeiterfassung, Urlaub, Lohnabrechnung, Spesen und Reisekosten, Einsatzplanung, Personal, Unterweisungen und Schulungen |
 | Finanzen | Finanzbuchhaltung, Nachhaltigkeit |
@@ -182,7 +184,7 @@ Dateien, die Mitarbeiter direkt im Windows-Explorer in Projektordner legen, ersc
 
 * Projektnummern fortlaufend (`0100`, `0200` …) oder mit Jahreszahl (`PRJ-2026-0042`).
 * Teilprojekte erhalten automatisch Buchstaben (`0100-A`, `0100-B`), Dokumente laufende Nummern (`0100-DOK-001`).
-* Welche Werkzeuge (Kanban, Gantt, Whiteboard, CAD …) bei neuen Projekten sofort aktiv sind.
+* **Standard-Reiter für neue Projekte:** welche Werkzeuge (Kanban, Gantt, Whiteboard, CAD …) und welche Apps (Einkauf, Verkauf, Service …) ein neues Projekt sofort als Reiter hat. Neu installierte Apps sind nicht automatisch dabei.
 * Nummernkreise der installierten Apps, z. B. Rechnungen `RE-{JJJJ}-{NNNN}`, Tickets `T{JJ}-{NNNNN}`, Anträge `FG-{JJ}-{NNNN}`, Unterschriftsvorgänge `ES-{JJ}-{NNNN}`. Platzhalter: `{JJJJ}`/`{JJ}` Jahr, `{NNNN}` laufende Nummer mit fester Stellenzahl. Rechnungsnummern werden lückenlos erst beim Festschreiben vergeben.
 
 ## 8. CAD-Zentrale und Speichermaske
@@ -198,6 +200,16 @@ Dateien, die Mitarbeiter direkt im Windows-Explorer in Projektordner legen, ersc
 Die Installation des CAD-Wächters auf den Konstruktions-PCs ist in `cad-bridge/README.md` beschrieben.
 
 **Export-Dienst:** Damit bei Freigaben automatisch PDF, DXF und STEP entstehen, muss auf einem Windows-Rechner mit SolidWorks `AperioPlan.ExportWorker.exe` laufen (z. B. als geplante Aufgabe „bei Anmeldung“). Offene Aufträge sieht man unter **CAD-Zentrale → Fertigungsableitungen**.
+
+### 3D-Ansicht und Umwandlungsdienst
+
+3D-Dateien öffnen sich im Browser im selben Fenster (STEP, IGES, STL, OBJ, glTF, 3MF, PLY, FBX, Collada, VRML, AMF, 3DS, VTK, USDZ). Native CAD-Dateien kann nur das jeweilige CAD-Programm lesen. Für sie zeigt AperioPlan zuerst das Vorschaubild aus der Datei und merkt die Datei zur Umwandlung nach STEP vor. Die Umwandlung übernimmt der **Umwandlungsdienst** `AperioPlan.ViewConverter.exe` aus dem CAD-Bridge-Paket:
+
+1. Auf einem Windows-Rechner, auf dem das CAD-Programm installiert und lizenziert ist, das CAD-Bridge-Paket entpacken.
+2. Einmal `aperio-cad config --server https://… --token ap_…` ausführen (API-Schlüssel eines Benutzers, der die Projekte sehen darf).
+3. `AperioPlan.ViewConverter.exe` starten – am besten als geplante Aufgabe „bei Anmeldung“ des Benutzers, unter dem das CAD-Programm läuft.
+
+Der Dienst erkennt selbst, welche Programme vorhanden sind: **SolidWorks** (Teile, Baugruppen, Parasolid, ACIS, JT), **Inventor** (Teile, Baugruppen), **Solid Edge** (Teile, Blechteile, Baugruppen, Parasolid, JT) und **CATIA V5** (CATPart, CATProduct). Für **Creo** und **NX** gibt es noch keine Umwandlung; dort bleibt es beim Vorschaubild. Baugruppen brauchen ihre Teile: Ist unter **Einstellungen → Speicherorte** ein Windows-Pfad (Netzlaufwerk) eingetragen, öffnet der Dienst die Datei direkt dort, sonst nur die heruntergeladene Einzeldatei. Jede Dateiversion wird nur einmal umgewandelt; das Ergebnis liegt in der Ablage unter `.aperio/view3d`.
 
 ## 9. Zeiterfassung, Urlaub, Feiertage
 
@@ -333,6 +345,8 @@ Die meisten Apps funktionieren sofort. Wer zusätzlich zum Administrator verwalt
 | **E-Signatur** | Erinnerung nach Tagen, Gültigkeit der Links | **Einfache elektronische Signatur:** gezeichnete Unterschrift, Zeitpunkt, IP-Adresse und SHA-256-Prüfsumme des Dokuments im Signaturprotokoll. Nicht ausreichend, wo das Gesetz Schriftform verlangt. Ohne eingerichteten E-Mail-Versand lassen sich die Links auch kopieren und selbst weitergeben. |
 | **Auswertungen** | – | Jeder sieht nur Daten, die er auch im jeweiligen Werkzeug sehen darf (z. B. eigene Arbeitszeiten). Berichte für alle freigeben dürfen Administratoren. |
 | **Eigene Felder** | Felder für Projekte, Kunden, Kontakte, Lagerartikel, Inventar, Tickets und Service-Einsätze | Erscheinen im Datensatz unter „Weitere Angaben“. |
+| **Einkauf und Lager** | – | Bestellungen fürs Lager ohne Projekt dürfen alle mit der App Einkauf oder Lager anlegen. Beim Wareneingang lässt sich wählen: einlagern, einlagern und gleich ins Projekt entnehmen oder nur den Eingang buchen. Lieferschein, Lagerort, Charge und Seriennummern stehen im Verlauf der Position. E-Rechnungen mit einer Bestellnummer aus dem Einkauf ordnet die Finanzbuchhaltung automatisch dem Projekt zu. |
+| **Mindmaps** | – | Erinnerungen an einzelnen Punkten melden sich minütlich bei allen, mit denen die Mindmap geteilt ist. Formatierung, Symbole, Wolken, Pfeile und Attribute liegen in einer eigenen Spalte – eine ältere Version, die eine Mindmap speichert, lässt sie unangetastet. |
 | **Nachhaltigkeit** | Verantwortliche, Basisjahr und Minderungsziel | Emissionsfaktoren vorbelegt (Umweltbundesamt: Strommix 2024 353 g/kWh, Verkehrsmittel; BAFA/KfW-Merkblatt CO₂-Faktoren: Erdgas, Heizöl, Diesel, Benzin, Fernwärme). Bei Ökostrom den Faktor des Versorgers eintragen. Tankbelege aus dem Fuhrpark und Dienstfahrten aus den Spesen werden nachts übernommen. |
 
 Öffentliche Seiten ohne Anmeldung – `/support`, `/book/…`, `/event/…`, `/jobs/…`, `/sign/…` – sind gegen massenhafte Anfragen begrenzt und funktionieren nur, solange die zugehörige App installiert ist. Damit Links in E-Mails stimmen, muss in der `.env` die Adresse `PUBLIC_URL` gesetzt sein (das Installationsskript erledigt das).
