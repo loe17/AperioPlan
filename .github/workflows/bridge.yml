@@ -78,6 +78,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force dist, pkg | Out-Null
           dotnet publish cad-bridge/src/AperioPlan.Cli/AperioPlan.Cli.csproj -c Release -f net8.0 -r win-x64 --self-contained true -p:PublishSingleFile=true -o pkg/Cli
+          dotnet publish cad-bridge/src/AperioPlan.ViewConverter/AperioPlan.ViewConverter.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o pkg/ViewConverter
           if ("${{ steps.swapi.outputs.path }}") {
             dotnet build cad-bridge/src/AperioPlan.SwAddin/AperioPlan.SwAddin.csproj -c Release "/p:SolidWorksApiPath=${{ steps.swapi.outputs.path }}" -o pkg/SwAddin
             dotnet build cad-bridge/src/AperioPlan.ExportWorker/AperioPlan.ExportWorker.csproj -c Release "/p:SolidWorksApiPath=${{ steps.swapi.outputs.path }}" -o pkg/ExportWorker

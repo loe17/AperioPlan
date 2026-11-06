@@ -1,4 +1,4 @@
-import { LazyViewer3D, useCan3D } from './View3D';
+import { open3D, useCan3D } from './View3D';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useApi } from '../lib/hooks';
@@ -57,7 +57,9 @@ export function ProjectFiles({ projectId, project, canEdit }: { projectId: strin
   const crumbs = path ? path.split('/') : [];
   const dl = (e: Entry, inline = false) => `/api/projects/${projectId}/files/download?path=${encodeURIComponent(e.relPath)}${inline ? '&inline=1' : ''}`;
   const can3d = useCan3D();
-  const canPreview = (n: string) => /\.(pdf|png|jpe?g|gif|svg|webp|txt|mp4)$/i.test(n) || can3d(n);
+  const canPreview = (n: string) => /\.(pdf|png|jpe?g|gif|svg|webp|txt|mp4)$/i.test(n);
+  const is3d = (e: Entry) => !e.isDir && can3d(e.name, Boolean(e.id));
+  const show3d = (e: Entry) => open3D({ fileId: e.id ?? null, src: dl(e, true), name: e.name });
 
   return (
     <div onDragOver={(e) => { if (canEdit && e.dataTransfer.types.includes('Files')) { e.preventDefault(); setOver(true); } }}
@@ -89,7 +91,7 @@ export function ProjectFiles({ projectId, project, canEdit }: { projectId: strin
           <tbody>
             {path && <tr className="click" onClick={() => setPath(crumbs.slice(0, -1).join('/'))}><td colSpan={5}><Icon name="upload" /> ..</td></tr>}
             {data.entries.map((e) => (
-              <tr key={e.name} className="click file-row" onClick={() => (e.isDir ? setPath(e.relPath) : canPreview(e.name) ? setPreview(e) : (location.href = dl(e)))}>
+              <tr key={e.name} className="click file-row" onClick={() => (e.isDir ? setPath(e.relPath) : is3d(e) ? show3d(e) : canPreview(e.name) ? setPreview(e) : (location.href = dl(e)))}>
                 <td>
                   <span className="row" style={{ gap: 8 }}>
                     <span className="ico"><Icon name={fileIcon(e.name, e.isDir)} size={18} /></span><span>{e.name}</span>
@@ -102,6 +104,7 @@ export function ProjectFiles({ projectId, project, canEdit }: { projectId: strin
                 <td className="small">{e.isDir ? '' : e.version && e.version > 1 ? <a onClick={(ev) => { ev.stopPropagation(); setVersions(e); }}>v{e.version}</a> : 'v1'}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }} onClick={(ev) => ev.stopPropagation()}>
                   {!e.isDir && <OfficeButton projectId={projectId} entry={e} />}
+                  {is3d(e) && <button className="btn ghost sm" title="In 3D ansehen und messen" onClick={() => show3d(e)}><Icon name="cube" /></button>}
                   {!e.isDir && <a className="btn ghost sm" href={dl(e)}><Icon name="download" /></a>}
                   {canEdit && !e.isDir && e.id && (
                     <button className="btn ghost sm" title={e.lockedBy ? 'Entsperren' : 'Für andere sperren'} disabled={Boolean(e.lockedBy && e.lockedBy !== me?.id && me?.role !== 'admin')}
@@ -136,8 +139,7 @@ export function ProjectFiles({ projectId, project, canEdit }: { projectId: strin
       {links && <LinksPanel projectId={projectId} path={path} onClose={() => setLinks(false)} />}
       {preview && (
         <SlideOver wide title={<b>{preview.name}</b>} onClose={() => setPreview(null)} actions={<a className="btn sm" href={dl(preview)}><Icon name="download" /> Herunterladen</a>}>
-          {can3d(preview.name) ? <LazyViewer3D src={dl(preview, true)} name={preview.name} height="calc(100vh - 120px)" />
-            : /\.(png|jpe?g|gif|svg|webp)$/i.test(preview.name) ? <img src={dl(preview, true)} style={{ maxWidth: '100%' }} />
+          {/\.(png|jpe?g|gif|svg|webp)$/i.test(preview.name) ? <img src={dl(preview, true)} style={{ maxWidth: '100%' }} />
             : /\.mp4$/i.test(preview.name) ? <video src={dl(preview, true)} controls style={{ width: '100%' }} />
             : <iframe src={dl(preview, true)} style={{ width: '100%', height: 'calc(100vh - 120px)', border: 'none' }} />}
         </SlideOver>

@@ -26,7 +26,7 @@ const MeetPage = lazy(() => import('./pages/Meet'));
 const PhonePage = lazy(() => import('./pages/Phone'));
 const FormsPage = lazy(() => import('./pages/Forms'));
 const BoardPage = lazy(() => import('./pages/Board'));
-const Viewer3DPage = lazy(() => import('./pages/Viewer3DPage'));
+const View3DPage = lazy(() => import('./pages/View3DPage'));
 const MindmapsPage = lazy(() => import('./pages/Mindmaps'));
 const KnowledgePage = lazy(() => import('./pages/Knowledge'));
 const WarehousePage = lazy(() => import('./pages/Warehouse'));
@@ -98,6 +98,7 @@ export function App() {
   if (!me) return <I18nProvider lang={lang}><LoginPage /></I18nProvider>;
   if (me.mustChangePassword) return <I18nProvider lang={lang}><ChangePasswordPage forced /></I18nProvider>;
   if (location.pathname.startsWith('/office/')) return <Suspense fallback={<Loading />}><OfficePage /></Suspense>;
+  if (location.pathname === '/view3d') return <Suspense fallback={<Loading />}><View3DPage /></Suspense>;
 
   return (
     <I18nProvider lang={lang}>
@@ -119,7 +120,7 @@ export function App() {
             <Route path="/meetings/:id" element={<MeetingsPage />} />
             <Route path="/phone" element={<PhonePage />} />
             <Route path="/board" element={<BoardPage />} />
-            <Route path="/viewer3d" element={<Viewer3DPage />} />
+            <Route path="/viewer3d" element={<Navigate to="/" replace />} />
             <Route path="/warehouse" element={<WarehousePage />} />
             <Route path="/warehouse/:kind/:id" element={<WarehousePage />} />
             <Route path="/inventory" element={<InventoryPage />} />

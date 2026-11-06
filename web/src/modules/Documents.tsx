@@ -1,3 +1,4 @@
+import { View3DButton } from './View3D';
 import { useState } from 'react';
 import { del, patch, post, invalidate } from '../lib/api';
 import { useApi } from '../lib/hooks';
@@ -58,7 +59,7 @@ export function Documents({ projectId, canEdit, canManage }: { projectId: string
                 : <Pill tone={DOC_STATUS[d.status]?.tone}>{DOC_STATUS[d.status]?.label}</Pill>}</td>
               <td>{d.fileId ? <span className="row" style={{ gap: 6 }}>
                 <Icon name={fileIcon(d.fileName ?? '')} />
-                <a href={`/api/files/${d.fileId}/download`}>{d.fileName}</a>
+                <a href={`/api/files/${d.fileId}/download`}>{d.fileName}</a> <View3DButton fileId={d.fileId} name={d.fileName ?? ''} />
                 <OfficeButton projectId={projectId} entry={{ id: d.fileId, name: d.fileName ?? '' }} />
               </span> : <span className="muted">–</span>}</td>
               <td className="small">{fmtDate(d.updatedAt)}<div className="muted">{d.createdByName}</div></td>

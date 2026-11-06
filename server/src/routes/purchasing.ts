@@ -46,6 +46,8 @@ const itemBody = z.object({
   /** Ziel-Lagerort für Lagerbestellungen */
   locationId: z.string().uuid().nullable().default(null),
 });
+/** Anlegen: Benennung darf fehlen, wenn ein Lagerartikel gewählt ist (wird dann übernommen) */
+const createBody = itemBody.extend({ designation: z.string().trim().max(300).default('') });
 
 const itemCols = (sql: AppContext['sql']) => sql`i.id, i.project_id as "projectId", p.number as "projectNumber", p.name as "projectName", i.source, i.cad_item_id as "cadItemId",
   i.revision_at_order as "revisionAtOrder", c.revision as "cadRevision", i.revision_warning as "revisionWarning", i.number, i.designation, i.manufacturer,
@@ -272,6 +274,7 @@ export default async function purchasingRoutes(app: FastifyInstance, ctx: AppCon
         supplierId: a.supplierId ?? w.supplier_id, supplierOrderNo: a.supplierOrderNo || w.supplier_no, unit: b.unit === 'Stk' ? w.unit : b.unit, unitPrice: a.unitPrice ?? (w.purchase_price === null ? null : Number(w.purchase_price)) };
       if (!projectId && !b.locationId) b.locationId = w.default_location_id;
     }
+    if (!a.designation) throw badRequest('Bitte eine Benennung angeben oder einen Lagerartikel wählen.');
     const [i] = await sql<{ id: string }[]>`insert into purchase_items (project_id, number, designation, manufacturer, manufacturer_no, supplier_id, supplier_order_no, qty, unit, unit_price, discount,
         cost_center, note, status, requested_at, ordered_at, planned_delivery, confirmed_delivery, attachments, created_by, sort, wh_article_id, location_id)
       values (${projectId}, ${a.number}, ${a.designation}, ${a.manufacturer}, ${a.manufacturerNo}, ${a.supplierId}, ${a.supplierOrderNo}, ${b.qty}, ${a.unit}, ${a.unitPrice}, ${b.discount},
@@ -301,7 +304,7 @@ export default async function purchasingRoutes(app: FastifyInstance, ctx: AppCon
     const u = requireUser(req);
     const { id } = parse(idParam, req.params);
     await projectAccess(sql, u, id, 'write');
-    return createItem(u, id, parse(itemBody, req.body));
+    return createItem(u, id, parse(createBody, req.body));
   });
 
   // ------------------------------------------------ Lagerbestellungen (ohne Projekt)
@@ -313,7 +316,7 @@ export default async function purchasingRoutes(app: FastifyInstance, ctx: AppCon
   app.post('/purchasing/stock/items', async (req) => {
     const u = requireUser(req);
     await purchaseAccess(ctx, u, null, 'write');
-    return createItem(u, null, parse(itemBody, req.body));
+    return createItem(u, null, parse(createBody, req.body));
   });
 
   /** Status-Folge: das Datum zum Status wird automatisch gesetzt */

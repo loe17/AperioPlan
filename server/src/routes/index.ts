@@ -41,6 +41,7 @@ import meetings from './meetings';
 import phone from './phone';
 import forms from './forms';
 import mindmaps from './mindmaps';
+import view3d from './view3d';
 import knowledge from './knowledge';
 import warehouse from './warehouse';
 import inventory from './inventory';
@@ -69,5 +70,5 @@ import sustainability from './sustainability';
 import board from './board';
 
 export async function routes(app: FastifyInstance, ctx: AppContext) {
-  for (const r of [system, auth, users, teams, settings, me, audit, ws, projects, tasks, whiteboards, search, files, links, cad, time, absences, chat, kvp, mail, ai, backup, update, office, plugins, resources, documents, calendar, crm, purchasing, calculations, storageLocations, mailbox, pcb, bridge, apps, dashboard, meetings, phone, forms, board, mindmaps, knowledge, warehouse, inventory, invoices, finance, payroll, maintenance, quality, manufacturing, plm, service, helpdesk, contracts, booking, events, expenses, planning, hr, training, fleet, approvals, esign, bi, studio, sustainability]) await r(app, ctx);
+  for (const r of [system, auth, users, teams, settings, me, audit, ws, projects, tasks, whiteboards, search, files, links, cad, time, absences, chat, kvp, mail, ai, backup, update, office, plugins, resources, documents, calendar, crm, purchasing, calculations, storageLocations, mailbox, pcb, bridge, apps, dashboard, meetings, phone, forms, board, mindmaps, knowledge, warehouse, inventory, invoices, finance, payroll, maintenance, quality, manufacturing, plm, service, helpdesk, contracts, booking, events, expenses, planning, hr, training, fleet, approvals, esign, bi, studio, sustainability, view3d]) await r(app, ctx);
 }

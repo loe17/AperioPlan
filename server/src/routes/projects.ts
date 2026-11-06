@@ -35,7 +35,7 @@ const projectCols = (sql: AppContext['sql']) => sql`p.id, p.number, p.name, p.de
   p.folder_path as "folderPath", p.created_at as "createdAt", p.updated_at as "updatedAt"`;
 
 /** Pfad für den Windows-Explorer, z. B. \\nas01\projekte\0100_Anlage – je Speicherort */
-function windowsPath(st: { networkPath: string; locations: { id: string; networkPath: string }[] }, folder: string | null) {
+export function windowsPath(st: { networkPath: string; locations: { id: string; networkPath: string }[] }, folder: string | null) {
   if (!folder) return null;
   const m = /^@([a-z0-9_-]+)\/(.*)$/.exec(folder);
   const base = m ? st.locations.find((l) => l.id === m[1])?.networkPath : st.networkPath;

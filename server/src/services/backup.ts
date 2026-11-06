@@ -192,6 +192,7 @@ export const BACKUP_TABLES: { name: string; pk: string[] }[] = [
   { name: 'cf_values', pk: ['entity', 'entity_id'] },
   { name: 'sus_factors', pk: ['id'] },
   { name: 'sus_entries', pk: ['id'] },
+  { name: 'view_conversions', pk: ['id'] },
   { name: 'audit_log', pk: ['id'] },
 ];
 

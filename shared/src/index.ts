@@ -15,3 +15,4 @@ export * from './lohnsteuer';
 export * from './payroll';
 export * from './quality';
 export * from './expenses';
+export * from './view3d';

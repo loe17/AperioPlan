@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Umwandlungsdienst für die 3D-Ansicht: wandelt native CAD-Dateien (SolidWorks, Inventor, Solid Edge, CATIA V5)
+    auf einem Rechner mit dem jeweiligen Programm nach STEP um. Spricht die Programme über ihre Windows-Automatisierung
+    an (spät gebunden) – zum Bauen werden keine CAD-Bibliotheken gebraucht.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>AperioPlan.ViewConverter</AssemblyName>
+    <RootNamespace>AperioPlan.ViewConverter</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AperioPlan.Core\AperioPlan.Core.csproj" />
+  </ItemGroup>
+</Project>

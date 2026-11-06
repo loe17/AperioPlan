@@ -6,6 +6,13 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
 import { PLYLoader } from 'three/addons/loaders/PLYLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
+import { VRMLLoader } from 'three/addons/loaders/VRMLLoader.js';
+import { AMFLoader } from 'three/addons/loaders/AMFLoader.js';
+import { TDSLoader } from 'three/addons/loaders/TDSLoader.js';
+import { VTKLoader } from 'three/addons/loaders/VTKLoader.js';
+import { USDZLoader } from 'three/addons/loaders/USDZLoader.js';
 import { Icon } from '../components/Icon';
 import { useSession } from '../session';
 
@@ -92,7 +99,22 @@ async function loadModel(buffer: ArrayBuffer, name: string): Promise<Loaded> {
   else if (ext === 'glb' || ext === 'gltf') {
     const gltf = await new GLTFLoader().parseAsync(buffer, '');
     root = new THREE.Group(); root.add(gltf.scene);
+  } else if (ext === 'fbx') root = new FBXLoader().parse(buffer, '');
+  else if (ext === 'dae') { root = new THREE.Group(); root.add(new ColladaLoader().parse(new TextDecoder().decode(buffer), '').scene); }
+  else if (ext === 'wrl' || ext === 'vrml') { root = new THREE.Group(); root.add(new VRMLLoader().parse(new TextDecoder().decode(buffer), '')); }
+  else if (ext === 'amf') root = new AMFLoader().parse(buffer);
+  else if (ext === '3ds') root = new TDSLoader().parse(buffer, '');
+  else if (ext === 'usdz') root = new USDZLoader().parse(buffer) as THREE.Group;
+  else if (ext === 'vtk' || ext === 'vtp') {
+    const g = new VTKLoader().parse(buffer, '');
+    if (!g.getAttribute('normal')) g.computeVertexNormals();
+    root = new THREE.Group(); root.add(new THREE.Mesh(g, stdMaterial()));
   } else throw new Error('Dieses Dateiformat kann nicht angezeigt werden.');
+  // Austauschformate ohne Einheit (FBX, glTF) sind oft in Metern: sehr kleine Modelle auf Millimeter hochrechnen
+  if (['glb', 'gltf', 'fbx', 'usdz', 'dae'].includes(ext)) {
+    const size = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3()).length();
+    if (size > 0 && size < 20) root.scale.multiplyScalar(1000);
+  }
 
   // Materialien ohne Licht (z. B. OBJ ohne MTL) durch ein neutrales ersetzen, beidseitig zeichnen
   root.traverse((o) => {
@@ -100,7 +122,7 @@ async function loadModel(buffer: ArrayBuffer, name: string): Promise<Loaded> {
     if (!m.isMesh) return;
     const mats = Array.isArray(m.material) ? m.material : [m.material];
     for (const mat of mats) mat.side = THREE.DoubleSide;
-    if (mats.every((x) => x.type === 'MeshPhongMaterial' && !(x as THREE.MeshPhongMaterial).map) && ext === 'obj') m.material = stdMaterial();
+    if (mats.every((x) => (x.type === 'MeshPhongMaterial' || x.type === 'MeshLambertMaterial') && !(x as THREE.MeshPhongMaterial).map) && ['obj', '3ds', 'wrl', 'vrml', 'amf'].includes(ext)) { const col = (mats[0] as THREE.MeshPhongMaterial).color?.getHex?.(); m.material = stdMaterial(col && col !== 0xffffff ? col : BASE_COLOR); }
   });
 
   // Baum: Gruppen mit Namen oder mit Körpern

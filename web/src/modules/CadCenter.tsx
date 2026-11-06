@@ -1,4 +1,5 @@
-import { View3DButton } from './View3D';
+import { View3DButton, open3D } from './View3D';
+import { isView3d } from '@aperio/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useApi, useTabState } from '../lib/hooks';
@@ -193,6 +194,7 @@ function CadItemPanel({ id, onClose, onOpen, onChanged }: { id: string; onClose:
           {item.checkedOutBy && <Pill tone="amber"><Icon name="lock" /> Gesperrt durch {item.checkedOutByName}{item.checkoutHost ? ` (${item.checkoutHost})` : ''}</Pill>}</div></div>}>
       <div className="row wrap" style={{ marginBottom: 16 }}>
         {item.fileName && <a className="btn" href={`/api/cad/items/${id}/download`}><Icon name="download" /> Datei laden</a>}
+        {item.fileName && isView3d(item.fileName) && <button className="btn" onClick={() => open3D({ cadItemId: id, name: item.fileName })}><Icon name="cube" /> 3D ansehen</button>}
         {!item.checkedOutBy && item.state === 'in_work' && <button className="btn" onClick={async () => { await act(() => post(`/cad/items/${id}/checkout`, { host: 'Web' }), 'Ausgecheckt'); refresh(); }}><Icon name="lock" /> Auschecken</button>}
         {mineLocked && <button className="btn primary" onClick={() => fileRef.current?.click()}><Icon name="upload" /> Einchecken …</button>}
         {item.checkedOutBy && (mineLocked || me?.role === 'admin') && <button className="btn" onClick={async () => { await act(() => post(`/cad/items/${id}/undo-checkout`), 'Sperre aufgehoben'); refresh(); }}><Icon name="unlock" /> Sperre aufheben</button>}
@@ -253,7 +255,7 @@ function CadItemPanel({ id, onClose, onOpen, onChanged }: { id: string; onClose:
                 <td><b>{e.format.toUpperCase()}</b></td><td>Version {String(e.revision).padStart(2, '0')}</td>
                 <td>{e.status === 'done' ? <Pill tone="green">erzeugt</Pill> : e.status === 'failed' ? <Pill tone="red">Fehler</Pill> : e.status === 'running' ? <Pill tone="blue">läuft</Pill> : <Pill tone="amber">wartet auf CAD-Wächter</Pill>}</td>
                 <td className="small muted">{e.error ?? fmtDateTime(e.completedAt ?? e.requestedAt)}</td>
-                <td>{e.fileId && e.format === 'step' && <View3DButton url={`/api/files/${e.fileId}/download`} name={`${item.number}.step`} />}{e.fileId && <a className="btn sm" href={`/api/files/${e.fileId}/download`}><Icon name="download" /></a>}{e.status === 'failed' && <button className="btn sm" onClick={async () => { await post(`/cad/exports/${e.id}/retry`); refresh(); }}>Erneut</button>}</td>
+                <td>{e.fileId && e.format === 'step' && <View3DButton fileId={e.fileId} url={`/api/files/${e.fileId}/download`} name={`${item.number}.step`} />}{e.fileId && <a className="btn sm" href={`/api/files/${e.fileId}/download`}><Icon name="download" /></a>}{e.status === 'failed' && <button className="btn sm" onClick={async () => { await post(`/cad/exports/${e.id}/retry`); refresh(); }}>Erneut</button>}</td>
               </tr>
             ))}</tbody></table>
           </>}

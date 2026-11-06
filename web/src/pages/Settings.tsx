@@ -137,7 +137,7 @@ function ToolChecks({ value, onChange, inheritLabel, inherited }: { value: strin
   const effective = value ?? inherited ?? [...TOOLS];
   const { me } = useSession();
   // nur Anwendungen zeigen, die im App-Store installiert sind
-  const shown = TOOLS.filter((t) => me?.tools?.includes(t));
+  const shown = TOOLS.filter((t) => t !== 'viewer3d' && me?.tools?.includes(t)); // 3D-Ansicht ist keine eigene App mehr
   return (
     <div>
       {inheritLabel && <label className="row small" style={{ marginBottom: 6 }}>

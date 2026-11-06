@@ -7,6 +7,7 @@ Brücke zwischen dem Konstruktions-Arbeitsplatz und der Projektverwaltung (Kapit
 | `AperioPlan.Core` | API-Client, JSON, Einstellungen, Arbeitsbereich – ohne externe Pakete | .NET 4.8 + .NET 8 |
 | `AperioPlan.SwAddin` | SolidWorks-Add-in: Speichermaske, Nummernvergabe, Eigenschaften, Zeichnung anlegen, Aus-/Einchecken, Versionsstand, Wo verbaut? | .NET 4.8 (x64) |
 | `AperioPlan.ExportWorker` | Erzeugt bei Freigaben automatisch PDF, DXF und STEP | .NET 4.8 (x64) |
+| `AperioPlan.ViewConverter` | Wandelt native CAD-Dateien für die 3D-Ansicht im Browser nach STEP um (SolidWorks, Inventor, Solid Edge, CATIA V5) | .NET 8 (Windows) |
 | `AperioPlan.Cli` | `aperio-cad` – dieselben Funktionen auf der Kommandozeile (Skripte, Tests, andere CAD-Systeme) | .NET 4.8 + .NET 8 |
 
 ## Bauen (Windows mit SolidWorks und Visual Studio 2022 / .NET SDK 8)
@@ -45,6 +46,21 @@ Auf einem Rechner mit SolidWorks-Lizenz (z. B. als geplante Aufgabe „bei Anmel
 ```bat
 AperioPlan.ExportWorker.exe --formats pdf,dxf,step --interval 20
 ```
+
+## Umwandlungsdienst für die 3D-Ansicht
+
+Native CAD-Dateien (`.sldprt`, `.sldasm`, `.ipt`, `.iam`, `.par`, `.psm`, `.asm`, `.CATPart`, `.CATProduct`, Parasolid,
+ACIS, JT) kann nur das jeweilige CAD-Programm lesen. Öffnet jemand eine solche Datei in AperioPlan, entsteht ein
+Umwandlungsauftrag. Auf einem Windows-Rechner mit dem Programm holt der Umwandlungsdienst den Auftrag ab, öffnet die
+Datei unsichtbar und schreibgeschützt, speichert sie als STEP und lädt das Ergebnis hoch:
+
+```bat
+AperioPlan.ViewConverter.exe --interval 15
+```
+
+Der Dienst erkennt selbst, welche Programme installiert sind. Liegt die Projektablage auf einem Netzlaufwerk
+(Einstellungen → Speicherorte → Windows-Pfad), öffnet er Baugruppen direkt dort, damit alle Teile gefunden werden.
+Für Creo und NX gibt es noch keine Umwandlung – dort zeigt AperioPlan das in der Datei gespeicherte Vorschaubild.
 
 ## Kommandozeile
 
