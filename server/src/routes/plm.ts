@@ -40,13 +40,13 @@ export default async function plmRoutes(app: FastifyInstance, ctx: AppContext) {
 
   app.get('/plm/changes', async (req) => {
     const u = staffOf(req);
-    const q = parse(z.object({ status: z.string().max(20).optional(), mine: z.coerce.boolean().optional(), q: z.string().max(100).optional(), itemId: z.string().uuid().optional() }), req.query);
+    const q = parse(z.object({ status: z.string().max(20).optional(), mine: z.coerce.boolean().optional(), q: z.string().max(100).optional(), itemId: z.string().uuid().optional(), projectId: z.string().uuid().optional() }), req.query);
     const like = q.q ? `%${q.q}%` : null;
     return sql`select ${cols} from ${from} where true
       ${q.status === 'open' ? sql`and c.status in ('draft', 'review', 'approved')` : q.status ? sql`and c.status = ${q.status}` : sql``}
       ${q.mine ? sql`and (c.requested_by = ${u.id} or c.owner_id = ${u.id} or c.approvers @> ${sql.json([{ userId: u.id }] as never)})` : sql``}
       ${like ? sql`and (c.number ilike ${like} or c.title ilike ${like} or c.items::text ilike ${like})` : sql``}
-      ${q.itemId ? sql`and c.items @> ${sql.json([{ id: q.itemId }] as never)}` : sql``}
+      ${q.itemId ? sql`and c.items @> ${sql.json([{ id: q.itemId }] as never)}` : sql``} ${q.projectId ? sql`and c.project_id = ${q.projectId}` : sql``}
       order by (c.status in ('implemented', 'rejected', 'cancelled')), c.created_at desc limit 1000`;
   });
   app.get('/plm/changes/:id', async (req) => {

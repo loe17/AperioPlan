@@ -107,10 +107,15 @@ export default async function approvalRoutes(app: FastifyInstance, ctx: AppConte
   // ------------------------------------------------ Anträge
   app.get('/approvals/requests', async (req) => {
     const u = staffOf(req);
-    const q = parse(z.object({ scope: z.enum(['mine', 'todo', 'all']).default('mine'), status: z.string().max(20).optional() }), req.query);
+    const q = parse(z.object({ scope: z.enum(['mine', 'todo', 'all', 'project']).default('mine'), status: z.string().max(20).optional(), projectId: z.string().uuid().optional() }), req.query);
     if (q.scope === 'all' && !(await isManager(u))) throw forbidden();
-    const rows = await sql<any[]>`select ${cols} from ${from} where true
+    if (q.scope === 'project' && !q.projectId) throw badRequest('Projekt fehlt');
+    // im Projekt: eigene, zu genehmigende und – für Verwalter – alle Anträge dieses Projekts
+    const projectScope = q.scope === 'project' ? ((await isManager(u)) ? sql`and r.project_id = ${q.projectId!}`
+      : sql`and r.project_id = ${q.projectId!} and (r.user_id = ${u.id} or jsonb_path_exists(r.steps, '$[*].approverIds[*] ? (@ == $u)', ${sql.json({ u: u.id } as never)}))`) : sql``;
+    const rows = await sql<any[]>`select ${cols} from ${from} where true ${projectScope}
       ${q.scope === 'mine' ? sql`and r.user_id = ${u.id}` : q.scope === 'todo' ? sql`and r.status = 'pending' and r.steps -> r.step -> 'approverIds' ? ${u.id}::text` : sql``}
+      ${q.projectId && q.scope !== 'project' ? sql`and r.project_id = ${q.projectId}` : sql``}
       ${q.status ? sql`and r.status = ${q.status}` : sql``} order by r.created_at desc limit 500`;
     if (q.scope !== 'todo') return rows;
     const decided = await sql<{ requestId: string; step: number; userId: string }[]>`select request_id as "requestId", step, user_id as "userId" from apr_decisions where user_id = ${u.id} and request_id = any(${rows.map((r) => r.id)})`;

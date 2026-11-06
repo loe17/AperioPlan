@@ -2,13 +2,17 @@
  * Einkauf: je Projekt alle zu beschaffenden Teile – automatisch aus der CAD-Stückliste (Kauf- und Normteile)
  * plus eigene Positionen. Status von „Offen“ bis „Geliefert“, Bestellungen mit Nummer und PDF, Wareneingang,
  * Übersicht über alle Projekte und Benachrichtigungen (Liefertermin, Teil nach Bestellung geändert).
+ * Positionen ohne Projekt sind Lagerbestellungen (Nachschub). Mit der App „Lager“ wird der Wareneingang
+ * direkt eingelagert (Lagerort, Charge/Seriennummer) oder ins Projekt gebucht; jede Position hat einen Verlauf.
  */
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../context';
 import { z, parse, idParam, patchSchema } from '../lib/validate';
 import { requireUser, type AuthUser } from '../lib/auth';
+import { randomUUID } from 'node:crypto';
+import { bookMove } from '../services/warehouse';
 import { projectAccess } from '../lib/access';
-import { badRequest, notFound } from '../lib/errors';
+import { badRequest, forbidden, notFound } from '../lib/errors';
 import { audit } from '../services/audit';
 import { notify } from '../services/notify';
 import { nextNumber } from '../services/numbers';
@@ -37,6 +41,10 @@ const itemBody = z.object({
   plannedDelivery: z.string().date().nullable().default(null),
   confirmedDelivery: z.string().date().nullable().default(null),
   attachments: z.array(z.object({ fileId: z.string().uuid(), name: z.string(), size: z.number() })).default([]),
+  /** Lagerartikel (App „Lager“) – Wareneingang landet dann automatisch beim richtigen Artikel */
+  whArticleId: z.string().uuid().nullable().default(null),
+  /** Ziel-Lagerort für Lagerbestellungen */
+  locationId: z.string().uuid().nullable().default(null),
 });
 
 const itemCols = (sql: AppContext['sql']) => sql`i.id, i.project_id as "projectId", p.number as "projectNumber", p.name as "projectName", i.source, i.cad_item_id as "cadItemId",
@@ -47,9 +55,26 @@ const itemCols = (sql: AppContext['sql']) => sql`i.id, i.project_id as "projectI
   i.requested_at::text as "requestedAt", i.ordered_at::text as "orderedAt", i.planned_delivery::text as "plannedDelivery",
   i.confirmed_delivery::text as "confirmedDelivery", i.delivered_qty::float as "deliveredQty", i.delivered_at::text as "deliveredAt",
   i.order_id as "orderId", o.number as "orderNumber", i.attachments, i.sort, i.created_at as "createdAt", i.updated_at as "updatedAt",
+  i.wh_article_id as "whArticleId", wa.number as "articleNumber", wa.name as "articleName", wa.tracking as "articleTracking", i.location_id as "locationId", wl.name as "locationName",
   coalesce(i.confirmed_delivery, i.planned_delivery) < current_date and i.status in ('ordered', 'confirmed', 'partial') as overdue`;
-const itemFrom = (sql: AppContext['sql']) => sql`purchase_items i join projects p on p.id = i.project_id left join crm_accounts s on s.id = i.supplier_id
-  left join cad_items c on c.id = i.cad_item_id left join purchase_orders o on o.id = i.order_id`;
+const itemFrom = (sql: AppContext['sql']) => sql`purchase_items i left join projects p on p.id = i.project_id left join crm_accounts s on s.id = i.supplier_id
+  left join cad_items c on c.id = i.cad_item_id left join purchase_orders o on o.id = i.order_id
+  left join wh_articles wa on wa.id = i.wh_article_id left join wh_locations wl on wl.id = i.location_id`;
+
+/** Lagerbestellungen (ohne Projekt) dürfen alle mit Einkauf oder Lager bearbeiten */
+export function canStockPurchase(u: AuthUser) {
+  return u.role === 'admin' || (u.role !== 'guest' && (u.tools ?? []).some((t) => t === 'purchasing' || t === 'warehouse'));
+}
+/** Zugriff auf eine Position: über das Projekt, bei Lagerbestellungen über das Werkzeug */
+export async function purchaseAccess(ctx: AppContext, u: AuthUser, projectId: string | null, level: 'read' | 'write' = 'read') {
+  if (projectId) return projectAccess(ctx.sql, u, projectId, level);
+  if (!canStockPurchase(u)) throw forbidden('Lagerbestellungen bearbeiten Einkauf und Lager.');
+  return null;
+}
+const publishItem = (ctx: AppContext, projectId: string | null) => {
+  if (projectId) ctx.hub.publish(`project:${projectId}`, 'purchasing.changed', {});
+  ctx.hub.publish('global', 'purchasing.changed', {});
+};
 
 /** Wer bekommt Einkaufs-Hinweise? Alle mit dem Werkzeug „Einkauf“ (bzw. Administratoren) */
 export async function purchasingUsers(ctx: AppContext): Promise<string[]> {
@@ -116,7 +141,7 @@ export async function deliveryReminders(ctx: AppContext) {
   const rows = await ctx.sql<{ id: string; project_id: string; designation: string; due: string; pnum: string; created_by: string | null; overdue: boolean }[]>`
     select i.id, i.project_id, i.designation, coalesce(i.confirmed_delivery, i.planned_delivery)::text as due, p.number as pnum, i.created_by,
       coalesce(i.confirmed_delivery, i.planned_delivery) < current_date as overdue
-    from purchase_items i join projects p on p.id = i.project_id
+    from purchase_items i left join projects p on p.id = i.project_id
     where i.status in ('ordered', 'confirmed', 'partial') and coalesce(i.confirmed_delivery, i.planned_delivery) <= current_date + 3
       and (i.reminded_on is null or i.reminded_on < current_date)
       and (coalesce(i.confirmed_delivery, i.planned_delivery) = current_date + 3 or coalesce(i.confirmed_delivery, i.planned_delivery) < current_date)`;
@@ -125,42 +150,137 @@ export async function deliveryReminders(ctx: AppContext) {
   for (const r of rows) {
     await ctx.sql`update purchase_items set reminded_on = current_date where id = ${r.id}`;
     await notify(ctx, [...buyers, r.created_by], { kind: 'purchasing.due', title: r.overdue ? `Lieferung überfällig: ${r.designation}` : `Lieferung in 3 Tagen: ${r.designation}`,
-      body: `${r.pnum} · Termin ${new Date(r.due).toLocaleDateString('de-DE')}`, link: `/projects/${r.project_id}?tab=purchasing` });
+      body: `${r.pnum ?? 'Lager'} · Termin ${new Date(r.due).toLocaleDateString('de-DE')}`, link: r.project_id ? `/projects/${r.project_id}?tab=purchasing` : '/purchasing?tab=stock' });
   }
 }
 
 /** Wareneingang zu einer Einkaufsposition buchen (auch aus dem Lager heraus) */
-export async function bookPurchaseReceipt(ctx: AppContext, u: AuthUser, id: string, b: { qty: number; receivedAt?: string; note: string }) {
+export async function bookPurchaseReceipt(ctx: AppContext, u: AuthUser, id: string,
+  b: { qty: number; receivedAt?: string; note: string; deliveryNote?: string; target?: 'none' | 'stock' | 'project'; locationId?: string | null; lot?: string; whMoveId?: string | null }) {
   const { sql } = ctx;
-  const [cur] = await sql<{ id: string; project_id: string; designation: string; qty: string; delivered_qty: string; created_by: string | null }[]>`
+  const [cur] = await sql<{ id: string; project_id: string | null; designation: string; qty: string; delivered_qty: string; created_by: string | null }[]>`
     select id, project_id, designation, qty, delivered_qty, created_by from purchase_items where id = ${id}`;
   if (!cur) throw notFound('Position nicht gefunden');
-  await projectAccess(sql, u, cur.project_id, 'write');
+  await purchaseAccess(ctx, u, cur.project_id, 'write');
   const delivered = Number(cur.delivered_qty) + b.qty;
   const status = delivered >= Number(cur.qty) ? 'delivered' : 'partial';
   const day = b.receivedAt ?? new Date().toISOString().slice(0, 10);
-  await sql`insert into purchase_receipts (item_id, qty, received_at, note, user_id) values (${id}, ${b.qty}, ${day}, ${b.note}, ${u.id})`;
+  const [rec] = await sql<{ id: string }[]>`insert into purchase_receipts (item_id, qty, received_at, note, user_id, delivery_note, location_id, lot, target, wh_move_id)
+    values (${id}, ${b.qty}, ${day}, ${b.note}, ${u.id}, ${b.deliveryNote ?? ''}, ${b.locationId ?? null}, ${b.lot ?? ''}, ${b.target ?? 'none'}, ${b.whMoveId ?? null}) returning id`;
   await sql`update purchase_items set delivered_qty = ${delivered}, status = ${status}, delivered_at = ${status === 'delivered' ? day : null},
     updated_at = now() where id = ${id}`;
-  const [p] = await sql<{ number: string }[]>`select number from projects where id = ${cur.project_id}`;
-  const leads = await sql<{ user_id: string }[]>`select user_id from project_members where project_id = ${cur.project_id} and role = 'owner'`;
-  await notify(ctx, [...leads.map((l) => l.user_id), cur.created_by], { kind: 'purchasing.received', title: `${status === 'delivered' ? 'Geliefert' : 'Teillieferung'}: ${cur.designation}`,
-    body: `${p!.number} · ${num(b.qty)} angekommen${status === 'partial' ? ` (insgesamt ${num(delivered)} von ${num(Number(cur.qty))})` : ''}`, link: `/projects/${cur.project_id}?tab=purchasing` }, u.id);
-  await audit(sql, u, { action: 'purchasing.receipt', entityType: 'purchase_item', entityId: id, projectId: cur.project_id, summary: `Wareneingang ${cur.designation}: ${num(b.qty)}` });
-  ctx.hub.publish(`project:${cur.project_id}`, 'purchasing.changed', {});
-  return { ok: true, status };
+  const [p] = cur.project_id ? await sql<{ number: string }[]>`select number from projects where id = ${cur.project_id}` : [];
+  const leads = cur.project_id ? await sql<{ user_id: string }[]>`select user_id from project_members where project_id = ${cur.project_id} and role = 'owner'` : [];
+  const to = cur.project_id ? [...leads.map((l) => l.user_id), cur.created_by] : [...(await purchasingUsers(ctx)), cur.created_by];
+  await notify(ctx, to, { kind: 'purchasing.received', title: `${status === 'delivered' ? 'Geliefert' : 'Teillieferung'}: ${cur.designation}`,
+    body: `${p?.number ?? 'Lager'} · ${num(b.qty)} angekommen${status === 'partial' ? ` (insgesamt ${num(delivered)} von ${num(Number(cur.qty))})` : ''}${b.deliveryNote ? ` · Lieferschein ${b.deliveryNote}` : ''}`,
+    link: cur.project_id ? `/projects/${cur.project_id}?tab=purchasing` : '/purchasing?tab=stock' }, u.id);
+  await audit(sql, u, { action: 'purchasing.receipt', entityType: 'purchase_item', entityId: id, projectId: cur.project_id,
+    summary: `Wareneingang ${cur.designation}: ${num(b.qty)}${b.deliveryNote ? ` (Lieferschein ${b.deliveryNote})` : ''}` });
+  publishItem(ctx, cur.project_id);
+  return { ok: true, status, receiptId: rec!.id };
+}
+
+export const receiveBody = z.object({
+  qty: z.number().positive(), receivedAt: z.string().date().optional(), note: z.string().max(2000).default(''), deliveryNote: z.string().trim().max(120).default(''),
+  /** none = nur Eingang buchen · stock = einlagern · project = einlagern und sofort ins Projekt entnehmen */
+  target: z.enum(['none', 'stock', 'project']).default('none'),
+  locationId: z.string().uuid().nullable().default(null), lot: z.string().trim().max(120).default(''),
+  /** Seriennummern: je Stück eine (Menge muss passen) */
+  serials: z.array(z.string().trim().min(1).max(120)).max(500).default([]),
+  articleId: z.string().uuid().nullable().default(null), createArticle: z.boolean().default(false),
+});
+
+/** Passenden Lagerartikel zu einer Einkaufsposition finden (verknüpft, CAD-Teil, Teilenummer oder Herstellernummer) */
+export async function matchArticle(sql: AppContext['sql'], pi: { wh_article_id: string | null; cad_item_id: string | null; number: string; manufacturer_no: string }) {
+  if (pi.wh_article_id) return pi.wh_article_id;
+  const [a] = await sql<{ id: string }[]>`select a.id from wh_articles a where a.active and ((${pi.cad_item_id}::uuid is not null and a.cad_item_id = ${pi.cad_item_id})
+    or (${pi.number} <> '' and a.number = ${pi.number}) or (${pi.manufacturer_no} <> '' and a.manufacturer_no = ${pi.manufacturer_no})) limit 1`;
+  return a?.id ?? null;
+}
+
+/**
+ * Wareneingang mit Lager: Lieferung in der Position buchen und – je nach Ziel – in einen Lagerort einlagern
+ * oder einlagern und gleich ins Projekt entnehmen. Fehlt der Lagerartikel, wird er auf Wunsch angelegt.
+ */
+export async function receivePurchase(ctx: AppContext, u: AuthUser, id: string, b: z.infer<typeof receiveBody>) {
+  const { sql } = ctx;
+  const [pi] = await sql<{ id: string; project_id: string | null; designation: string; number: string; manufacturer: string; manufacturer_no: string; supplier_id: string | null;
+    supplier_order_no: string; unit: string; unit_price: string | null; discount: string; cad_item_id: string | null; wh_article_id: string | null; location_id: string | null }[]>`
+    select id, project_id, designation, number, manufacturer, manufacturer_no, supplier_id, supplier_order_no, unit, unit_price, discount, cad_item_id, wh_article_id, location_id
+    from purchase_items where id = ${id}`;
+  if (!pi) throw notFound('Einkaufsposition nicht gefunden');
+  await purchaseAccess(ctx, u, pi.project_id, 'write');
+  if (b.target === 'none') return bookPurchaseReceipt(ctx, u, id, b);
+  if (b.target === 'project' && !pi.project_id) throw badRequest('Lagerbestellungen gehören zu keinem Projekt – bitte einlagern.');
+  const locationId = b.locationId ?? pi.location_id;
+  if (!locationId) throw badRequest('Bitte den Lagerort wählen.');
+  const price = pi.unit_price === null ? null : Number(pi.unit_price) * (1 - Number(pi.discount) / 100);
+  let articleId = b.articleId ?? (await matchArticle(sql, pi));
+  if (!articleId && b.createArticle) {
+    const nums = await ctx.settings.get('numbers');
+    const number = pi.number && !(await sql`select 1 from wh_articles where number = ${pi.number}`).length ? pi.number
+      : await nextNumber(sql, 'article', nums.article, async (x) => (await sql`select 1 from wh_articles where number = ${x}`).length > 0);
+    articleId = randomUUID();
+    await sql`insert into wh_articles (id, number, name, unit, manufacturer, manufacturer_no, supplier_id, supplier_no, purchase_price, tracking, default_location_id, cad_item_id)
+      values (${articleId}, ${number}, ${pi.designation}, ${pi.unit || 'Stk'}, ${pi.manufacturer}, ${pi.manufacturer_no}, ${pi.supplier_id}, ${pi.supplier_order_no}, ${price},
+        ${b.serials.length ? 'serial' : b.lot ? 'lot' : 'none'}, ${locationId}, ${pi.cad_item_id})`;
+    await audit(sql, u, { action: 'warehouse.article', entityType: 'wh_article', entityId: articleId, summary: `Artikel aus Wareneingang angelegt: ${number} ${pi.designation}` });
+  }
+  if (!articleId) throw badRequest('Bitte einen Lagerartikel wählen oder anlegen lassen.');
+  const [art] = await sql<{ tracking: string }[]>`select tracking from wh_articles where id = ${articleId}`;
+  if (!art) throw notFound('Lagerartikel nicht gefunden');
+  if (art.tracking === 'serial' && b.serials.length !== b.qty) throw badRequest(`Bitte ${num(b.qty)} Seriennummern angeben – eine je Stück.`);
+  await sql`update purchase_items set wh_article_id = ${articleId}, updated_at = now() where id = ${id}`;
+  if (price !== null) await sql`update wh_articles set purchase_price = ${price} where id = ${articleId}`;
+  const note = [b.deliveryNote ? `Lieferschein ${b.deliveryNote}` : '', b.note].filter(Boolean).join(' · ') || 'Wareneingang Einkauf';
+  const lots = art.tracking === 'serial' ? b.serials : [art.tracking === 'lot' ? b.lot : ''];
+  let firstMove: string | null = null;
+  for (const lot of lots) {
+    const qty = art.tracking === 'serial' ? 1 : b.qty;
+    const mv = await bookMove(sql, u, { kind: 'receipt', articleId, qty, toLocationId: locationId, lot, purchaseItemId: id, unitPrice: price, note });
+    firstMove ??= mv;
+    if (b.target === 'project') await bookMove(sql, u, { kind: 'issue', articleId, qty, fromLocationId: locationId, lot, projectId: pi.project_id, purchaseItemId: id, unitPrice: price, note: 'direkt ins Projekt' });
+  }
+  const r = await bookPurchaseReceipt(ctx, u, id, { ...b, locationId, lot: lots.join(', '), whMoveId: firstMove });
+  ctx.hub.publish('global', 'warehouse.changed', {});
+  if (pi.project_id && b.target === 'project') ctx.hub.publish(`project:${pi.project_id}`, 'warehouse.changed', {});
+  return { ...r, articleId };
 }
 
 export default async function purchasingRoutes(app: FastifyInstance, ctx: AppContext) {
   const { sql } = ctx;
   const cols = itemCols(sql), from = itemFrom(sql);
 
-  async function loadItem(u: AuthUser, id: string) {
-    const [i] = await sql<{ id: string; project_id: string; status: string; designation: string; qty: string; delivered_qty: string; cad_item_id: string | null; created_by: string | null }[]>`
+  async function loadItem(u: AuthUser, id: string, write = true) {
+    const [i] = await sql<{ id: string; project_id: string | null; status: string; designation: string; qty: string; delivered_qty: string; cad_item_id: string | null; created_by: string | null }[]>`
       select id, project_id, status, designation, qty, delivered_qty, cad_item_id, created_by from purchase_items where id = ${id}`;
     if (!i) throw notFound('Position nicht gefunden');
-    await projectAccess(sql, u, i.project_id, 'write');
+    await purchaseAccess(ctx, u, i.project_id, write ? 'write' : 'read');
     return i;
+  }
+
+  /** Neue Position anlegen – mit Projekt oder als Lagerbestellung */
+  async function createItem(u: AuthUser, projectId: string | null, b: z.infer<typeof itemBody>) {
+    let a = { number: b.number, designation: b.designation, manufacturer: b.manufacturer, manufacturerNo: b.manufacturerNo, supplierId: b.supplierId, supplierOrderNo: b.supplierOrderNo, unit: b.unit, unitPrice: b.unitPrice };
+    if (b.whArticleId) {
+      // Angaben aus dem Lagerartikel übernehmen, soweit nicht ausgefüllt
+      const [w] = await sql<{ number: string; name: string; manufacturer: string; manufacturer_no: string; supplier_id: string | null; supplier_no: string; unit: string; purchase_price: string | null; default_location_id: string | null }[]>`
+        select number, name, manufacturer, manufacturer_no, supplier_id, supplier_no, unit, purchase_price, default_location_id from wh_articles where id = ${b.whArticleId}`;
+      if (!w) throw notFound('Lagerartikel nicht gefunden');
+      a = { number: a.number || w.number, designation: a.designation || w.name, manufacturer: a.manufacturer || w.manufacturer, manufacturerNo: a.manufacturerNo || w.manufacturer_no,
+        supplierId: a.supplierId ?? w.supplier_id, supplierOrderNo: a.supplierOrderNo || w.supplier_no, unit: b.unit === 'Stk' ? w.unit : b.unit, unitPrice: a.unitPrice ?? (w.purchase_price === null ? null : Number(w.purchase_price)) };
+      if (!projectId && !b.locationId) b.locationId = w.default_location_id;
+    }
+    const [i] = await sql<{ id: string }[]>`insert into purchase_items (project_id, number, designation, manufacturer, manufacturer_no, supplier_id, supplier_order_no, qty, unit, unit_price, discount,
+        cost_center, note, status, requested_at, ordered_at, planned_delivery, confirmed_delivery, attachments, created_by, sort, wh_article_id, location_id)
+      values (${projectId}, ${a.number}, ${a.designation}, ${a.manufacturer}, ${a.manufacturerNo}, ${a.supplierId}, ${a.supplierOrderNo}, ${b.qty}, ${a.unit}, ${a.unitPrice}, ${b.discount},
+        ${b.costCenter}, ${b.note}, ${b.status}, ${b.requestedAt}, ${b.orderedAt}, ${b.plannedDelivery}, ${b.confirmedDelivery}, ${sql.json(b.attachments)}, ${u.id}, ${Date.now() / 1000},
+        ${b.whArticleId}, ${b.locationId}) returning id`;
+    await audit(sql, u, { action: 'purchasing.create', entityType: 'purchase_item', entityId: i!.id, projectId, summary: `Position angelegt: ${a.designation} (${num(b.qty)} ${a.unit})` });
+    publishItem(ctx, projectId);
+    if (b.whArticleId) ctx.hub.publish('global', 'warehouse.changed', {});
+    return i!;
   }
 
   app.get('/purchasing/projects/:id/items', async (req) => {
@@ -181,13 +301,19 @@ export default async function purchasingRoutes(app: FastifyInstance, ctx: AppCon
     const u = requireUser(req);
     const { id } = parse(idParam, req.params);
     await projectAccess(sql, u, id, 'write');
-    const b = parse(itemBody, req.body);
-    const [i] = await sql<{ id: string }[]>`insert into purchase_items (project_id, number, designation, manufacturer, manufacturer_no, supplier_id, supplier_order_no, qty, unit, unit_price, discount,
-        cost_center, note, status, requested_at, ordered_at, planned_delivery, confirmed_delivery, attachments, created_by, sort)
-      values (${id}, ${b.number}, ${b.designation}, ${b.manufacturer}, ${b.manufacturerNo}, ${b.supplierId}, ${b.supplierOrderNo}, ${b.qty}, ${b.unit}, ${b.unitPrice}, ${b.discount},
-        ${b.costCenter}, ${b.note}, ${b.status}, ${b.requestedAt}, ${b.orderedAt}, ${b.plannedDelivery}, ${b.confirmedDelivery}, ${sql.json(b.attachments)}, ${u.id}, ${Date.now() / 1000}) returning id`;
-    ctx.hub.publish(`project:${id}`, 'purchasing.changed', {});
-    return i;
+    return createItem(u, id, parse(itemBody, req.body));
+  });
+
+  // ------------------------------------------------ Lagerbestellungen (ohne Projekt)
+  app.get('/purchasing/stock/items', async (req) => {
+    const u = requireUser(req);
+    await purchaseAccess(ctx, u, null);
+    return sql`select ${cols} from ${from} where i.project_id is null order by i.status = 'cancelled', i.status = 'delivered', i.sort desc, i.created_at desc limit 2000`;
+  });
+  app.post('/purchasing/stock/items', async (req) => {
+    const u = requireUser(req);
+    await purchaseAccess(ctx, u, null, 'write');
+    return createItem(u, null, parse(itemBody, req.body));
   });
 
   /** Status-Folge: das Datum zum Status wird automatisch gesetzt */
@@ -215,10 +341,14 @@ export default async function purchasingRoutes(app: FastifyInstance, ctx: AppCon
       planned_delivery = ${b.plannedDelivery === undefined ? sql`planned_delivery` : b.plannedDelivery},
       confirmed_delivery = ${b.confirmedDelivery === undefined ? sql`confirmed_delivery` : b.confirmedDelivery},
       attachments = ${b.attachments ? sql.json(b.attachments) : sql`attachments`}, sort = coalesce(${b.sort ?? null}, sort),
-      revision_warning = ${b.revisionWarning === false ? false : sql`revision_warning`}, updated_at = now() where id = ${id}`;
+      revision_warning = ${b.revisionWarning === false ? false : sql`revision_warning`},
+      wh_article_id = ${b.whArticleId === undefined ? sql`wh_article_id` : b.whArticleId}, location_id = ${b.locationId === undefined ? sql`location_id` : b.locationId},
+      updated_at = now() where id = ${id}`;
     if (b.status && b.status !== cur.status)
       await audit(sql, u, { action: 'purchasing.status', entityType: 'purchase_item', entityId: id, projectId: cur.project_id, summary: `${cur.designation}: ${PURCHASE_STATUS_LABEL[cur.status]} → ${PURCHASE_STATUS_LABEL[b.status]}` });
-    ctx.hub.publish(`project:${cur.project_id}`, 'purchasing.changed', {});
+    if (b.confirmedDelivery && b.status !== undefined)
+      await audit(sql, u, { action: 'purchasing.confirmed', entityType: 'purchase_item', entityId: id, projectId: cur.project_id, summary: `${cur.designation}: Liefertermin bestätigt ${new Date(b.confirmedDelivery).toLocaleDateString('de-DE')}` });
+    publishItem(ctx, cur.project_id);
     const [full] = await sql`select ${cols} from ${from} where i.id = ${id}`;
     return full;
   });
@@ -229,7 +359,7 @@ export default async function purchasingRoutes(app: FastifyInstance, ctx: AppCon
     const cur = await loadItem(u, id);
     if (cur.status !== 'open') throw badRequest('Nur offene Positionen lassen sich löschen – sonst bitte stornieren');
     await sql`delete from purchase_items where id = ${id}`;
-    ctx.hub.publish(`project:${cur.project_id}`, 'purchasing.changed', {});
+    publishItem(ctx, cur.project_id);
     return { ok: true };
   });
 
@@ -253,8 +383,10 @@ export default async function purchasingRoutes(app: FastifyInstance, ctx: AppCon
     await sql`update purchase_items set ${statusDates(status)} status = coalesce(${status ?? null}, status),
       supplier_id = ${b.supplierId === undefined ? sql`supplier_id` : b.supplierId}, planned_delivery = ${b.plannedDelivery === undefined ? sql`planned_delivery` : b.plannedDelivery},
       order_id = coalesce(${orderId}, order_id), updated_at = now() where id = any(${b.ids})`;
-    for (const p of new Set(items.map((i) => i.project_id))) ctx.hub.publish(`project:${p}`, 'purchasing.changed', {});
-    if (status) await audit(sql, u, { action: 'purchasing.bulk', entityType: 'purchase_item', projectId: items[0]!.project_id, summary: `${b.ids.length} Positionen → ${PURCHASE_STATUS_LABEL[status]}${orderNumber ? ` (Bestellung ${orderNumber})` : ''}` });
+    for (const p of new Set(items.map((i) => i.project_id))) publishItem(ctx, p);
+    if (status) for (const it of items.filter((x) => x.status !== status))
+      await audit(sql, u, { action: 'purchasing.status', entityType: 'purchase_item', entityId: it.id, projectId: it.project_id,
+        summary: `${it.designation}: ${PURCHASE_STATUS_LABEL[it.status]} → ${PURCHASE_STATUS_LABEL[status]}${orderNumber ? ` (Bestellung ${orderNumber})` : ''}` });
     return { ok: true, orderId, orderNumber };
   });
 
@@ -262,26 +394,48 @@ export default async function purchasingRoutes(app: FastifyInstance, ctx: AppCon
   app.post('/purchasing/items/:id/receipts', async (req) => {
     const u = requireUser(req);
     const { id } = parse(idParam, req.params);
-    const b = parse(z.object({ qty: z.number().positive(), receivedAt: z.string().date().optional(), note: z.string().max(2000).default('') }), req.body);
-    return bookPurchaseReceipt(ctx, u, id, b);
+    return receivePurchase(ctx, u, id, parse(receiveBody, req.body));
+  });
+
+  /** Verlauf einer Position: angelegt, angefragt, bestellt, bestätigt, Wareneingänge, Einlagerung, Entnahmen ins Projekt */
+  app.get('/purchasing/items/:id/history', async (req) => {
+    const u = requireUser(req);
+    const { id } = parse(idParam, req.params);
+    await loadItem(u, id, false);
+    const log = await sql<{ at: Date; text: string; user: string | null; kind: string }[]>`
+      select a.at, a.summary as text, a.user_name as user, 'log' as kind from audit_log a where a.entity_type = 'purchase_item' and a.entity_id = ${id}
+      union all select o.created_at, 'Bestellung ' || o.number || ' angelegt', us.display_name, 'order' from purchase_items i join purchase_orders o on o.id = i.order_id
+        left join users us on us.id = o.created_by where i.id = ${id}
+      union all select r.created_at, 'Wareneingang ' || trim(to_char(r.qty, 'FM999999990.###')) || case when r.delivery_note <> '' then ' · Lieferschein ' || r.delivery_note else '' end
+          || case when r.target = 'stock' then ' · eingelagert' when r.target = 'project' then ' · direkt ins Projekt' else '' end
+          || case when l.name is not null then ' (' || l.name || case when r.lot <> '' then ', ' || r.lot else '' end || ')' else '' end, us.display_name, 'receipt'
+        from purchase_receipts r left join users us on us.id = r.user_id left join wh_locations l on l.id = r.location_id where r.item_id = ${id}
+      union all select m.created_at, case m.kind when 'issue' then 'Entnahme ' when 'return' then 'Rückgabe ' when 'transfer' then 'Umlagerung ' else 'Lagerbuchung ' end
+          || trim(to_char(m.qty, 'FM999999990.###')) || ' ' || a.unit || coalesce(' · Projekt ' || p.number, '') || case when m.lot <> '' then ' · ' || m.lot else '' end, us.display_name, 'move'
+        from wh_moves m join wh_articles a on a.id = m.article_id left join projects p on p.id = m.project_id left join users us on us.id = m.user_id
+        where m.purchase_item_id = ${id} and m.kind <> 'receipt'
+      order by 1`;
+    return log;
   });
 
   app.get('/purchasing/items/:id/receipts', async (req) => {
     const u = requireUser(req);
     const { id } = parse(idParam, req.params);
     await loadItem(u, id);
-    return sql`select r.id, r.qty::float as qty, r.received_at::text as "receivedAt", r.note, us.display_name as "userName" from purchase_receipts r left join users us on us.id = r.user_id where r.item_id = ${id} order by r.created_at`;
+    return sql`select r.id, r.qty::float as qty, r.received_at::text as "receivedAt", r.note, r.delivery_note as "deliveryNote", r.target, r.lot, l.name as "locationName",
+      us.display_name as "userName" from purchase_receipts r left join users us on us.id = r.user_id left join wh_locations l on l.id = r.location_id where r.item_id = ${id} order by r.created_at`;
   });
 
   // ------------------------------------------------ Übersicht über alle Projekte
   app.get('/purchasing/items', async (req) => {
     const u = requireUser(req);
-    const q = parse(z.object({ status: z.string().optional(), overdue: z.coerce.boolean().optional(), supplierId: z.string().uuid().optional() }), req.query);
-    return sql`select ${cols} from ${from} where (${u.role === 'admin'} or p.visibility = 'company' or exists (select 1 from project_members pm where pm.project_id = p.id and pm.user_id = ${u.id}))
+    const q = parse(z.object({ status: z.string().optional(), overdue: z.coerce.boolean().optional(), supplierId: z.string().uuid().optional(), articleId: z.string().uuid().optional() }), req.query);
+    return sql`select ${cols} from ${from} where (${u.role === 'admin'} or (i.project_id is null and ${canStockPurchase(u)}) or p.visibility = 'company' or exists (select 1 from project_members pm where pm.project_id = p.id and pm.user_id = ${u.id}))
+      ${q.articleId ? sql`and i.wh_article_id = ${q.articleId}` : sql``}
       ${q.status === 'active' ? sql`and i.status not in ('delivered', 'cancelled')` : q.status ? sql`and i.status = ${q.status}` : sql``}
       ${q.overdue ? sql`and coalesce(i.confirmed_delivery, i.planned_delivery) < current_date and i.status in ('ordered', 'confirmed', 'partial')` : sql``}
       ${q.supplierId ? sql`and i.supplier_id = ${q.supplierId}` : sql``}
-      order by coalesce(i.confirmed_delivery, i.planned_delivery) nulls last, p.number limit 2000`;
+      order by p.number nulls first, coalesce(i.confirmed_delivery, i.planned_delivery) nulls last, i.created_at limit 2000`;
   });
 
   app.get('/purchasing/dashboard', async (req) => {
@@ -327,8 +481,8 @@ export default async function purchasingRoutes(app: FastifyInstance, ctx: AppCon
     const { id } = parse(idParam, req.params);
     const [o] = await sql<{ number: string; order_date: string; supplier_id: string | null; note: string; created_by: string | null }[]>`select number, order_date::text, supplier_id, note, created_by from purchase_orders where id = ${id}`;
     if (!o) throw notFound();
-    const items = await sql<any[]>`select ${cols} from ${from} where i.order_id = ${id} order by p.number, i.sort`;
-    if (items[0]) await projectAccess(sql, u, items[0].projectId);
+    const items = await sql<any[]>`select ${cols} from ${from} where i.order_id = ${id} order by p.number nulls first, i.sort`;
+    if (items[0]) await purchaseAccess(ctx, u, items[0].projectId);
     const [s] = o.supplier_id ? await sql<{ name: string; street: string; zip: string; city: string; number: string }[]>`select name, street, zip, city, number from crm_accounts where id = ${o.supplier_id}` : [];
     const company = await ctx.settings.get('company');
     const lh = await ctx.settings.get('letterhead');
@@ -350,7 +504,8 @@ export default async function purchasingRoutes(app: FastifyInstance, ctx: AppCon
     pdf.text(330, pdf.y, 'Summe netto', { bold: true }); pdf.text(pdf.width - pdf.margin - 120, pdf.y, eur(total), { bold: true, align: 'right', width: 120 }); pdf.y += 20;
     const due = items.map((i) => i.plannedDelivery).filter(Boolean).sort()[0];
     if (due) pdf.paragraph(`Gewünschter Liefertermin: ${new Date(due).toLocaleDateString('de-DE')}`);
-    pdf.paragraph(`Projekt: ${[...new Set(items.map((i) => `${i.projectNumber} ${i.projectName}`))].join(', ')} – bitte auf Lieferschein und Rechnung angeben.`);
+    const projs = [...new Set(items.filter((i) => i.projectNumber).map((i) => `${i.projectNumber} ${i.projectName}`))];
+    pdf.paragraph(projs.length ? `Projekt: ${projs.join(', ')} – bitte auf Lieferschein und Rechnung angeben.` : `Bitte die Bestellnummer ${o.number} auf Lieferschein und Rechnung angeben.`);
     if (o.note) pdf.paragraph(o.note);
     pdf.paragraph('Bitte bestätigen Sie uns die Bestellung mit Liefertermin.', { gap: 10 });
     pdf.paragraph('Mit freundlichen Grüßen'); pdf.paragraph(author?.display_name ?? company.name);

@@ -36,6 +36,22 @@ function NavItem({ to, ico, label, count, end }: { to: string; ico: string; labe
   );
 }
 
+/** Abschnitt der Seitenleiste mit Überschrift, auf Wunsch einklappbar (Zustand bleibt im Browser gespeichert) */
+function NavSection({ id, icon, title, children, collapsible = true }: { id: string; icon: string; title: string; children: ReactNode; collapsible?: boolean }) {
+  const [closed, setClosed] = useLocalState<Record<string, boolean>>('aperio-nav-closed', {});
+  const isClosed = collapsible && closed[id];
+  return (
+    <div className={`nav-section ${isClosed ? 'closed' : ''}`}>
+      {collapsible
+        ? <button type="button" className="nav-title nav-toggle" aria-expanded={!isClosed} onClick={() => setClosed({ ...closed, [id]: !isClosed })}>
+            <Icon name={icon} /> <span className="grow">{title}</span><span className={`chev ${isClosed ? '' : 'open'}`}><Icon name="chevron-right" /></span>
+          </button>
+        : <div className="nav-title"><Icon name={icon} /> {title}</div>}
+      {!isClosed && children}
+    </div>
+  );
+}
+
 function TeamTree({ projects }: { projects: ProjectLite[] }) {
   const { me, teams } = useSession();
   const [open, setOpen] = useLocalState<Record<string, boolean>>('aperio-tree', {});
@@ -131,7 +147,7 @@ function UserMenu() {
 }
 
 /** Anwendungen, die unter „Mein Schreibtisch“ stehen */
-const DESK_APPS = ['time', 'absences', 'notes'];
+const DESK_APPS = ['time', 'absences', 'notes', 'chat', 'mail'];
 const NAV_ROUTE: Record<string, string> = { calendar: '/calendar/team', resources: '/calendar/resources' };
 const NAV_LABEL: Record<string, string> = { crm: 'Kunden (CRM)', calendar: 'Teamkalender', kvp: 'KVP-Ideenbox', chat: 'Chat' };
 
@@ -175,39 +191,41 @@ export function Layout({ children }: { children: ReactNode }) {
             <button className="icon-btn" onClick={() => setCollapsed(true)} title="Seitenleiste einklappen (Strg + \)">«</button>
           </div>
           <div className="sidebar-scroll">
-            <div className="nav-title"><Icon name="folder" /> {t('Mein Schreibtisch')}</div>
-            <NavItem to="/" end ico="home" label={t('Übersicht')} />
-            {!isGuest && <NavItem to="/inbox" ico="inbox" label={t('Posteingang')} count={unread} />}
-            {!isGuest && <NavItem to="/calendar" end ico="calendar" label={t('Mein Kalender')} />}
-            {can('time') && <NavItem to="/time" ico="timer" label={t('Stempeluhr')} />}
-            {can('absences') && <NavItem to="/absences" ico="palm" label={t('Urlaubskonto')} />}
-            {can('notes') && <NavItem to="/notes" ico="lock" label={t('Private Notizen')} />}
-            {me?.payslips && <NavItem to="/payslips" ico="file-text" label={t('Meine Lohnzettel')} />}
-            {me?.myHr && <NavItem to="/my-hr" ico="id-card" label={t('Meine Unterlagen')} />}
+            <NavSection id="desk" icon="folder" title={t('Mein Schreibtisch')}>
+              <NavItem to="/" end ico="home" label={t('Übersicht')} />
+              {!isGuest && <NavItem to="/inbox" ico="inbox" label={t('Posteingang')} count={unread} />}
+              {can('chat') && <NavItem to="/chat" ico="chat" label={t('Chat')} count={chatUnread} />}
+              {can('mail') && <NavItem to="/mail" ico="mail" label={t('E-Mail')} />}
+              {!isGuest && <NavItem to="/calendar" end ico="calendar" label={t('Mein Kalender')} />}
+              {can('time') && <NavItem to="/time" ico="timer" label={t('Stempeluhr')} />}
+              {can('absences') && <NavItem to="/absences" ico="palm" label={t('Urlaubskonto')} />}
+              {can('notes') && <NavItem to="/notes" ico="lock" label={t('Private Notizen')} />}
+              {me?.payslips && <NavItem to="/payslips" ico="file-text" label={t('Meine Lohnzettel')} />}
+              {me?.myHr && <NavItem to="/my-hr" ico="id-card" label={t('Meine Unterlagen')} />}
+            </NavSection>
 
             {favorites && favorites.length > 0 && (
-              <div className="nav-section">
-                <div className="nav-title"><Icon name="star-filled" /> {t('Favoriten')}</div>
+              <NavSection id="favorites" icon="star-filled" title={t('Favoriten')}>
                 {favorites.map((f) => <NavItem key={f.entityId} to={`/projects/${f.entityId}`} ico={f.icon} label={`${f.number} ${f.name}`} />)}
-              </div>
+              </NavSection>
             )}
 
-            <div className="nav-section">
-              <div className="nav-title"><Icon name="users" /> {t('Meine Teams')}</div>
+            <NavSection id="teams" icon="users" title={t('Meine Teams')}>
               <TeamTree projects={projects ?? []} />
               <NavItem to="/projects" end ico="projects" label={t('Alle Projekte')} />
-            </div>
+            </NavSection>
 
-            <div className="nav-section">
-              <div className="nav-title"><Icon name="tools" /> {t('Werkzeuge')}</div>
+            <NavSection id="tools" icon="tools" title={t('Werkzeuge')}>
               {isGuest && <NavItem to="/cad" ico="cad" label={t('CAD-Bridge')} />}
               {APPS.filter((a) => a.route && !DESK_APPS.includes(a.id) && can(a.id) && (a.id !== 'payroll' || me?.payrollManager)).map((a) => (
-                <NavItem key={a.id} to={NAV_ROUTE[a.id] ?? a.route!} ico={a.icon} label={t(NAV_LABEL[a.id] ?? a.name)} count={a.id === 'chat' ? chatUnread : a.id === 'board' ? boardUnread?.n : undefined} />
+                <NavItem key={a.id} to={NAV_ROUTE[a.id] ?? a.route!} ico={a.icon} label={t(NAV_LABEL[a.id] ?? a.name)} count={a.id === 'board' ? boardUnread?.n : undefined} />
               ))}
               {plugins?.filter((p) => p.enabled && p.page).map((p) => <NavItem key={p.id} to={`/plugin/${p.id}`} ico={p.page.icon ?? 'puzzle'} label={p.page.label} />)}
-              {!isGuest && <NavItem to="/apps" ico="puzzle" label={t('App-Store')} />}
-              <NavItem to="/settings" ico="settings" label={t('Einstellungen')} />
-            </div>
+            </NavSection>
+          </div>
+          <div className="sidebar-admin">
+            {!isGuest && <NavItem to="/apps" ico="puzzle" label={t('App-Store')} />}
+            <NavItem to="/settings" ico="settings" label={t('Einstellungen')} />
           </div>
           <div className="sidebar-foot">
             <button className="version-btn" onClick={() => setChangelog(true)} title={t('Was ist neu?')}>v{APP_VERSION}</button>

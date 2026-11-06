@@ -13,7 +13,7 @@ import { audit } from '../services/audit';
 import { notify } from '../services/notify';
 import { nextNumber } from '../services/numbers';
 import { bookMove, locationSubtree } from '../services/warehouse';
-import { bookPurchaseReceipt } from './purchasing';
+import { purchaseAccess, receiveBody, receivePurchase } from './purchasing';
 import { writeXlsx } from '../lib/xlsx';
 import { safeName } from '../services/files';
 import { sendStoredFile } from './files';
@@ -125,8 +125,10 @@ export default async function warehouseRoutes(app: FastifyInstance, ctx: AppCont
       fl.name as "fromName", tl.name as "toName", p.id as "projectId", p.number as "projectNumber", p.name as "projectName", us.display_name as "userName"
       from wh_moves m left join wh_locations fl on fl.id = m.from_location_id left join wh_locations tl on tl.id = m.to_location_id
       left join projects p on p.id = m.project_id left join users us on us.id = m.user_id where m.article_id = ${id} order by m.created_at desc limit 200`;
-    const purchases = await sql`select pi.id, pi.status, (pi.qty - pi.delivered_qty)::float as open, pi.planned_delivery::text as "plannedDelivery", p.number as "projectNumber", pi.project_id as "projectId"
-      from purchase_items pi join projects p on p.id = pi.project_id where pi.wh_article_id = ${id} and pi.status in ('open', 'requested', 'ordered', 'confirmed', 'partial') order by pi.created_at`;
+    const purchases = await sql`select pi.id, pi.status, (pi.qty - pi.delivered_qty)::float as open, coalesce(pi.confirmed_delivery, pi.planned_delivery)::text as "plannedDelivery",
+      p.number as "projectNumber", pi.project_id as "projectId", o.number as "orderNumber", s.name as "supplierName"
+      from purchase_items pi left join projects p on p.id = pi.project_id left join purchase_orders o on o.id = pi.order_id left join crm_accounts s on s.id = pi.supplier_id
+      where pi.wh_article_id = ${id} and pi.status in ('open', 'requested', 'ordered', 'confirmed', 'partial') order by pi.created_at`;
     return { ...a, stockByLocation: stock, moves, purchases };
   });
 
@@ -307,7 +309,7 @@ export default async function warehouseRoutes(app: FastifyInstance, ctx: AppCont
       s.name as "supplierName", o.number as "orderNumber",
       coalesce(pi.wh_article_id, (select a.id from wh_articles a where a.active and ((pi.cad_item_id is not null and a.cad_item_id = pi.cad_item_id)
         or (pi.number <> '' and a.number = pi.number) or (pi.manufacturer_no <> '' and a.manufacturer_no = pi.manufacturer_no)) limit 1)) as "articleId"
-      from purchase_items pi join projects p on p.id = pi.project_id left join crm_accounts s on s.id = pi.supplier_id left join purchase_orders o on o.id = pi.order_id
+      from purchase_items pi left join projects p on p.id = pi.project_id left join crm_accounts s on s.id = pi.supplier_id left join purchase_orders o on o.id = pi.order_id
       where pi.status in ('ordered', 'confirmed', 'partial') order by coalesce(pi.confirmed_delivery, pi.planned_delivery) nulls last, pi.created_at limit 500`;
   });
 
@@ -317,27 +319,12 @@ export default async function warehouseRoutes(app: FastifyInstance, ctx: AppCont
    */
   app.post('/warehouse/receive', async (req) => {
     const u = staff(req);
-    const b = parse(z.object({ purchaseItemId: z.string().uuid(), qty: z.number().positive(), locationId: z.string().uuid(), lot: z.string().trim().max(120).default(''),
-      articleId: z.string().uuid().nullable().default(null), createArticle: z.boolean().default(false), toProject: z.boolean().default(false), note: z.string().max(2000).default('') }), req.body);
-    const [pi] = await sql<{ id: string; project_id: string; designation: string; number: string; manufacturer: string; manufacturer_no: string; supplier_id: string | null;
-      supplier_order_no: string; unit: string; unit_price: string | null; discount: string; cad_item_id: string | null; wh_article_id: string | null }[]>`
-      select id, project_id, designation, number, manufacturer, manufacturer_no, supplier_id, supplier_order_no, unit, unit_price, discount, cad_item_id, wh_article_id from purchase_items where id = ${b.purchaseItemId}`;
-    if (!pi) throw notFound('Einkaufsposition nicht gefunden');
-    let articleId = b.articleId ?? pi.wh_article_id;
-    if (!articleId && b.createArticle) {
-      articleId = (await insertArticle(parse(articleBody, { number: '', name: pi.designation, unit: pi.unit || 'Stk', manufacturer: pi.manufacturer, manufacturerNo: pi.manufacturer_no,
-        supplierId: pi.supplier_id, supplierNo: pi.supplier_order_no, purchasePrice: pi.unit_price === null ? null : Number(pi.unit_price) * (1 - Number(pi.discount) / 100),
-        cadItemId: pi.cad_item_id, defaultLocationId: b.locationId }))).id;
-    }
-    if (!articleId) throw badRequest('Bitte einen Lagerartikel wählen oder anlegen lassen.');
-    const price = pi.unit_price === null ? null : Number(pi.unit_price) * (1 - Number(pi.discount) / 100);
-    const r = await bookPurchaseReceipt(ctx, u, pi.id, { qty: b.qty, note: b.note });
-    await sql`update purchase_items set wh_article_id = ${articleId} where id = ${pi.id}`;
-    if (price !== null) await sql`update wh_articles set purchase_price = ${price} where id = ${articleId}`;
-    await bookMove(sql, u, { kind: 'receipt', articleId, qty: b.qty, toLocationId: b.locationId, lot: b.lot, purchaseItemId: pi.id, unitPrice: price, note: b.note || 'Wareneingang Einkauf' });
-    if (b.toProject) await bookMove(sql, u, { kind: 'issue', articleId, qty: b.qty, fromLocationId: b.locationId, lot: b.lot, projectId: pi.project_id, purchaseItemId: pi.id, unitPrice: price, note: 'direkt ins Projekt' });
+    const raw = (req.body ?? {}) as Record<string, unknown>;
+    const b = parse(receiveBody.extend({ purchaseItemId: z.string().uuid(), toProject: z.boolean().default(false) }),
+      { target: raw.toProject ? 'project' : 'stock', ...raw });
+    const r = await receivePurchase(ctx, u, b.purchaseItemId, b);
     changed();
-    return { ...r, articleId };
+    return r;
   });
 
   /** Bestellvorschlag: Bestand + bestellte Menge unter Mindestbestand */
@@ -348,21 +335,23 @@ export default async function warehouseRoutes(app: FastifyInstance, ctx: AppCont
   });
   app.post('/warehouse/reorder', async (req) => {
     const u = staff(req);
-    const b = parse(z.object({ projectId: z.string().uuid(), items: z.array(z.object({ articleId: z.string().uuid(), qty: z.number().positive() })).min(1).max(500) }), req.body);
-    await projectAccess(sql, u, b.projectId, 'edit');
+    // ohne Projekt: Lagerbestellung (Nachschub), mit Projekt: Bedarf des Projekts
+    const b = parse(z.object({ projectId: z.string().uuid().nullable().default(null), items: z.array(z.object({ articleId: z.string().uuid(), qty: z.number().positive() })).min(1).max(500) }), req.body);
+    if (b.projectId) await projectAccess(sql, u, b.projectId, 'edit'); else await purchaseAccess(ctx, u, null, 'write');
     const ids: string[] = [];
     for (const it of b.items) {
-      const [a] = await sql<{ number: string; name: string; manufacturer: string; manufacturer_no: string; supplier_id: string | null; supplier_no: string; unit: string; purchase_price: string | null }[]>`
-        select number, name, manufacturer, manufacturer_no, supplier_id, supplier_no, unit, purchase_price from wh_articles where id = ${it.articleId}`;
+      const [a] = await sql<{ number: string; name: string; manufacturer: string; manufacturer_no: string; supplier_id: string | null; supplier_no: string; unit: string; purchase_price: string | null; default_location_id: string | null }[]>`
+        select number, name, manufacturer, manufacturer_no, supplier_id, supplier_no, unit, purchase_price, default_location_id from wh_articles where id = ${it.articleId}`;
       if (!a) continue;
-      const s = (await sql<{ s: number }[]>`select coalesce(max(sort), 0) + 1000 as s from purchase_items where project_id = ${b.projectId}`)[0]!.s;
       const [row] = await sql<{ id: string }[]>`insert into purchase_items (project_id, source, number, designation, manufacturer, manufacturer_no, supplier_id, supplier_order_no,
-        qty, unit, unit_price, note, status, sort, wh_article_id, created_by)
+        qty, unit, unit_price, note, status, sort, wh_article_id, location_id, created_by)
         values (${b.projectId}, 'manual', ${a.number}, ${a.name}, ${a.manufacturer}, ${a.manufacturer_no}, ${a.supplier_id}, ${a.supplier_no}, ${it.qty}, ${a.unit},
-          ${a.purchase_price}, 'Lagernachschub', 'open', ${s}, ${it.articleId}, ${u.id}) returning id`;
+          ${a.purchase_price}, 'Lagernachschub', 'open', ${Date.now() / 1000}, ${it.articleId}, ${a.default_location_id}, ${u.id}) returning id`;
+      await audit(sql, u, { action: 'purchasing.create', entityType: 'purchase_item', entityId: row!.id, projectId: b.projectId, summary: `Bestellvorschlag übernommen: ${a.name} (${it.qty} ${a.unit})` });
       ids.push(row!.id);
     }
-    ctx.hub.publish(`project:${b.projectId}`, 'purchasing.changed', {});
+    if (b.projectId) ctx.hub.publish(`project:${b.projectId}`, 'purchasing.changed', {});
+    ctx.hub.publish('global', 'purchasing.changed', {});
     changed();
     return { created: ids.length };
   });

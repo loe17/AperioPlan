@@ -1,6 +1,6 @@
 import type { Sql } from '../db';
 import {
-  DEFAULT_PROJECT_NUMBER_SETTINGS, DEFAULT_CALC_RATES, type CalcRates, DEFAULT_TIME_RULES, type TimeRuleSettings, DEFAULT_PROJECT_MODULES, DEFAULT_PROJECT_FOLDERS,
+  DEFAULT_PROJECT_NUMBER_SETTINGS, DEFAULT_CALC_RATES, type CalcRates, DEFAULT_TIME_RULES, type TimeRuleSettings, DEFAULT_PROJECT_MODULES, DEFAULT_PROJECT_TABS, type ProjectTab, DEFAULT_PROJECT_FOLDERS,
   DEFAULT_MASK_FIELDS, DEFAULT_CATALOGS, type ProjectNumberSettings, type ProjectModule,
   type MaskField, type Catalog, type PcbMaskSettings, DEFAULT_PCB_MASK, PREINSTALLED_APPS, type Tool,
 } from '@aperio/shared';
@@ -91,6 +91,8 @@ export interface SettingsMap {
   presence: { idleMinutes: number };
   projectNumbers: ProjectNumberSettings;
   defaultModules: ProjectModule[];
+  /** Reiter neuer Projekte (seit 0.3, inkl. App-Reiter) */
+  defaultProjectTabs: ProjectTab[];
   /** Vorlage eigener Kanban-Spalten für neue Projekte */
   kanbanTemplate: { name: string; color: string; baseStatus: 'todo' | 'in_progress' | 'review' | 'done' }[];
   /** Nummernkreise im CRM und Einkauf */
@@ -181,6 +183,7 @@ export const DEFAULT_SETTINGS: SettingsMap = {
   presence: { idleMinutes: 10 },
   projectNumbers: DEFAULT_PROJECT_NUMBER_SETTINGS,
   defaultModules: DEFAULT_PROJECT_MODULES,
+  defaultProjectTabs: DEFAULT_PROJECT_TABS,
   kanbanTemplate: [],
   calcRates: DEFAULT_CALC_RATES,
   timeRules: DEFAULT_TIME_RULES,

@@ -67,11 +67,16 @@ export default async function expenseRoutes(app: FastifyInstance, ctx: AppContex
 
   app.get('/expenses/reports', async (req) => {
     const u = staffOf(req);
-    const q = parse(z.object({ scope: z.enum(['mine', 'approve', 'all']).default('mine'), status: z.string().max(20).optional() }), req.query);
+    const q = parse(z.object({ scope: z.enum(['mine', 'approve', 'all', 'project']).default('mine'), status: z.string().max(20).optional(), projectId: z.string().uuid().optional() }), req.query);
     if (q.scope === 'all' && !(await isManager(u))) throw forbidden();
+    if (q.scope === 'project' && !q.projectId) throw badRequest('Projekt fehlt');
+    // im Projekt sehen Verantwortliche alle Abrechnungen, alle anderen nur ihre eigenen
+    const projectScope = q.scope === 'project' ? ((await isManager(u)) ? sql`e.project_id = ${q.projectId!}` : sql`e.project_id = ${q.projectId!} and e.user_id = ${u.id}`) : null;
     const rows = await sql<any[]>`select e.id, e.number, e.user_id as "userId", u.display_name as "userName", e.title, e.destination, e.country, e.start_at as "startAt", e.end_at as "endAt", e.meals,
-      e.status, e.approver_id as "approverId", e.created_at as "createdAt", e.paid_at as "paidAt" from exp_reports e join users u on u.id = e.user_id
-      where ${q.scope === 'mine' ? sql`e.user_id = ${u.id}` : q.scope === 'approve' ? sql`e.status = 'submitted' and e.approver_id = ${u.id}` : sql`true`}
+      e.status, e.approver_id as "approverId", e.created_at as "createdAt", e.paid_at as "paidAt", e.project_id as "projectId", ep.number as "projectNumber", ep.name as "projectName"
+      from exp_reports e join users u on u.id = e.user_id left join projects ep on ep.id = e.project_id
+      where ${projectScope ?? (q.scope === 'mine' ? sql`e.user_id = ${u.id}` : q.scope === 'approve' ? sql`e.status = 'submitted' and e.approver_id = ${u.id}` : sql`true`)}
+      ${q.projectId && q.scope !== 'project' ? sql`and e.project_id = ${q.projectId}` : sql``}
       ${q.status ? sql`and e.status = ${q.status}` : sql``} order by e.created_at desc limit 500`;
     const items = rows.length ? await sql<any[]>`select report_id, kind, amount::float as amount, km::float as km, paid_by as "paidBy" from exp_items where report_id = any(${rows.map((r) => r.id)})` : [];
     return Promise.all(rows.map(async (r) => { const d = await decorate(r, items.filter((i) => i.report_id === r.id)); delete d.items; return d; }));

@@ -8,7 +8,7 @@ import { projectAccess } from '../lib/access';
 import { badRequest, notFound } from '../lib/errors';
 import { audit } from '../services/audit';
 import { cleanRel, mimeOf, safeName, storeFile, syncFolder, TRASH_DIR, VERSIONS_DIR } from '../services/files';
-import { allocateProjectNumber, cleanFolderList } from '../services/projects';
+import { allocateProjectNumber, cleanFolderList, defaultTabs, tabColumns } from '../services/projects';
 
 export async function sendStoredFile(ctx: AppContext, reply: FastifyReply, path: string, name: string, inline = false) {
   const st = await ctx.storage.stat(path);
@@ -219,7 +219,7 @@ export default async function fileRoutes(app: FastifyInstance, ctx: AppContext) 
     if (!(await storage.stat(src))?.isDirectory()) throw badRequest('Ordner nicht gefunden');
     const [already] = await sql`select number from projects where folder_path = ${src}`;
     if (already) throw badRequest(`Ordner ist bereits Projekt ${already.number} zugeordnet`);
-    const defaults = await ctx.settings.get('defaultModules');
+    const tabs = tabColumns(await defaultTabs(ctx));
     const storageSettings = await ctx.settings.get('storage');
     const result = await sql.begin(async (tx) => {
       const { number, seq, year } = await allocateProjectNumber(tx, ctx, null, b.number ?? undefined);
@@ -234,8 +234,8 @@ export default async function fileRoutes(app: FastifyInstance, ctx: AppContext) 
           folder = target;
         }
       }
-      const [p] = await tx<{ id: string }[]>`insert into projects (number, seq, year, name, team_id, modules, folder_path, created_by, description)
-        values (${number}, ${seq}, ${year}, ${b.name}, ${b.teamId}, ${tx.json(defaults)}, ${folder}, ${u.id}, ${'Aus Bestandsordner übernommen: ' + src})
+      const [p] = await tx<{ id: string }[]>`insert into projects (number, seq, year, name, team_id, modules, tabs, folder_path, created_by, description)
+        values (${number}, ${seq}, ${year}, ${b.name}, ${b.teamId}, ${tx.json(tabs.modules)}, ${tx.json(tabs.tabs)}, ${folder}, ${u.id}, ${'Aus Bestandsordner übernommen: ' + src})
         returning id`;
       await tx`insert into project_members (project_id, user_id, role) values (${p!.id}, ${u.id}, 'owner')`;
       await tx`insert into chat_channels (kind, project_id, name) values ('project', ${p!.id}, ${number + ' ' + b.name})`;

@@ -18,11 +18,12 @@ import { safeName } from '../services/files';
 import { randomToken } from '../lib/crypto';
 import { sendStored, staffOf } from '../lib/rows';
 import { Pdf } from '../lib/pdf';
+import { projectAccess } from '../lib/access';
 
 type Stroke = [number, number][];
 type Signer = { id: string; envelope_id: string; sort: number; name: string; email: string; user_id: string | null; token: string; status: string; invited_at: Date | null; viewed_at: Date | null; signed_at: Date | null;
   signature: { strokes: Stroke[]; aspect: number } | null; typed_name: string; ip: string; user_agent: string; decline_reason: string; reminded_at: Date | null };
-type Envelope = { id: string; number: string; title: string; message: string; file_path: string; file_name: string; sha256: string; sequential: boolean; status: string; expires_at: string | null;
+type Envelope = { id: string; project_id: string | null; number: string; title: string; message: string; file_path: string; file_name: string; sha256: string; sequential: boolean; status: string; expires_at: string | null;
   protocol_path: string | null; created_by: string | null; sent_at: Date | null; completed_at: Date | null; created_at: Date };
 const signerInput = z.object({ name: z.string().trim().min(1).max(200), email: z.string().trim().email('Bitte gültige E-Mail-Adressen angeben.').max(200), userId: z.string().uuid().nullable().default(null) });
 const dt = (d: Date | null) => (d ? d.toLocaleString('de-DE', { timeZone: process.env.TZ || 'Europe/Berlin', dateStyle: 'medium', timeStyle: 'short' }) : '');
@@ -106,22 +107,31 @@ export async function esignDaily(ctx: AppContext) {
 export default async function esignRoutes(app: FastifyInstance, ctx: AppContext) {
   const { sql, storage } = ctx;
   const changed = () => ctx.hub.publish('global', 'esign.changed', {});
-  const cols = sql`e.id, e.number, e.title, e.message, e.file_name as "fileName", e.sha256, e.sequential, e.status, e.expires_at::text as "expiresAt", e.project_id as "projectId", e.account_id as "accountId",
+  const cols = sql`e.id, e.number, e.title, e.message, e.file_name as "fileName", e.sha256, e.sequential, e.status, e.expires_at::text as "expiresAt", e.project_id as "projectId",
+    (select number from projects pp where pp.id = e.project_id) as "projectNumber", (select name from projects pp where pp.id = e.project_id) as "projectName", e.account_id as "accountId",
     e.protocol_path is not null as "hasProtocol", e.created_by as "createdBy", u.display_name as "createdByName", e.sent_at as "sentAt", e.completed_at as "completedAt", e.created_at as "createdAt"`;
   const signerCols = sql`id, sort, name, email, user_id as "userId", status, invited_at as "invitedAt", viewed_at as "viewedAt", signed_at as "signedAt", typed_name as "typedName", decline_reason as "declineReason", token`;
   const own = async (u: AuthUser, id: string) => {
     const [e] = await sql<Envelope[]>`select * from sig_envelopes where id = ${id}`;
     if (!e) throw notFound('Vorgang nicht gefunden');
-    if (e.created_by !== u.id && u.role !== 'admin') throw forbidden();
-    return e;
+    if (e.created_by === u.id || u.role === 'admin') return e;
+    // Vorgänge eines Projekts dürfen alle bearbeiten, die das Projekt bearbeiten dürfen
+    if (e.project_id) {
+      await projectAccess(sql, u, e.project_id, 'edit').catch(() => { throw forbidden(); });
+      return e;
+    }
+    throw forbidden();
   };
 
   app.get('/esign/envelopes', async (req) => {
     const u = staffOf(req);
-    const all = (req.query as { scope?: string }).scope === 'all' && u.role === 'admin';
+    const q = parse(z.object({ scope: z.string().optional(), projectId: z.string().uuid().optional() }), req.query);
+    const all = q.scope === 'all' && u.role === 'admin';
+    if (q.projectId) await projectAccess(sql, u, q.projectId);
     const rows = await sql<any[]>`select ${cols},
       (select count(*)::int from sig_signers s where s.envelope_id = e.id) as signers, (select count(*)::int from sig_signers s where s.envelope_id = e.id and s.status = 'signed') as signed
-      from sig_envelopes e left join users u on u.id = e.created_by where ${all ? sql`true` : sql`e.created_by = ${u.id}`} order by e.created_at desc limit 500`;
+      from sig_envelopes e left join users u on u.id = e.created_by 
+      where ${q.projectId ? sql`e.project_id = ${q.projectId}` : all ? sql`true` : sql`e.created_by = ${u.id}`} order by e.created_at desc limit 500`;
     const mine = await sql<any[]>`select e.id, e.number, e.title, s.token, s.status, u.display_name as "createdByName", e.created_at as "createdAt" from sig_signers s join sig_envelopes e on e.id = s.envelope_id
       left join users u on u.id = e.created_by where s.user_id = ${u.id} and e.status = 'sent' and s.status = 'pending' order by e.created_at desc`;
     return { envelopes: rows, toSign: mine };

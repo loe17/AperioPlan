@@ -106,9 +106,9 @@ export default async function qualityRoutes(app: FastifyInstance, ctx: AppContex
   const inspFrom = sql`qm_inspections i left join qm_plans p on p.id = i.plan_id left join projects pr on pr.id = i.project_id left join crm_accounts s on s.id = i.supplier_id left join users u on u.id = i.inspector_id`;
   app.get('/quality/inspections', async (req) => {
     staffOf(req);
-    const q = parse(z.object({ result: z.string().max(20).optional(), q: z.string().max(100).optional() }), req.query);
+    const q = parse(z.object({ result: z.string().max(20).optional(), q: z.string().max(100).optional(), projectId: z.string().uuid().optional() }), req.query);
     const like = q.q ? `%${q.q}%` : null;
-    return sql`select ${inspCols} from ${inspFrom} where true ${q.result ? sql`and i.result = ${q.result}` : sql``}
+    return sql`select ${inspCols} from ${inspFrom} where true ${q.result ? sql`and i.result = ${q.result}` : sql``} ${q.projectId ? sql`and i.project_id = ${q.projectId}` : sql``}
       ${like ? sql`and (i.number ilike ${like} or i.title ilike ${like} or i.reference ilike ${like} or i.lot ilike ${like} or s.name ilike ${like})` : sql``}
       order by (i.result = 'open') desc, i.created_at desc limit 1000`;
   });
@@ -278,7 +278,8 @@ export default async function qualityRoutes(app: FastifyInstance, ctx: AppContex
   const eightFrom = sql`qm_8d e left join crm_accounts a on a.id = e.account_id left join projects p on p.id = e.project_id left join users o on o.id = e.owner_id`;
   app.get('/quality/8d', async (req) => {
     staffOf(req);
-    return sql`select ${eightCols} from ${eightFrom} order by (e.status = 'closed'), e.created_at desc limit 1000`;
+    const q = parse(z.object({ projectId: z.string().uuid().optional() }), req.query);
+    return sql`select ${eightCols} from ${eightFrom} where true ${q.projectId ? sql`and e.project_id = ${q.projectId}` : sql``} order by (e.status = 'closed'), e.created_at desc limit 1000`;
   });
   app.get('/quality/8d/:id', async (req) => {
     staffOf(req);

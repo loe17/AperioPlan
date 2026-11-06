@@ -20,6 +20,7 @@ export default async function settingsRoutes(app: FastifyInstance, ctx: AppConte
       presence: await settings.get('presence'),
       projectNumbers: await settings.get('projectNumbers'),
       defaultModules: await settings.get('defaultModules'),
+      defaultProjectTabs: await settings.get('defaultProjectTabs'),
       cadMask: await settings.get('cadMask'),
       storage: { mode: storage.mode, networkPath: storage.networkPath, projectFolders: storage.projectFolders },
       time: await settings.get('time'),

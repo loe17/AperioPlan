@@ -181,9 +181,10 @@ export default async function resourceRoutes(app: FastifyInstance, ctx: AppConte
 
   app.get('/resources/bookings', async (req) => {
     const u = requireUser(req);
-    const q = parse(z.object({ from: z.string(), to: z.string(), resourceId: z.string().uuid().optional(), mine: z.coerce.boolean().optional() }), req.query);
+    const q = parse(z.object({ from: z.string().optional(), to: z.string().optional(), resourceId: z.string().uuid().optional(), mine: z.coerce.boolean().optional(), projectId: z.string().uuid().optional() }), req.query);
+    if (!q.projectId && (!q.from || !q.to)) throw badRequest('Zeitraum fehlt');
     return sql`select ${bookingSelect(u)} from ${bookingFrom}
-      where b.starts_at < ${new Date(q.to)} and b.ends_at > ${new Date(q.from)} and b.status in ('pending', 'approved')
+      where ${q.projectId ? sql`b.project_id = ${q.projectId}` : sql`b.starts_at < ${new Date(q.to!)} and b.ends_at > ${new Date(q.from!)}`} and b.status in ('pending', 'approved')
       ${q.resourceId ? sql`and b.resource_id = ${q.resourceId}` : sql``}
       ${q.mine ? sql`and b.user_id = ${u.id}` : sql``}
       order by b.starts_at`;

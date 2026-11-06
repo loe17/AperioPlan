@@ -437,9 +437,9 @@ export default async function crmRoutes(app: FastifyInstance, ctx: AppContext) {
 
   app.get('/crm/opportunities', async (req) => {
     const u = requireUser(req); deny(u);
-    const q = parse(z.object({ accountId: z.string().uuid().optional(), open: z.coerce.boolean().optional() }), req.query);
-    return sql`select ${oppCols} from ${oppFrom} where ${q.accountId ? sql`o.account_id = ${q.accountId}` : sql`true`}
-      ${q.open ? sql`and o.stage not in ('won', 'lost')` : sql`and (o.stage not in ('won', 'lost') or o.closed_at > now() - interval '120 days')`}
+    const q = parse(z.object({ accountId: z.string().uuid().optional(), projectId: z.string().uuid().optional(), open: z.coerce.boolean().optional() }), req.query);
+    return sql`select ${oppCols} from ${oppFrom} where ${q.accountId ? sql`o.account_id = ${q.accountId}` : sql`true`} ${q.projectId ? sql`and o.project_id = ${q.projectId}` : sql``}
+      ${q.open ? sql`and o.stage not in ('won', 'lost')` : q.projectId ? sql`` : sql`and (o.stage not in ('won', 'lost') or o.closed_at > now() - interval '120 days')`}
       order by o.sort, o.created_at`;
   });
 
@@ -493,15 +493,15 @@ export default async function crmRoutes(app: FastifyInstance, ctx: AppContext) {
 
   // ------------------------------------------------ Angebote
   const quoteCols = sql`q.id, q.number, q.account_id as "accountId", a.name as "accountName", q.contact_id as "contactId", q.opportunity_id as "opportunityId",
-    q.project_id as "projectId", q.calculation_id as "calculationId", q.title, q.status, q.quote_date::text as "quoteDate", q.valid_until::text as "validUntil",
+    q.project_id as "projectId", qp.number as "projectNumber", qp.name as "projectName", q.calculation_id as "calculationId", q.title, q.status, q.quote_date::text as "quoteDate", q.valid_until::text as "validUntil",
     q.intro, q.outro, q.positions, q.vat_rate::float as "vatRate", q.total_net::float as "totalNet", q.created_by as "createdBy", us.display_name as "createdByName",
     q.created_at as "createdAt", q.updated_at as "updatedAt"`;
-  const quoteFrom = sql`crm_quotes q join crm_accounts a on a.id = q.account_id left join users us on us.id = q.created_by`;
+  const quoteFrom = sql`crm_quotes q join crm_accounts a on a.id = q.account_id left join users us on us.id = q.created_by left join projects qp on qp.id = q.project_id`;
 
   app.get('/crm/quotes', async (req) => {
     const u = requireUser(req); deny(u);
-    const q = parse(z.object({ accountId: z.string().uuid().optional(), opportunityId: z.string().uuid().optional() }), req.query);
-    return sql`select ${quoteCols} from ${quoteFrom} where true ${q.accountId ? sql`and q.account_id = ${q.accountId}` : sql``}
+    const q = parse(z.object({ accountId: z.string().uuid().optional(), opportunityId: z.string().uuid().optional(), projectId: z.string().uuid().optional() }), req.query);
+    return sql`select ${quoteCols} from ${quoteFrom} where true ${q.accountId ? sql`and q.account_id = ${q.accountId}` : sql``} ${q.projectId ? sql`and q.project_id = ${q.projectId}` : sql``}
       ${q.opportunityId ? sql`and q.opportunity_id = ${q.opportunityId}` : sql``} order by q.created_at desc limit 500`;
   });
 
@@ -625,8 +625,8 @@ export default async function crmRoutes(app: FastifyInstance, ctx: AppContext) {
 
   app.get('/crm/cases', async (req) => {
     const u = requireUser(req); deny(u);
-    const q = parse(z.object({ accountId: z.string().uuid().optional(), open: z.coerce.boolean().optional() }), req.query);
-    return sql`select ${caseCols} from ${caseFrom} where true ${q.accountId ? sql`and c.account_id = ${q.accountId}` : sql``} ${q.open ? sql`and c.status <> 'closed'` : sql``}
+    const q = parse(z.object({ accountId: z.string().uuid().optional(), projectId: z.string().uuid().optional(), open: z.coerce.boolean().optional() }), req.query);
+    return sql`select ${caseCols} from ${caseFrom} where true ${q.accountId ? sql`and c.account_id = ${q.accountId}` : sql``} ${q.projectId ? sql`and c.project_id = ${q.projectId}` : sql``} ${q.open ? sql`and c.status <> 'closed'` : sql``}
       order by (c.status = 'closed'), case c.priority when 'urgent' then 0 when 'high' then 1 when 'normal' then 2 else 3 end, c.created_at desc limit 500`;
   });
 

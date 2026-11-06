@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
-import { PROJECT_MODULES } from '@aperio/shared';
+import { PROJECT_TABS } from '@aperio/shared';
 import type { AppContext } from '../context';
 import { z, parse, idParam, patchSchema } from '../lib/validate';
 import { requireUser, requireRole } from '../lib/auth';
 import { projectAccess, visibleProjects, LOCKED_MESSAGE } from '../lib/access';
 import { badRequest, forbidden } from '../lib/errors';
 import { audit } from '../services/audit';
-import { allocateProjectNumber, createProjectFolders, normalizeModules } from '../services/projects';
+import { allocateProjectNumber, createProjectFolders, defaultTabs, projectTabsExpr, tabColumns } from '../services/projects';
 
 const projectBody = z.object({
   name: z.string().trim().min(1).max(200),
@@ -16,7 +16,7 @@ const projectBody = z.object({
   teamId: z.string().uuid().nullable().default(null),
   status: z.enum(['planned', 'active', 'paused', 'done', 'archived']).default('active'),
   visibility: z.enum(['company', 'team', 'members']).default('company'),
-  modules: z.array(z.enum(PROJECT_MODULES)).optional(),
+  modules: z.array(z.enum(PROJECT_TABS)).optional(),
   customer: z.string().default(''),
   /** Kunde aus dem CRM (ersetzt das frühere Freitextfeld) */
   customerId: z.string().uuid().nullable().default(null),
@@ -30,7 +30,7 @@ const projectBody = z.object({
 });
 
 const projectCols = (sql: AppContext['sql']) => sql`p.id, p.number, p.name, p.description, p.icon, p.parent_id as "parentId",
-  p.team_id as "teamId", p.status, p.visibility, p.modules, p.customer, p.customer_id as "customerId",
+  p.team_id as "teamId", p.status, p.visibility, ${projectTabsExpr(sql)} as modules, p.customer, p.customer_id as "customerId",
   p.customer_contact_id as "customerContactId", (select number from crm_accounts ca where ca.id = p.customer_id) as "customerNumber", p.budget::float as budget, p.ai_provider_id as "aiProviderId", p.start_date as "startDate", p.due_date as "dueDate",
   p.folder_path as "folderPath", p.created_at as "createdAt", p.updated_at as "updatedAt"`;
 
@@ -78,15 +78,15 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
     const b = parse(projectBody, req.body);
     if (b.parentId) await projectAccess(sql, u, b.parentId, 'manage');
     if (b.number && u.role !== 'admin') throw badRequest('Nur Administratoren dürfen Projektnummern frei vergeben');
-    const defaults = await ctx.settings.get('defaultModules');
+    const tabs = tabColumns(await defaultTabs(ctx, b.modules));
     const cust = await customerOf(b.customerId, b.customerContactId);
     if (cust) b.customer = cust.name;
     const project = await sql.begin(async (tx) => {
       const { number, seq, year } = await allocateProjectNumber(tx, ctx, b.parentId, b.number, { teamId: b.teamId, customer: cust?.number ?? '' });
       const [p] = await tx<{ id: string; number: string }[]>`insert into projects
-        (number, seq, year, name, description, icon, parent_id, team_id, status, visibility, modules, customer, customer_id, customer_contact_id, start_date, due_date, created_by)
+        (number, seq, year, name, description, icon, parent_id, team_id, status, visibility, modules, tabs, customer, customer_id, customer_contact_id, start_date, due_date, created_by)
         values (${number}, ${seq}, ${year}, ${b.name}, ${b.description}, ${b.icon}, ${b.parentId}, ${b.teamId}, ${b.status}, ${b.visibility},
-          ${tx.json(normalizeModules(b.modules, defaults))}, ${b.customer}, ${b.customerId}, ${b.customerContactId}, ${b.startDate}, ${b.dueDate}, ${u.id})
+          ${tx.json(tabs.modules)}, ${tx.json(tabs.tabs)}, ${b.customer}, ${b.customerId}, ${b.customerContactId}, ${b.startDate}, ${b.dueDate}, ${u.id})
         returning id, number`;
       await tx`insert into project_members (project_id, user_id, role) values (${p!.id}, ${u.id}, 'owner')`;
       const columns = await ctx.settings.get('kanbanTemplate');
@@ -138,7 +138,7 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
       name = coalesce(${b.name ?? null}, name), description = coalesce(${b.description ?? null}, description),
       icon = coalesce(${b.icon ?? null}, icon), team_id = ${b.teamId === undefined ? sql`team_id` : b.teamId},
       status = coalesce(${b.status ?? null}, status), visibility = coalesce(${b.visibility ?? null}, visibility),
-      modules = ${b.modules ? sql.json(b.modules) : sql`modules`}, customer = coalesce(${b.customer ?? null}, customer),
+      modules = ${b.modules ? sql.json(tabColumns(b.modules).modules) : sql`modules`}, tabs = ${b.modules ? sql.json(b.modules) : sql`tabs`}, customer = coalesce(${b.customer ?? null}, customer),
       customer_id = ${b.customerId === undefined ? sql`customer_id` : b.customerId},
       customer_contact_id = ${b.customerContactId === undefined ? sql`customer_contact_id` : b.customerContactId},
       budget = ${b.budget === undefined ? sql`budget` : b.budget},

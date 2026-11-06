@@ -1,5 +1,5 @@
 import {
-  formatProjectNumber, formatSubprojectNumber, nextProjectSequence, projectFolderName, type ProjectModule,
+  formatProjectNumber, formatSubprojectNumber, nextProjectSequence, projectFolderName, type ProjectModule, PROJECT_MODULES, isLegacyModule,
 } from '@aperio/shared';
 import type { AppContext } from '../context';
 import type { Db as Sql } from '../db';
@@ -65,3 +65,20 @@ export async function createProjectFolders(ctx: AppContext, tx: Sql, projectId: 
 }
 
 export const normalizeModules = (mods: string[] | undefined, defaults: ProjectModule[]) => (mods?.length ? mods : defaults);
+
+/** Reiter eines neuen Projekts: übergebene Liste oder die Vorgabe aus den Einstellungen */
+export async function defaultTabs(ctx: AppContext, given?: string[]): Promise<string[]> {
+  if (given?.length) return given;
+  return ctx.settings.get('defaultProjectTabs');
+}
+/** Spaltenwerte für tabs (vollständig) und modules (nur alte Bereiche – für ältere Versionen) */
+export const tabColumns = (tabs: string[]) => ({ tabs, modules: tabs.filter(isLegacyModule) });
+
+/**
+ * Wirksame Reiter: projects.tabs, abgeglichen mit projects.modules. Hat eine ältere Version (nach einem Wechsel zurück)
+ * alte Bereiche ein- oder ausgeschaltet, gilt deren Stand; die neuen App-Reiter bleiben erhalten.
+ */
+export const projectTabsExpr = (sql: AppContext['sql']) => sql`case when p.tabs is null then p.modules else (
+  select coalesce(jsonb_agg(z.t order by z.o), '[]'::jsonb) from (
+    select x.t, x.o from jsonb_array_elements_text(p.tabs) with ordinality x(t, o) where not (x.t = any(${PROJECT_MODULES as unknown as string[]})) or p.modules ? x.t
+    union all select y.t, 1000 + y.o from jsonb_array_elements_text(p.modules) with ordinality y(t, o) where not p.tabs ? y.t) z) end`;

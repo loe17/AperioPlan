@@ -44,11 +44,11 @@ export default async function serviceRoutes(app: FastifyInstance, ctx: AppContex
   app.get('/service/jobs', async (req) => {
     const u = staffOf(req);
     const q = parse(z.object({ status: z.string().max(20).optional(), mine: z.coerce.boolean().optional(), from: z.string().date().optional(), to: z.string().date().optional(),
-      accountId: z.string().uuid().optional(), q: z.string().max(100).optional() }), req.query);
+      accountId: z.string().uuid().optional(), projectId: z.string().uuid().optional(), q: z.string().max(100).optional() }), req.query);
     const like = q.q ? `%${q.q}%` : null;
     return sql`select ${cols} from ${from} where true
       ${q.status === 'open' ? sql`and j.status in ('planned', 'on_way', 'in_progress')` : q.status === 'billable' ? sql`and j.status = 'done' and j.invoice_id is null` : q.status ? sql`and j.status = ${q.status}` : sql``}
-      ${q.mine ? sql`and j.technician_ids @> ${sql.json([u.id] as never)}` : sql``} ${q.accountId ? sql`and j.account_id = ${q.accountId}` : sql``}
+      ${q.mine ? sql`and j.technician_ids @> ${sql.json([u.id] as never)}` : sql``} ${q.accountId ? sql`and j.account_id = ${q.accountId}` : sql``} ${q.projectId ? sql`and j.project_id = ${q.projectId}` : sql``}
       ${q.from ? sql`and j.start_at >= ${q.from}` : sql``} ${q.to ? sql`and j.start_at < ${q.to}::date + 1` : sql``}
       ${like ? sql`and (j.number ilike ${like} or j.title ilike ${like} or a.name ilike ${like} or j.address ilike ${like})` : sql``}
       order by (j.status in ('done', 'invoiced', 'cancelled')), j.start_at nulls last, j.created_at desc limit 1000`;

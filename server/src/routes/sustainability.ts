@@ -96,11 +96,11 @@ export default async function sustainabilityRoutes(app: FastifyInstance, ctx: Ap
 
   app.get('/sustainability/entries', async (req) => {
     staffOf(req);
-    const q = parse(yearQ, req.query);
+    const q = parse(yearQ.extend({ projectId: z.string().uuid().optional() }), req.query);
     return sql`select e.id, e.date::text, e.period_end::text as "periodEnd", e.factor_id as "factorId", f.label as "factorLabel", f.unit, f.scope, f.category, e.quantity::float as quantity,
       (e.quantity * f.kg_per_unit)::float as kg, e.project_id as "projectId", p.number as "projectNumber", e.site, e.note, e.origin, u.display_name as "createdByName"
       from sus_entries e join sus_factors f on f.id = e.factor_id left join projects p on p.id = e.project_id left join users u on u.id = e.created_by
-      where extract(year from e.date) = ${q.year} order by e.date desc, e.created_at desc limit 5000`;
+      where ${q.projectId ? sql`e.project_id = ${q.projectId}` : sql`extract(year from e.date) = ${q.year}`} order by e.date desc, e.created_at desc limit 5000`;
   });
   app.post('/sustainability/entries', async (req) => {
     const u = await manager(req);
@@ -152,6 +152,15 @@ export default async function sustainabilityRoutes(app: FastifyInstance, ctx: Ap
     return { year, total, perEmployee: emp!.n ? total / emp!.n : null, employees: emp!.n, scopes, categories, months: Array.from({ length: 12 }, (_, i) => ({ month: i + 1, t: months.find((m) => Number(m.k) === i + 1)?.t ?? 0 })),
       projects, sites, sources, years, target: { baseYear: s.baseYear, base, targetYear: s.targetYear, percent: s.targetPercent, value: base !== null ? base * (1 - s.targetPercent / 100) : null } };
   }
+  /** CO₂ eines Projekts über alle Jahre */
+  app.get('/sustainability/projects/:id', async (req) => {
+    staffOf(req);
+    const { id } = parse(idParam, req.params);
+    const by = (expr: ReturnType<typeof sql>) => sql<{ k: string; t: number }[]>`select ${expr} as k, (sum(e.quantity * f.kg_per_unit) / 1000)::float as t
+      from sus_entries e join sus_factors f on f.id = e.factor_id where e.project_id = ${id} group by 1 order by 2 desc`;
+    const [scopes, sources, years] = await Promise.all([by(sql`'Scope ' || f.scope`), by(sql`f.label`), by(sql`extract(year from e.date)::int::text`)]);
+    return { total: scopes.reduce((a, r) => a + r.t, 0), scopes, sources, years: years.sort((a, b) => a.k.localeCompare(b.k)) };
+  });
   app.get('/sustainability/summary', async (req) => { staffOf(req); return summary(parse(yearQ, req.query).year); });
   app.get('/sustainability/report.xlsx', async (req, reply) => {
     staffOf(req);

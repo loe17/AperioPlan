@@ -52,9 +52,10 @@ export default async function meetingRoutes(app: FastifyInstance, ctx: AppContex
 
   app.get('/meetings', async (req) => {
     const u = requireUser(req);
-    const q = parse(z.object({ upcoming: z.coerce.boolean().optional(), past: z.coerce.boolean().optional() }), req.query);
+    const q = parse(z.object({ upcoming: z.coerce.boolean().optional(), past: z.coerce.boolean().optional(), projectId: z.string().uuid().optional() }), req.query);
     const rows = await sql`select ${select} from ${from}
       where (m.host_id = ${u.id} or exists (select 1 from chat_members cm where cm.channel_id = m.channel_id and cm.user_id = ${u.id}))
+      ${q.projectId ? sql`and m.project_id = ${q.projectId}` : sql``}
       ${q.upcoming ? sql`and m.ends_at > now() - interval '30 minutes' and m.cancelled_at is null` : sql``}
       ${q.past ? sql`and m.ends_at <= now()` : sql``}
       order by ${q.past ? sql`m.starts_at desc` : sql`m.starts_at`} limit 200`;

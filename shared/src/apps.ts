@@ -1,4 +1,5 @@
 import type { Tool } from './tools';
+import type { ProjectTab } from './domain';
 
 /**
  * App-Store: mitgelieferte Anwendungen, die der Administrator ein- und ausschaltet.
@@ -123,8 +124,38 @@ export const PREINSTALLED_APPS: Tool[] = ['chat', 'mail'];
 export const LEGACY_APPS: Tool[] = APPS.filter((a) => a.legacy).map((a) => a.id);
 export const appInfo = (id: string) => APPS.find((a) => a.id === id);
 
+/** Projekt-Reiter mit Beschriftung und – falls nötig – der App, ohne die der Reiter nicht erscheint */
+export const PROJECT_TAB_INFO: Record<ProjectTab, { label: string; icon: string; tool?: Tool; hint: string }> = {
+  kanban: { label: 'Kanban-Board', icon: 'projects', hint: 'Aufgaben als Karten in Spalten' },
+  list: { label: 'Aufgabenliste', icon: 'list', hint: 'Aufgaben als Tabelle' },
+  gantt: { label: 'Gantt-Diagramm', icon: 'chart', hint: 'Zeitplan mit Abhängigkeiten' },
+  whiteboard: { label: 'Whiteboard', icon: 'whiteboard', hint: 'Skizzen und Notizzettel' },
+  report: { label: 'Abschlussbericht', icon: 'report', hint: 'Rückblick am Projektende' },
+  files: { label: 'Dateien', icon: 'folder', hint: 'Projektordner mit Versionen' },
+  cad: { label: 'CAD-Dateien', icon: 'cad', tool: 'cad', hint: 'Teile, Baugruppen und Zeichnungen' },
+  pcb: { label: 'Leiterplatten', icon: 'bolt', tool: 'pcb', hint: 'KiCad-Projekte' },
+  chat: { label: 'Chat', icon: 'chat', tool: 'chat', hint: 'Projektgespräch' },
+  time: { label: 'Zeiterfassung', icon: 'timer', tool: 'time', hint: 'Gebuchte Stunden' },
+  purchasing: { label: 'Einkauf', icon: 'truck', tool: 'purchasing', hint: 'Bestellungen und Lieferungen des Projekts' },
+  calculation: { label: 'Kalkulation', icon: 'euro', tool: 'calculation', hint: 'Angebotskalkulation und Nachkalkulation' },
+  sales: { label: 'Verkauf', icon: 'building', tool: 'crm', hint: 'Verkaufschancen, Angebote, Rechnungen und Reklamationen' },
+  material: { label: 'Material', icon: 'box', tool: 'warehouse', hint: 'Entnahmen aus dem Lager und Rückgaben' },
+  mindmaps: { label: 'Mindmaps', icon: 'dependency', tool: 'mindmap', hint: 'Ideen und Strukturen' },
+  meetings: { label: 'Meetings', icon: 'video', tool: 'meetings', hint: 'Besprechungen zum Projekt' },
+  service: { label: 'Service', icon: 'tools', tool: 'service', hint: 'Service- und Montageeinsätze' },
+  quality: { label: 'Qualität', icon: 'check-circle', tool: 'quality', hint: 'Prüfungen und 8D-Reports' },
+  manufacturing: { label: 'Fertigung', icon: 'factory', tool: 'manufacturing', hint: 'Fertigungsaufträge' },
+  changes: { label: 'Änderungen', icon: 'repeat', tool: 'plm', hint: 'Änderungsanträge' },
+  expenses: { label: 'Reisekosten', icon: 'receipt', tool: 'expenses', hint: 'Spesenabrechnungen zum Projekt' },
+  approvals: { label: 'Freigaben', icon: 'approve', tool: 'approvals', hint: 'Anträge zum Projekt' },
+  esign: { label: 'Unterschriften', icon: 'signature', tool: 'esign', hint: 'Dokumente zur Unterschrift' },
+  co2: { label: 'CO₂', icon: 'leaf', tool: 'sustainability', hint: 'Emissionen des Projekts' },
+  bills: { label: 'Eingangsrechnungen', icon: 'file-text', tool: 'finance', hint: 'Lieferantenrechnungen zum Projekt' },
+  resources: { label: 'Ressourcen', icon: 'car', tool: 'resources', hint: 'Gebuchte Räume, Fahrzeuge und Geräte' },
+};
+
 /** Projektbereiche, die zu einer Anwendung gehören (ohne die Anwendung kein Reiter im Projekt) */
-export const MODULE_TOOL: Partial<Record<string, Tool>> = { cad: 'cad', pcb: 'pcb', chat: 'chat', time: 'time', purchasing: 'purchasing', calculation: 'calculation' };
+export const MODULE_TOOL: Partial<Record<string, Tool>> = Object.fromEntries(Object.entries(PROJECT_TAB_INFO).filter(([, v]) => v.tool).map(([k, v]) => [k, v.tool]));
 
 /** Widgets der eigenen Startseite */
 export const DASHBOARD_WIDGETS = ['clock', 'weather', 'tasks', 'stamp', 'today', 'favorites', 'notifications', 'note', 'links', 'absent', 'board', 'crm', 'deliveries', 'mail', 'meetings', 'calls', 'stats'] as const;

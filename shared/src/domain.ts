@@ -25,6 +25,18 @@ export const PROJECT_MODULES = ['kanban', 'list', 'gantt', 'whiteboard', 'report
 export type ProjectModule = (typeof PROJECT_MODULES)[number];
 export const DEFAULT_PROJECT_MODULES: ProjectModule[] = ['kanban', 'list', 'gantt', 'files', 'cad', 'chat', 'time'];
 
+/**
+ * Alle Projekt-Reiter seit 0.3: die Bereiche von oben plus Reiter der Apps aus dem App-Store.
+ * Gespeichert in projects.tabs; projects.modules enthält zusätzlich nur die alten Bereiche,
+ * damit ältere Versionen nach einem Wechsel zurück weiter funktionieren.
+ */
+export const PROJECT_TABS = [...PROJECT_MODULES, 'sales', 'material', 'mindmaps', 'meetings', 'service', 'quality', 'manufacturing', 'changes',
+  'expenses', 'approvals', 'esign', 'co2', 'bills', 'resources'] as const;
+export type ProjectTab = (typeof PROJECT_TABS)[number];
+export const DEFAULT_PROJECT_TABS: ProjectTab[] = [...DEFAULT_PROJECT_MODULES, 'sales', 'purchasing'];
+/** Alte Bereiche (bis 0.2) */
+export const isLegacyModule = (t: string): t is ProjectModule => (PROJECT_MODULES as readonly string[]).includes(t);
+
 export const REQUEST_STATUSES = ['pending', 'approved', 'rejected'] as const;
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
