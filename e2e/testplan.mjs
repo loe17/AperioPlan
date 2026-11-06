@@ -498,8 +498,7 @@ await step('14.4 Schwarzes Brett: Mitteilung mit Lesebestätigung, Marktplatz-An
   await page.waitForSelector('.market-card:has-text("Bürostuhl") >> text=zu verschenken');
 });
 
-await step('14.5 3D-Viewer: Baugruppe öffnen, Teile im Baum, Messen', async () => {
-  await api('POST', '/apps/viewer3d/install', {});
+await step('14.5 3D-Ansicht: Baugruppe aus dem Projektordner im selben Fenster öffnen, Messen, native Datei mit Vorschau', async () => {
   const boxes = [['Grundplatte', [0, 0, 0, 100, 60, 10]], ['Halter', [10, 10, 10, 30, 50, 60]]];
   let obj = '', o = 0;
   for (const [name, [x0, y0, z0, x1, y1, z1]] of boxes) {
@@ -508,14 +507,38 @@ await step('14.5 3D-Viewer: Baugruppe öffnen, Teile im Baum, Messen', async () 
     for (const f of [[1, 2, 4, 3], [5, 7, 8, 6], [1, 5, 6, 2], [3, 4, 8, 7], [1, 3, 7, 5], [2, 6, 8, 4]]) obj += `f ${f.map((i) => i + o).join(' ')}\n`;
     o += 8;
   }
-  await page.goto(`${BASE}/viewer3d`);
-  await page.setInputFiles('input[type=file]', { name: 'baugruppe.obj', mimeType: 'text/plain', buffer: Buffer.from(obj) });
+  const p = await api('POST', '/projects', { name: '3D-Prüfung' });
+  // kleines PNG als Vorschaubild in einer „SolidWorks-Datei“
+  const { deflateSync } = await import('node:zlib');
+  const crc = (b) => { let c = ~0; for (const x of b) { c ^= x; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; } return (~c) >>> 0; };
+  const chunk = (t, d) => { const l = Buffer.alloc(4); l.writeUInt32BE(d.length); const c = Buffer.alloc(4); c.writeUInt32BE(crc(Buffer.concat([Buffer.from(t), d]))); return Buffer.concat([l, Buffer.from(t), d, c]); };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(64, 0); ihdr.writeUInt32BE(48, 4); ihdr[8] = 8; ihdr[9] = 2;
+  const rows = Buffer.alloc((64 * 3 + 1) * 48, 0x88);
+  const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(rows)), chunk('IEND', Buffer.alloc(0))]).toString('base64');
+  await page.evaluate(async ([pid, objText, b64]) => {
+    const fd = new FormData();
+    fd.append('file', new Blob([objText]), 'Baugruppe.obj');
+    const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    fd.append('file', new Blob([new Uint8Array(300), bin, new Uint8Array(200)]), 'Halter.SLDPRT');
+    const r = await fetch(`/api/projects/${pid}/files/upload?path=`, { method: 'POST', body: fd });
+    if (!r.ok) throw new Error(await r.text());
+  }, [p.id, obj, png]);
+  await page.goto(`${BASE}/projects/${p.id}?tab=files`);
+  await page.click('tr:has-text("Baugruppe.obj")');
+  await page.waitForURL(/\/view3d\?/);
   await page.waitForSelector('.v3d-info:has-text("100 mm × 60 mm × 60 mm")', { timeout: 20000 });
   await page.waitForSelector('.v3d-tree >> text=Halter');
   await page.click('.v3d-row:has-text("Halter") .v3d-eye');
   await page.waitForSelector('.v3d-row.hidden:has-text("Halter")');
   await page.click('button:has-text("Messen")');
   await page.waitForSelector('text=Zwei Punkte auf dem Modell anklicken');
+  await page.click('button:has-text("Zurück")');
+  await page.waitForSelector('tr:has-text("Halter.SLDPRT")');
+  await page.click('tr:has-text("Halter.SLDPRT")');
+  await page.waitForSelector('.v3d-native >> text=SolidWorks-Teil');
+  await page.waitForSelector('.v3d-native-img img');
+  const conv = await api('GET', `/files/${new URL(page.url()).searchParams.get('file')}/view3d`);
+  if (conv.conversion?.status !== 'queued') throw new Error('Umwandlung nicht vorgemerkt');
 });
 
 await step('14.6 Mindmap: mit Tastatur anlegen, speichern, als Gliederung exportieren', async () => {
@@ -532,9 +555,50 @@ await step('14.6 Mindmap: mit Tastatur anlegen, speichern, als Gliederung export
   await page.waitForSelector('.mm-bar >> text=4 Punkte · gespeichert', { timeout: 8000 });
   await page.reload();
   await page.waitForSelector('.mm-node:has-text("Planer")');
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('.mm-bar button:has-text("Gliederung")')]);
+  await page.click('.mm-bar button:has-text("Datei")');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('.dropdown .item:has-text("Gliederung")')]);
   const md = await (await import('node:fs/promises')).readFile(await dl.path(), 'utf8');
   if (!md.includes('# Produktidee') || !md.includes('  - Handwerker')) throw new Error(`Gliederung falsch: ${md}`);
+});
+
+await step('14.6b Mindmap wie FreeMind: fett, Symbol, Wolke, Attribut, Suche, Klappen, Export und Import als .mm', async () => {
+  await page.click('.mm-node:has-text("Handwerker")');
+  await page.keyboard.press('Control+b');
+  await page.click('.mm-bar button:has-text("Details")');
+  await page.click('.mm-panel button:has-text("Aussehen")');
+  await page.click('.mm-iconpick button[title="Idee"]');
+  await page.click('.mm-panel [aria-label="Farbe #d6e4ff"]');
+  await page.click('.mm-panel button:has-text("Inhalt")');
+  await page.click('.mm-panel button:has-text("Attribut")');
+  await page.fill('.mm-panel input[placeholder="Name"]', 'Zielgruppe');
+  await page.fill('.mm-panel input[placeholder="Wert"]', 'Elektro');
+  await page.click('.mm-panel label:has-text("Notiz")');
+  await page.click('.mm-panel [aria-label="Schließen"]');
+  await page.waitForSelector('.mm-node:has-text("Handwerker") .mm-attrs >> text=Zielgruppe: Elektro');
+  await page.waitForSelector('.mm-bar >> text=gespeichert', { timeout: 8000 });
+  await page.fill('.mm-search input', 'Planer');
+  await page.press('.mm-search input', 'Enter');
+  await page.waitForSelector('.mm-node.hit.sel:has-text("Planer")');
+  await page.fill('.mm-search input', '');
+  await page.click('.mm-node.d0');
+  await page.click('.mm-bar button:has-text("Ansicht")');
+  await page.click('.dropdown .item:has-text("Alles einklappen")');
+  await page.waitForSelector('.mm-count');
+  await page.click('.mm-bar button:has-text("Ansicht")');
+  await page.click('.dropdown .item:has-text("Alles aufklappen")');
+  await page.waitForSelector('.mm-node:has-text("Planer")');
+  await page.click('.mm-bar button:has-text("Datei")');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('.dropdown .item:has-text("FreeMind")')]);
+  const mm = await (await import('node:fs/promises')).readFile(await dl.path(), 'utf8');
+  if (!mm.includes('<map version="1.0.1">') || !mm.includes('BUILTIN="idea"') || !mm.includes('<cloud COLOR="#d6e4ff"/>') || !mm.includes('NAME="Zielgruppe"')) throw new Error(`FreeMind-Export unvollständig: ${mm}`);
+  // .mm wieder einlesen: neue Mindmap aus der Datei
+  await page.goto(`${BASE}/mindmaps`);
+  await page.click('button:has-text("Neue Mindmap")');
+  await page.click('.modal label:has-text("aus einer Datei")');
+  await page.setInputFiles('.modal input[type=file]', { name: 'import.mm', mimeType: 'application/xml', buffer: Buffer.from(mm) });
+  await page.waitForSelector('.modal >> text=4 Punkte');
+  await page.click('.modal button:has-text("Anlegen")');
+  await page.waitForSelector('.mm-node:has-text("Handwerker") .mm-attrs');
 });
 
 await step('14.7 Wissensdatenbank: Artikel aus Vorlage, „/“-Befehl, Unterseite, Suche, öffentlicher Link', async () => {
@@ -934,6 +998,47 @@ await step('14.16 Freigaben, E-Signatur, Auswertungen, Eigene Felder, Nachhaltig
   await page.waitForSelector('td:has-text("12.000 kWh")');
   await page.click('.tabs button:has-text("Übersicht")');
   await page.waitForSelector('.kpi >> text=Scope 2');
+});
+
+await step('14.17 Apps im Projekt: Reiter mit „+“ einblenden, Angebot im Projekt, Gesamtübersicht nach Projekt', async () => {
+  for (const a of ['crm', 'purchasing', 'service']) await api('POST', `/apps/${a}/install`, {});
+  const acc = await api('POST', '/crm/accounts', { name: 'Projektkunde GmbH', kind: 'customer' });
+  const p = await api('POST', '/projects', { name: 'Reiterprojekt', customerId: acc.id });
+  await page.goto(`${BASE}/projects/${p.id}?tab=overview`);
+  await page.click('.tab-add');
+  await page.click('.dropdown .item:has-text("Service")');
+  await page.waitForSelector('text=Keine Einsätze zu diesem Projekt');
+  await page.goto(`${BASE}/projects/${p.id}?tab=sales`);
+  await page.click('button:has-text("Angebot")');
+  await page.fill('.modal input[placeholder^="z. B. Roboterzelle"]', 'Anlage Reiterprojekt');
+  await page.fill('.modal input[placeholder="Leistung oder Artikel"]', 'Montage');
+  await page.click('.modal button:has-text("Speichern")');
+  await page.waitForSelector('td:has-text("Anlage Reiterprojekt")');
+  await page.goto(`${BASE}/crm?tab=quotes`);
+  await page.waitForSelector(`.pgroup-head:has-text("${p.number}")`);
+});
+
+await step('14.18 Lager und Einkauf: Lagerbestellung, Wareneingang mit Lieferschein ins Lager, Verlauf', async () => {
+  const loc = await api('POST', '/warehouse/locations', { name: 'Wareneingang', kind: 'warehouse' });
+  const art = await api('POST', '/warehouse/articles', { name: 'Kabelbinder 300 mm', minQty: 100, reorderQty: 500, defaultLocationId: loc.id });
+  await page.goto(`${BASE}/warehouse?tab=reorder`);
+  await page.waitForSelector('td:has-text("Kabelbinder 300 mm")');
+  await page.click('button:has-text("Position(en) in den Einkauf")');
+  await page.goto(`${BASE}/purchasing?tab=stock`);
+  await page.waitForSelector('td:has-text("Kabelbinder 300 mm")');
+  const item = (await api('GET', '/purchasing/stock/items')).find((x) => x.whArticleId === art.id);
+  await api('PATCH', `/purchasing/items/${item.id}`, { status: 'ordered' });
+  await page.reload();
+  await page.click('tr:has-text("Kabelbinder 300 mm") button:has-text("Wareneingang")');
+  await page.fill('.modal .field:has-text("Lieferschein") input', 'LS-2026-77');
+  await page.click('.modal button:has-text("Buchen")');
+  await page.waitForSelector('.modal', { state: 'detached' });
+  const a = await api('GET', `/warehouse/articles/${art.id}`);
+  if (a.stock !== 500) throw new Error(`Bestand ${a.stock} statt 500`);
+  await page.selectOption('.toolbar select >> nth=0', 'all');
+  await page.click('tr:has-text("Kabelbinder 300 mm")');
+  await page.click('.modal button.tab:has-text("Verlauf")');
+  await page.waitForSelector('.modal >> text=LS-2026-77');
 });
 
 await browser.close();

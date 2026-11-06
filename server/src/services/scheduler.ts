@@ -1,3 +1,4 @@
+import { mindmapReminders } from '../routes/mindmaps';
 import { inspectionReminders } from '../routes/inventory';
 import cron from 'node-cron';
 import type { FastifyBaseLogger } from 'fastify';
@@ -56,6 +57,7 @@ export function startScheduler(ctx: AppContext, log: FastifyBaseLogger) {
   cron.schedule('* * * * *', async () => {
     try { await checkAllRunning(ctx); } catch (e) { log.warn(e, 'Prüfung der Stempeluhr fehlgeschlagen'); }
     try { await sendCalendarReminders(ctx); } catch (e) { log.warn(e, 'Termin-Erinnerungen fehlgeschlagen'); }
+    try { await mindmapReminders(ctx); } catch (e) { log.warn(e, 'Mindmap-Erinnerungen fehlgeschlagen'); }
   });
 
   // Liefertermine im Einkauf (morgens)

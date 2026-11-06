@@ -170,3 +170,35 @@ describe('3D-Ansicht nativer CAD-Dateien', () => {
     expect(deflateSync(Buffer.alloc(1)).length).toBeGreaterThan(0);
   });
 });
+
+describe('Mindmaps mit FreeMind-Funktionen', () => {
+  it('Formatierung bleibt neben den Grunddaten erhalten, auch wenn eine ältere Version speichert', async () => {
+    const m = await admin.post('/api/mindmaps', { title: 'Ideen' });
+    const data = { id: 'root', text: 'Ideen', children: [
+      { id: 'a', text: 'Kosten', bold: true, size: 18, bg: '#ffeeaa', icons: ['idea', 'p1'], cloud: '#aaccff', arrows: [{ to: 'b', label: 'beeinflusst' }, { to: 'gibtsnicht' }],
+        attrs: [{ k: 'Budget', v: '5000' }], created: 1700000000000, reminder: '2026-01-01T08:00:00Z', children: [] },
+      { id: 'b', text: 'Nutzen', shape: 'fork', edgeStyle: 'linear', ref: 'a', evil: '<script>', children: [] }] };
+    const r = await admin.put(`/api/mindmaps/${m.id}`, { data, version: 1 });
+    const got = await admin.get(`/api/mindmaps/${m.id}`);
+    expect(got.data.children[0]).toMatchObject({ bold: true, size: 18, icons: ['idea', 'p1'], cloud: '#aaccff', arrows: [{ to: 'b', label: 'beeinflusst' }], attrs: [{ k: 'Budget', v: '5000' }] });
+    expect(got.data.children[1]).toMatchObject({ shape: 'fork', edgeStyle: 'linear', ref: 'a' });
+    expect(got.data.children[1].evil).toBeUndefined();
+    const [row] = await env.ctx.sql`select data from mindmaps where id = ${m.id}`;
+    expect(row!.data.children[0].bold).toBeUndefined(); // ältere Versionen sehen nur die Grunddaten
+    // ältere Version speichert (kennt die Zusatzangaben nicht) – sie bleiben trotzdem
+    await env.ctx.sql`update mindmaps set data = ${env.ctx.sql.json({ id: 'root', text: 'Ideen', children: [{ id: 'a', text: 'Kosten (neu)', children: [] }] } as never)}, version = version + 1 where id = ${m.id}`;
+    const after = await admin.get(`/api/mindmaps/${m.id}`);
+    expect(after.data.children[0]).toMatchObject({ text: 'Kosten (neu)', bold: true });
+    expect(r.version).toBe(2);
+  });
+
+  it('fällige Erinnerung wird einmal gemeldet', async () => {
+    const { mindmapReminders } = await import('../src/routes/mindmaps');
+    const m = await admin.post('/api/mindmaps', { title: 'Termine', data: { id: 'root', text: 'Termine', children: [{ id: 'x', text: 'Angebot nachfassen', reminder: new Date(Date.now() - 60_000).toISOString(), children: [] }] } });
+    await mindmapReminders(env.ctx);
+    await mindmapReminders(env.ctx);
+    const notes = await admin.get('/api/notifications');
+    expect(notes.filter((n: any) => n.title.includes('Angebot nachfassen'))).toHaveLength(1);
+    expect(notes.find((n: any) => n.title.includes('Angebot nachfassen')).link).toBe(`/mindmaps/${m.id}?node=x`);
+  });
+});

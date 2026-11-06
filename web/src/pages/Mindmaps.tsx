@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCrumbs } from '../components/Layout';
 import { useApi } from '../lib/hooks';
 import { del, patch, post, put } from '../lib/api';
@@ -9,6 +9,7 @@ import { Confirm, Empty, ErrorBox, Field, Loading, Modal, useAction } from '../c
 import { UserPicker } from '../components/UserPicker';
 import { Icon } from '../components/Icon';
 import { MindmapEditor, fromOutline, type MindNode } from '../modules/Mindmap';
+import { fromFreeMind } from '../modules/MindmapFormats';
 
 export default function MindmapsPage() {
   const { id } = useParams();
@@ -26,7 +27,7 @@ export function MindmapList({ projectId, canEdit = true }: { projectId?: string;
   const nav = useNavigate();
   const act = useAction();
   const { data } = useApi<any[]>(projectId ? `/mindmaps?projectId=${projectId}` : '/mindmaps');
-  const [create, setCreate] = useState<null | { title: string; outline: string; mode: 'empty' | 'outline' }>(null);
+  const [create, setCreate] = useState<null | { title: string; outline: string; mode: 'empty' | 'outline' | 'file'; file?: MindNode; fileName?: string }>(null);
   const [filter, setFilter] = useState<'' | 'mine' | 'shared'>('');
   const list = data?.filter((m) => !filter || (filter === 'mine' ? m.ownerId === me?.id : m.ownerId !== me?.id));
   return (
@@ -48,9 +49,10 @@ export function MindmapList({ projectId, canEdit = true }: { projectId?: string;
       </div>
       {create && (
         <Modal title="Neue Mindmap" onClose={() => setCreate(null)} footer={<><button className="btn" onClick={() => setCreate(null)}>Abbrechen</button>
-          <button className="btn primary" disabled={!create.title.trim() && !(create.mode === 'outline' && create.outline.trim())} onClick={async () => {
+          <button className="btn primary" disabled={!create.title.trim() && !(create.mode === 'outline' && create.outline.trim()) && !(create.mode === 'file' && create.file)} onClick={async () => {
             const body: { title: string; projectId: string | null; data?: MindNode } = { title: create.title.trim(), projectId: projectId ?? null };
             if (create.mode === 'outline' && create.outline.trim()) { body.data = fromOutline(create.outline, create.title.trim() || 'Mindmap'); body.title ||= body.data.text; }
+            if (create.mode === 'file' && create.file) { body.data = create.title.trim() ? { ...create.file, text: create.title.trim() } : create.file; body.title ||= body.data.text; }
             const r = await act(() => post<{ id: string }>('/mindmaps', body));
             if (r) nav(`/mindmaps/${r.id}`);
           }}>Anlegen</button></>}>
@@ -58,7 +60,19 @@ export function MindmapList({ projectId, canEdit = true }: { projectId?: string;
           <div className="row" style={{ gap: 12, marginBottom: 8 }}>
             <label className="row"><input type="radio" checked={create.mode === 'empty'} onChange={() => setCreate({ ...create, mode: 'empty' })} /> leer beginnen</label>
             <label className="row"><input type="radio" checked={create.mode === 'outline'} onChange={() => setCreate({ ...create, mode: 'outline' })} /> aus einer Gliederung</label>
+            <label className="row"><input type="radio" checked={create.mode === 'file'} onChange={() => setCreate({ ...create, mode: 'file' })} /> aus einer Datei</label>
           </div>
+          {create.mode === 'file' && <Field label="FreeMind- oder Freeplane-Datei (.mm), Gliederung (.md, .txt)">
+            <input type="file" accept=".mm,.md,.txt,.markdown" onChange={async (e) => {
+              const f = e.target.files?.[0]; if (!f) return;
+              try {
+                const text = await f.text();
+                const data = /\.mm$/i.test(f.name) ? fromFreeMind(text) : fromOutline(text, f.name.replace(/\.[^.]+$/, ''));
+                setCreate({ ...create, file: data, fileName: f.name });
+              } catch (err) { setCreate({ ...create, file: undefined, fileName: (err as Error).message }); }
+            }} />
+            {create.fileName && <div className="small muted">{create.file ? `${create.file.text}: ${countAll(create.file)} Punkte` : create.fileName}</div>}
+          </Field>}
           {create.mode === 'outline' && <Field label="Gliederung" hint="Eine Zeile pro Punkt, Unterpunkte eingerückt (z. B. aus Word, OneNote oder einer Markdown-Liste kopiert)">
             <textarea rows={8} className="mono" value={create.outline} onChange={(e) => setCreate({ ...create, outline: e.target.value })} placeholder={'- Logistik\n  - Spedition\n  - Aufbau\n- Werbung\n  - Flyer'} /></Field>}
         </Modal>
@@ -69,6 +83,7 @@ export function MindmapList({ projectId, canEdit = true }: { projectId?: string;
 
 function MindmapView({ id }: { id: string }) {
   const { data: m, error, reload } = useApi<any>(`/mindmaps/${id}`);
+  const [params] = useSearchParams();
   const [title, setTitle] = useState<string | null>(null);
   const [share, setShare] = useState(false);
   const [remove, setRemove] = useState(false);
@@ -89,7 +104,7 @@ function MindmapView({ id }: { id: string }) {
           {m.isOwner && <button className="btn ghost danger" onClick={() => setRemove(true)}><Icon name="trash" /></button>}
         </div>
       </div>
-      <MindmapEditor key={id} map={m} projectId={m.projectId} onSaved={setTitle} />
+      <MindmapEditor key={id} map={m} projectId={m.projectId} onSaved={setTitle} focusNode={params.get('node')} />
       {share && <ShareModal map={m} onClose={() => setShare(false)} onSaved={() => { setShare(false); reload(); }} />}
       {remove && <Confirm danger text={`Mindmap „${m.title}“ löschen?`} onClose={() => setRemove(false)} onConfirm={async () => { if (await act(() => del(`/mindmaps/${id}`), 'Gelöscht')) nav(m.projectId ? `/projects/${m.projectId}?tab=mindmaps` : '/mindmaps'); }} />}
     </div>
@@ -128,3 +143,5 @@ function ShareModal({ map, onClose, onSaved }: { map: any; onClose: () => void; 
     </Modal>
   );
 }
+
+const countAll = (n: MindNode): number => 1 + n.children.reduce((s, c) => s + countAll(c), 0);
