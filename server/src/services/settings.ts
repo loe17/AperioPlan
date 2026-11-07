@@ -136,6 +136,10 @@ export interface SettingsMap {
   cadMask: { fields: MaskField[]; catalogs: Catalog[]; askCreateDrawing: boolean; drawingTemplate: string; subassemblies: { code: string; label: string }[] };
   ldap: LdapSettings;
   mail: MailSettings;
+  /** Firmen-Signatur für alle (Platzhalter wie {Name}, {Position}); Pflicht oder nur Voreinstellung */
+  mailSignature: { enabled: boolean; mode: 'default' | 'mandatory'; html: string };
+  /** Anmeldung mit Microsoft bzw. Google für E-Mail-Konten (einmalig vom Administrator registriert) */
+  mailOAuth: { microsoftClientId: string; microsoftClientSecret: string; microsoftTenant: string; googleClientId: string; googleClientSecret: string };
   ai: AiSettings;
   backup: BackupSettings;
   time: { roundMinutes: number; maxDailyHours: number; holidayState: string; dailyHours: number };
@@ -268,6 +272,8 @@ export const DEFAULT_SETTINGS: SettingsMap = {
     userFilter: '(sAMAccountName={{username}})', displayNameAttr: 'displayName', emailAttr: 'mail',
     adminGroupDn: '', teamleadGroupDn: '', tlsRejectUnauthorized: true,
   },
+  mailSignature: { enabled: false, mode: 'default', html: '' },
+  mailOAuth: { microsoftClientId: '', microsoftClientSecret: '', microsoftTenant: 'common', googleClientId: '', googleClientSecret: '' },
   mail: {
     enabled: false, imapHost: '', imapPort: 993, imapSecure: true,
     smtpHost: '', smtpPort: 587, smtpSecure: false, user: '', password: '', from: '',
@@ -282,7 +288,7 @@ export const DEFAULT_SETTINGS: SettingsMap = {
 
 /** Felder, die nie an Nicht-Administratoren oder in Exporte im Klartext gehen */
 export const SECRET_PATHS: [keyof SettingsMap, string][] = [
-  ['ldap', 'bindPassword'], ['mail', 'password'], ['ai', 'apiKey'], ['security', 'internalSecret'],
+  ['ldap', 'bindPassword'], ['mail', 'password'], ['mailOAuth', 'microsoftClientSecret'], ['mailOAuth', 'googleClientSecret'], ['ai', 'apiKey'], ['security', 'internalSecret'],
   ['phone', 'fritzPassword'], ['phone', 'amiPassword'], ['phone', 'sipgateToken'],
 ];
 

@@ -19,6 +19,9 @@ export interface AuthUser {
   tools: Tool[];
   departmentId: string | null;
   phone: string;
+  mobile: string;
+  /** Berufsbezeichnung (vom Administrator beim Anlegen hinterlegt) */
+  jobTitle: string;
   avatarVersion: number;
   hasAvatar: boolean;
   totpEnabled: boolean;
@@ -55,7 +58,7 @@ export function setSessionCookie(reply: FastifyReply, token: string) {
 const ALL_TOOLS = [...TOOLS];
 export const userSelect = (sql: Sql) => sql`
   id, username, display_name as "displayName", email, role, must_change_password as "mustChangePassword",
-  locale, theme, auth_source as "authSource", department_id as "departmentId", phone, avatar_version as "avatarVersion", avatar_path is not null as "hasAvatar",
+  locale, theme, auth_source as "authSource", department_id as "departmentId", phone, mobile, job_title as "jobTitle", avatar_version as "avatarVersion", avatar_path is not null as "hasAvatar",
   totp_enabled as "totpEnabled", onboarded_at is not null as "onboarded", status_mode as "statusMode", show_last_seen as "showLastSeen",
   case when role = 'admin' then ${ALL_TOOLS}::text[]
        else coalesce(tools, (select default_tools from teams where id = users.department_id), ${ALL_TOOLS}::text[]) end as tools`;

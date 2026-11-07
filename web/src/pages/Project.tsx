@@ -10,7 +10,7 @@ import { useCrumbs } from '../components/Layout';
 import { useSession, useCan, useModuleOk } from '../session';
 import { useT } from '../i18n';
 import { fmtDate } from '../lib/format';
-import { Tabs, Avatar, ErrorBox, Loading, Modal, Field, PRIORITY_META, Progress, STATUS_META, StatusDot, StatusPill, useAction, UserSelect } from '../components/ui';
+import { Tabs, Avatar, Confirm, Dropdown, ErrorBox, Loading, Modal, Field, PRIORITY_META, Progress, STATUS_META, StatusDot, StatusPill, useAction, UserSelect } from '../components/ui';
 import { TaskPanel, quickCreateTask, type Task } from '../components/TaskPanel';
 import { Kanban } from '../modules/Kanban';
 import { ProjectPurchasing } from '../modules/Purchasing';
@@ -48,6 +48,7 @@ export default function ProjectPage() {
   const pluginTabs = (plugins ?? []).filter((p) => p.enabled && p.projectTab);
   const [filter, setFilter] = useState({ q: '', assignee: '', team: '', priority: '', status: '' });
   const [newTask, setNewTask] = useState(false);
+  const [removeTab, setRemoveTab] = useState<string | null>(null);
 
   const rawTab = params.get('tab') ?? rememberedTab(`project:${id}`) ?? project?.modules?.[0] ?? 'overview';
   const tab = rawTab === 'invoices' ? 'sales' : rawTab; // früherer Reiter „Rechnungen“ gehört jetzt zu „Verkauf“
@@ -82,7 +83,7 @@ export default function ProjectPage() {
   // Link aus einer Gesamtübersicht auf einen Reiter, der im Projekt (noch) nicht eingeblendet ist: vorübergehend zeigen
   const extraTab = !project.modules.includes(tab) && tab in MODULE_LABELS && tab !== 'invoices' && moduleOk(tab);
   const shownTabs: string[] = extraTab ? [...project.modules, tab] : project.modules;
-  const tabs = [
+  const allTabs = [
     { id: 'overview', label: `${t('Übersicht')}` },
     ...shownTabs.filter(moduleOk).map((m: string) => ({ id: m, label: t(MODULE_LABELS[m]?.label ?? m) })),
     ...pluginTabs.map((p) => ({ id: `plugin:${p.id}`, label: p.projectTab.label })),
@@ -90,6 +91,30 @@ export default function ProjectPage() {
     { id: 'audit', label: `${t('Änderungsprotokoll')}` },
     ...(project.canManage ? [{ id: 'settings', label: `${t('Einstellungen')}` }] : []),
   ];
+  // Reiter, die diese Person nur für sich ausgeblendet hat (der gerade geöffnete bleibt sichtbar)
+  const hiddenTabs: string[] = (project.hiddenTabs ?? []).filter((h: string) => allTabs.some((x) => x.id === h));
+  const tabs = allTabs.filter((x) => !hiddenTabs.includes(x.id) || x.id === tab);
+  const mayRemove = project.canManage && !project.locked;
+  const setHidden = async (list: string[], msg: string) => { if (await act(() => put(`/projects/${project.id}/hidden-tabs`, { tabs: list }), msg)) invalidate(`/projects/${project.id}`); };
+  const labelOf = (id: string) => allTabs.find((x) => x.id === id)?.label ?? id;
+  const tabMenu = (id: string, close: () => void) => {
+    if (id === 'overview' || id === 'settings') return null;
+    const isModule = (project.modules as string[]).includes(id);
+    return <>
+      <div className="small muted" style={{ padding: '4px 10px' }}>Reiter „{labelOf(id)}“</div>
+      <div className="item" onClick={() => { close(); if (tab === id) setTab('overview'); void setHidden([...hiddenTabs, id], 'Reiter für Sie ausgeblendet'); }}>
+        <Icon name="eye-off" /><span><b style={{ fontWeight: 550 }}>Für mich ausblenden</b><div className="small muted">Alle anderen sehen ihn weiter</div></span></div>
+      {isModule && mayRemove && <div className="item" onClick={() => { close(); setRemoveTab(id); }}>
+        <Icon name="trash" /><span><b style={{ fontWeight: 550 }}>Aus dem Projekt entfernen</b><div className="small muted">Für alle – die Inhalte bleiben gespeichert</div></span></div>}
+    </>;
+  };
+  const reorder = mayRemove ? (moved: string, before: string) => {
+    const mods = [...(project.modules as string[])];
+    if (!mods.includes(moved) || !mods.includes(before)) return;
+    mods.splice(mods.indexOf(moved), 1);
+    mods.splice(mods.indexOf(before), 0, moved);
+    void act(() => patch(`/projects/${project.id}`, { modules: mods })).then((r) => { if (r) invalidate(`/projects/${project.id}`); });
+  } : undefined;
   const isTaskView = TASK_VIEWS.includes(tab);
   const statusLabel = STATUS_OPTIONS.find(([v]) => v === project.status)?.[1];
 
@@ -133,7 +158,22 @@ export default function ProjectPage() {
         </div>
       )}
 
-      <Tabs value={tab} onChange={setTab} tabs={tabs} extra={project.canManage && !project.locked ? <AddTabButton project={project} onAdded={setTab} /> : undefined} />
+      <Tabs value={tab} onChange={setTab} tabs={tabs} menu={tabMenu} onReorder={reorder} extra={<>
+        {mayRemove && <AddTabButton project={project} onAdded={setTab} />}
+        {hiddenTabs.length > 0 && <Dropdown align="left" trigger={(toggle) => <button className="tab tabs-hidden-btn" onClick={toggle} title="Ausgeblendete Reiter wieder einblenden"><Icon name="eye-off" size={14} /> {hiddenTabs.length} ausgeblendet</button>}>
+          {(close) => <div style={{ minWidth: 220 }}>
+            <div className="small muted" style={{ padding: '4px 10px' }}>Nur für Sie ausgeblendet</div>
+            {hiddenTabs.map((h) => <div key={h} className="item" onClick={() => { close(); void setHidden(hiddenTabs.filter((x) => x !== h), 'Reiter wieder eingeblendet'); setTab(h); }}><Icon name="eye" /> {labelOf(h)}</div>)}
+            {hiddenTabs.length > 1 && <div className="item" onClick={() => { close(); void setHidden([], 'Alle Reiter wieder eingeblendet'); }}><Icon name="eye" /> Alle einblenden</div>}
+          </div>}
+        </Dropdown>}
+      </>} />
+      {removeTab && <Confirm danger confirmLabel="Für alle entfernen" onClose={() => setRemoveTab(null)}
+        text={<>Reiter „{labelOf(removeTab)}“ für alle aus dem Projekt entfernen?<br /><br />Die Inhalte bleiben gespeichert. Wird der Reiter später über „+“ wieder hinzugefügt, ist alles wieder da. Nur für sich selbst ausblenden geht über „Für mich ausblenden“.</>}
+        onConfirm={async () => {
+          const mods = (project.modules as string[]).filter((m) => m !== removeTab);
+          if (await act(() => patch(`/projects/${project.id}`, { modules: mods }), 'Reiter entfernt')) { if (tab === removeTab) setTab('overview'); setRemoveTab(null); invalidate(`/projects/${project.id}`); }
+        }} />}
 
       {isTaskView && tab !== 'gantt' && (
         <div className="toolbar">

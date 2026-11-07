@@ -17,6 +17,7 @@ import { ChangePasswordPage } from './Auth';
 import { AuditView } from '../modules/AuditView';
 import { ModuleChooser } from '../modules/ProjectSettings';
 import { PhoneSettings } from './SettingsPhone';
+import { MailOAuthSettings, MailSignatureSettings } from './SettingsMail';
 import { CadMaskSettings, BackupSettings, UpdateSettings, MailSettings, AiSettings, HolidaySettings, StorageSettings, ExtensionSettings, ResourcesSettings } from './SettingsExtra';
 import { EntityIcon, Icon, IconPicker } from '../components/Icon';
 import { DocumentTemplateSettings } from '../modules/Documents';
@@ -60,6 +61,8 @@ export default function SettingsPage() {
           <SettingsNav to="/settings/holidays"><Icon name="holiday" /> Feiertage</SettingsNav>
           <SettingsNav to="/settings/ldap"><Icon name="building" /> {t('Firmen-Login')} (LDAP)</SettingsNav>
           <SettingsNav to="/settings/mail"><Icon name="mail" /> E-Mail-Versand (System)</SettingsNav>
+          <SettingsNav to="/settings/mail-signature"><Icon name="signature" /> Firmen-Signatur</SettingsNav>
+          <SettingsNav to="/settings/mail-login"><Icon name="key" /> E-Mail-Anmeldung</SettingsNav>
           {can('phone') && <SettingsNav to="/settings/phone"><Icon name="phone" /> Telefonie</SettingsNav>}
           <SettingsNav to="/settings/ai"><Icon name="sparkles" /> KI-Anbindung</SettingsNav>
           <SettingsNav to="/settings/extensions"><Icon name="assembly" /> Erweiterungen</SettingsNav>
@@ -91,6 +94,8 @@ export default function SettingsPage() {
             <Route path="invoicing" element={<Suspense fallback={null}><InvoicingSettings /></Suspense>} />
             <Route path="ldap" element={<Ldap />} />
             <Route path="mail" element={<MailSettings />} />
+            <Route path="mail-signature" element={<MailSignatureSettings />} />
+            <Route path="mail-login" element={<MailOAuthSettings />} />
             <Route path="ai" element={<AiSettings />} />
             <Route path="phone" element={<PhoneSettings />} />
             <Route path="backup" element={<BackupSettings />} />
@@ -172,7 +177,7 @@ function Users() {
     <div>
       <div className="page-head"><h1>{t('Benutzer')}</h1><div className="actions">
         <input placeholder="Suchen …" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 200 }} />
-        <button className="btn primary" onClick={() => setEdit({ username: '', displayName: '', email: '', phone: '', role: 'member', password: '', vacationDaysPerYear: 30, active: true, teamIds: [], departmentId: '', tools: null })}><Icon name="plus" /> Benutzer anlegen</button>
+        <button className="btn primary" onClick={() => setEdit({ username: '', displayName: '', email: '', phone: '', jobTitle: '', role: 'member', password: '', vacationDaysPerYear: 30, active: true, teamIds: [], departmentId: '', tools: null })}><Icon name="plus" /> Benutzer anlegen</button>
       </div></div>
       {!teams.length && <div className="hint" style={{ marginBottom: 12 }}><Icon name="info" /> Bitte zuerst unter <b>Abteilungen &amp; Teams</b> mindestens eine Abteilung anlegen – jeder Benutzer gehört zu einer Abteilung.</div>}
       <div className="table-wrap"><table className="table">
@@ -193,7 +198,7 @@ function Users() {
           {edit.id && edit.id !== me!.id && <button className="btn danger" style={{ marginRight: 'auto' }} onClick={() => { setRemove(edit); setTransferTo(''); }}><Icon name="trash" /> Löschen …</button>}
           <button className="btn" onClick={() => setEdit(null)}>{t('Abbrechen')}</button>
           <button className="btn primary" onClick={async () => {
-            const body = { displayName: edit.displayName, email: edit.email || null, phone: edit.phone ?? '', role: edit.role, vacationDaysPerYear: Number(edit.vacationDaysPerYear),
+            const body = { displayName: edit.displayName, email: edit.email || null, phone: edit.phone ?? '', jobTitle: edit.jobTitle ?? '', role: edit.role, vacationDaysPerYear: Number(edit.vacationDaysPerYear),
               departmentId: edit.departmentId || null, tools: edit.tools, ...(edit.password ? { password: edit.password } : {}) };
             const ok = await act(() => (edit.id ? patch(`/users/${edit.id}`, { ...body, active: edit.active }) : post('/users', { ...body, username: edit.username, password: edit.password, teamIds: edit.teamIds })), edit.id ? 'Benutzer gespeichert' : 'Benutzer angelegt');
             if (ok) { setEdit(null); reload(); refreshLists(); }
@@ -204,6 +209,7 @@ function Users() {
             <Field label="Anzeigename" required><input value={edit.displayName} onChange={(e) => setEdit({ ...edit, displayName: e.target.value })} /></Field>
             <Field label="E-Mail"><input value={edit.email ?? ''} onChange={(e) => setEdit({ ...edit, email: e.target.value })} /></Field>
             <Field label="Telefon"><input value={edit.phone ?? ''} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} /></Field>
+            <Field label="Berufsbezeichnung" hint="z. B. Konstrukteur – erscheint in der Firmen-Signatur"><input value={edit.jobTitle ?? ''} onChange={(e) => setEdit({ ...edit, jobTitle: e.target.value })} /></Field>
             <Field label="Abteilung" required={edit.role !== 'guest'} hint="Der Benutzer wird automatisch Mitglied dieses Teams">
               <select value={edit.departmentId} onChange={(e) => setEdit({ ...edit, departmentId: e.target.value })}>
                 <option value="">– bitte wählen –</option>{teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}

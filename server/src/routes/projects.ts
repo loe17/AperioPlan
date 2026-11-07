@@ -102,6 +102,18 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
     return project;
   });
 
+  /** Reiter nur für sich ausblenden (alle anderen sehen ihn weiter) */
+  app.put('/projects/:id/hidden-tabs', async (req) => {
+    const u = requireUser(req);
+    const { id } = parse(idParam, req.params);
+    await projectAccess(sql, u, id, 'read', { allowLocked: true });
+    const b = parse(z.object({ tabs: z.array(z.string().max(80)).max(100) }), req.body);
+    const tabs = [...new Set(b.tabs.filter((t) => t !== 'overview' && t !== 'settings'))];
+    await sql`insert into project_tab_hidden (user_id, project_id, tabs) values (${u.id}, ${id}, ${tabs})
+      on conflict (user_id, project_id) do update set tabs = excluded.tabs`;
+    return { ok: true, tabs };
+  });
+
   app.get('/projects/:id', async (req) => {
     const u = requireUser(req);
     const { id } = parse(idParam, req.params);
@@ -115,7 +127,8 @@ export default async function projectRoutes(app: FastifyInstance, ctx: AppContex
     const parent = p!.parentId ? (await sql`select id, number, name, icon from projects where id = ${p!.parentId}`)[0] ?? null : null;
     const [chat] = await sql`select id from chat_channels where project_id = ${id} and kind = 'project'`;
     const storage = await ctx.settings.get('storage');
-    return { ...p, members, children, parent, chatChannelId: chat?.id ?? null, canEdit: access.canEdit, canManage: access.canManage, locked: access.locked,
+    const [hidden] = await sql<{ tabs: string[] }[]>`select tabs from project_tab_hidden where user_id = ${u.id} and project_id = ${id}`;
+    return { ...p, members, children, parent, chatChannelId: chat?.id ?? null, canEdit: access.canEdit, canManage: access.canManage, locked: access.locked, hiddenTabs: hidden?.tabs ?? [],
       storageLocation: /^@([a-z0-9_-]+)\//.exec(String(p!.folderPath ?? ''))?.[1] ?? 'main',
       networkPath: windowsPath(storage, p!.folderPath as string | null) };
   });

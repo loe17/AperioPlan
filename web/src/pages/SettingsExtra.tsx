@@ -1,3 +1,4 @@
+import { TestSteps, useMailTest } from '../modules/mail/MailSetup';
 import { useState } from 'react';
 import { useApi } from '../lib/hooks';
 import { post, put, patch, invalidate } from '../lib/api';
@@ -557,15 +558,26 @@ export function MailSettings() {
   const { refreshLists } = useSession();
   const s = useAdminSettings('mail');
   const [result, setResult] = useState<string | null>(null);
+  const test = useMailTest();
   if (!s.value) return null;
   const v = s.value;
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => s.setValue({ ...v, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.type === 'number' ? Number(e.target.value) : e.target.value });
+  const address = (String(v.from).match(/<([^>]+)>/)?.[1] ?? (String(v.from).includes('@') ? String(v.from).trim() : String(v.user).includes('@') ? String(v.user).trim() : '')).trim();
   return (
     <div style={{ maxWidth: 720 }}>
       <h1 style={{ marginBottom: 8 }}>E-Mail-Konto</h1>
-      <p className="muted">Gemeinsames Projektpostfach (z. B. projekte@firma.de). E-Mails werden alle 5 Minuten abgerufen und anhand der Projektnummer im Betreff automatisch zugeordnet.</p>
+      <p className="muted">Gemeinsames Projektpostfach (z. B. projekte@firma.de). E-Mails werden alle 5 Minuten abgerufen und anhand der Projektnummer im Betreff automatisch zugeordnet. Persönliche Postfächer richtet jede Person selbst unter <b>E-Mail</b> mit dem Assistenten ein.</p>
       <label className="row" style={{ margin: '12px 0' }}><input type="checkbox" checked={v.enabled} onChange={set('enabled')} /> E-Mail-Verwaltung aktivieren</label>
       <div className="grid3">
+        <Field label="Benutzer"><input value={v.user} onChange={set('user')} placeholder="projekte@firma.de" /></Field>
+        <Field label="Passwort"><input type="password" value={v.password} onChange={set('password')} /></Field>
+        <Field label="Absender"><input value={v.from} onChange={set('from')} placeholder="Projekte <projekte@firma.de>" /></Field>
+      </div>
+      <button className="btn ghost sm" disabled={!address} title={address ? undefined : 'Erst Benutzer oder Absender mit E-Mail-Adresse eintragen'} onClick={async () => {
+        const d = await act(() => post<{ settings: { imapHost: string; imapPort: number; imapSecure: boolean; smtpHost: string; smtpPort: number; smtpSecure: boolean }; note: string }>('/mailbox/setup/discover', { email: address }));
+        if (d) { s.setValue({ ...v, imapHost: d.settings.imapHost, imapPort: d.settings.imapPort, imapSecure: d.settings.imapSecure, smtpHost: d.settings.smtpHost, smtpPort: d.settings.smtpPort, smtpSecure: d.settings.smtpSecure }); setResult(d.note); }
+      }}><Icon name="search" /> Server automatisch ermitteln</button>
+      <div className="grid3" style={{ marginTop: 8 }}>
         <Field label="IMAP-Server"><input value={v.imapHost} onChange={set('imapHost')} /></Field>
         <Field label="IMAP-Port"><input type="number" value={v.imapPort} onChange={set('imapPort')} /></Field>
         <Field label="IMAP SSL"><input type="checkbox" checked={v.imapSecure} onChange={set('imapSecure')} /></Field>
@@ -573,16 +585,14 @@ export function MailSettings() {
         <Field label="SMTP-Port"><input type="number" value={v.smtpPort} onChange={set('smtpPort')} /></Field>
         <Field label="SMTP SSL (465)"><input type="checkbox" checked={v.smtpSecure} onChange={set('smtpSecure')} /></Field>
       </div>
-      <div className="grid3">
-        <Field label="Benutzer"><input value={v.user} onChange={set('user')} /></Field>
-        <Field label="Passwort"><input type="password" value={v.password} onChange={set('password')} /></Field>
-        <Field label="Absender"><input value={v.from} onChange={set('from')} placeholder="Projekte <projekte@firma.de>" /></Field>
-      </div>
       <div className="row">
         <button className="btn primary" onClick={async () => { await act(() => s.save(v), 'Gespeichert'); refreshLists(); }}>Speichern</button>
-        <button className="btn" onClick={async () => { const r = await act(() => post('/settings/mail/test', v)); if (r) setResult(r.message); }}>Verbindung testen</button>
+        <button className="btn" onClick={async () => { const r = await act(() => post('/settings/mail/test', v)); if (r) setResult(r.message); }}>Kurz testen</button>
+        <button className="btn" disabled={!address} onClick={() => act(() => test.start({ system: true, email: address, displayName: String(v.from).replace(/<.*$/, '').replace(/"/g, '').trim(), imapHost: v.imapHost, imapPort: v.imapPort, imapSecure: v.imapSecure,
+          smtpHost: v.smtpHost, smtpPort: v.smtpPort, smtpSecure: v.smtpSecure, username: v.user, password: v.password }))}><Icon name="send" /> Gründlich testen (mit Test-E-Mail)</button>
       </div>
       {result && <div className="card" style={{ marginTop: 12 }}>{result}</div>}
+      {test.run && <div style={{ marginTop: 12 }}><TestSteps steps={test.run.steps} />{test.run.changes.map((c) => <div key={c} className="small"><Icon name="info" /> {c} – bitte oben übernehmen.</div>)}</div>}
     </div>
   );
 }

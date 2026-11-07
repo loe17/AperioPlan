@@ -2,14 +2,14 @@
 
 Der Testplan ist zweigeteilt:
 
-* **Automatische Server-Tests** (`pnpm test`, 218 Prüfungen: 185 Server in 38 Dateien, 33 Fachlogik) laufen gegen eine echte PostgreSQL-Datenbank.
-* **Browser-Test des Testplans** (`node e2e/testplan.mjs`, 53 Prüfungen) bedient die Oberfläche wie ein Mensch – inklusive echtem Videoanruf zwischen zwei Browsern.
+* **Automatische Server-Tests** (`pnpm test`, 235 Prüfungen: 202 Server in 39 Dateien, 33 Fachlogik) laufen gegen eine echte PostgreSQL-Datenbank.
+* **Browser-Test des Testplans** (`node e2e/testplan.mjs`, 60 Prüfungen) bedient die Oberfläche wie ein Mensch – inklusive echtem Videoanruf zwischen zwei Browsern. Für die E-Mail-Schritte 15.1–15.4 wird der Server mit `APERIO_MAIL_FAKE=1` gestartet und der Test mit `E2E_MAIL_FAKE=1`: Dann beantwortet ein nachgebildeter Mail-Server alle Adressen auf `….aperio.test` (auch absichtlich mit Fehlern wie falschem Passwort oder „zu vielen Verbindungen“).
 
 Beide laufen bei jedem Hochladen nach GitHub automatisch (GitHub Actions, `.github/workflows/ci.yml`), der Browser-Test lokal gegen eine frische Instanz.
 
-## Ergebnis vom 03.11.2026 (Version 0.2.0)
+## Ergebnis vom 07.11.2026 (Version 0.4.0)
 
-Alle 53 Schritte des Browser-Tests und alle 218 Server- und Fachlogik-Tests bestanden (Version 0.3.0).
+Alle 60 Schritte des Browser-Tests und alle 235 Server- und Fachlogik-Tests bestanden (Version 0.4.0).
 
 | # | Prüfung | Ergebnis |
 |---|---|---|
@@ -41,7 +41,7 @@ Alle 53 Schritte des Browser-Tests und alle 218 Server- und Fachlogik-Tests best
 | 10.2 | Kalkulation: Angebotskalkulation rechnet beim Tippen | bestanden |
 | 11.1 | Regelsatz Deutschland laden, Stempeluhr zeigt die Regeln | bestanden |
 | 12.1 | Ordnerstruktur mit Unterordner anlegen | bestanden |
-| 12.2 | Persönliches Postfach fordert zur Einrichtung auf | bestanden |
+| 12.2 | Persönliches Postfach: Assistent erkennt den Anbieter und nennt, was zu tun ist | bestanden |
 | 12.3 | KI-Anbieter hinzufügen | bestanden |
 | 12.4 | Änderungsprotokoll als Excel herunterladen | bestanden |
 | 13.1 | PCB-Bridge: Leiterplatte über die Speichermaske anlegen | bestanden |
@@ -66,6 +66,13 @@ Alle 53 Schritte des Browser-Tests und alle 218 Server- und Fachlogik-Tests best
 | 14.16 | Freigaben, E-Signatur, Auswertungen, Eigene Felder, Nachhaltigkeit: Antrag, Unterschrift, Bericht, Feld, CO₂ | bestanden |
 | 14.17 | Apps im Projekt: Reiter mit „+“ einblenden, Angebot im Projekt, Gesamtübersicht nach Projekt | bestanden |
 | 14.18 | Lager und Einkauf: Lagerbestellung, Wareneingang mit Lieferschein ins Lager, Verlauf | bestanden |
+| 15.1 | E-Mail-Assistent: Verbindungstest mit Test-E-Mail, Konto speichern | bestanden |
+| 15.2 | Falsches Passwort: Assistent erklärt den Fehler und führt zurück | bestanden |
+| 15.3 | Signatur mit Platzhaltern, E-Mail an eine Abteilung über das Adressbuch | bestanden |
+| 15.4 | Anzeigename ändern wirkt sofort | bestanden |
+| 15.5 | Seitenleiste: kein Posteingang im Schreibtisch, Werkzeug-Favorit anlegen | bestanden |
+| 15.6 | Kopfzeile: Stempeluhr mittig zwischen Pfad und Suche | bestanden |
+| 15.7 | Projekt: Reiter für sich ausblenden und wieder einblenden | bestanden |
 
 Zusätzlich durch Server-Tests abgedeckt: Teilprojekt-/Dokument-/Jahresnummern, Sichtbarkeit und Rechte,
 Abhängigkeiten mit Kreisbezugsschutz, Erwähnungen, Dateiversionen und Explorer-Abgleich, Pfadschutz,
@@ -86,6 +93,12 @@ Seit 0.3.0 zusätzlich: Projekt-Reiter bleiben beim Wechsel auf eine ältere Ver
 Lagerbestellungen und Wareneingang mit Seriennummern, Charge und Lieferschein, Verlauf je Bestellposition,
 E-Rechnung einem Projekt zuordnen, Vorschaubild aus nativen CAD-Dateien (auch Compound Files und Windows-Bitmaps),
 Umwandlungsauftrag für die 3D-Ansicht, Mindmap-Formatierung neben den Grunddaten und Mindmap-Erinnerungen.
+Seit 0.4.0 zusätzlich: Einrichtungsassistent gegen einen nachgebildeten Mail-Server (Anbieter-Erkennung, falsches
+Passwort, unbekannter Server, Ordner ohne Kennzeichnung, Test-E-Mail hin und zurück), Senden ohne Doppelversand,
+automatische Wiederholung bei „zu vielen Verbindungen“, Postausgang mit Nachsenden, sofort wirksamer Anzeigename,
+mehrere Postfächer (ältere Versionen sehen weiterhin genau eines), Signaturen mit Platzhaltern und Bereinigung von
+eingefügtem HTML, Firmen-Signatur als Pflicht, Adressbuch mit Gruppen je Abteilung (auch Unterteams),
+Werkzeug-Favoriten und nur für sich ausgeblendete Reiter.
 
 Das Installations- und Deinstallationsskript wurde mit `shellcheck` geprüft und in allen drei
 HTTPS-Varianten (eigenes Zertifikat, Let's Encrypt über DNS, Let's Encrypt öffentlich) mit

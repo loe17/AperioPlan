@@ -71,7 +71,7 @@ export function Profile() {
   const t = useT();
   const act = useAction();
   const { me, refresh, theme, setTheme, teams } = useSession();
-  const [d, setD] = useState({ displayName: me!.displayName, email: me!.email ?? '', phone: me!.phone ?? '' });
+  const [d, setD] = useState({ displayName: me!.displayName, email: me!.email ?? '', phone: me!.phone ?? '', mobile: me!.mobile ?? '' });
   const dept = teams.find((x) => x.id === me!.departmentId);
   const ldap = me!.authSource === 'ldap';
   return (
@@ -79,14 +79,16 @@ export function Profile() {
       <h1 style={{ marginBottom: 16 }}>{t('Profil')}</h1>
       <div className="card" style={{ marginBottom: 16 }}>
         <AvatarEditor />
-        <div className="small muted" style={{ marginTop: 10 }}>{me!.username} · {ROLE_LABEL[me!.role]} · {dept ? `Abteilung ${dept.name}` : 'keine Abteilung'} · {ldap ? 'Firmenkonto' : 'lokales Konto'}</div>
+        <div className="small muted" style={{ marginTop: 10 }}>{me!.username} · {ROLE_LABEL[me!.role]}{me!.jobTitle ? ` · ${me!.jobTitle}` : ''} · {dept ? `Abteilung ${dept.name}` : 'keine Abteilung'} · {ldap ? 'Firmenkonto' : 'lokales Konto'}</div>
       </div>
       <div className="grid2">
         <Field label="Anzeigename"><input value={d.displayName} onChange={(e) => setD({ ...d, displayName: e.target.value })} disabled={ldap} /></Field>
         <Field label="E-Mail"><input type="email" value={d.email} onChange={(e) => setD({ ...d, email: e.target.value })} disabled={ldap} /></Field>
         <Field label="Telefon"><input value={d.phone} onChange={(e) => setD({ ...d, phone: e.target.value })} placeholder="z. B. +49 7723 1234-56" /></Field>
+        <Field label="Mobil"><input value={d.mobile} onChange={(e) => setD({ ...d, mobile: e.target.value })} placeholder="z. B. +49 170 1234567" /></Field>
       </div>
-      <button className="btn primary" onClick={async () => { if (await act(() => patch('/me', { displayName: d.displayName, email: d.email || null, phone: d.phone }), 'Profil gespeichert')) await refresh(); }}>{t('Speichern')}</button>
+      <div className="hint" style={{ marginBottom: 10 }}>Name, Berufsbezeichnung, Telefon und Mobilnummer erscheinen automatisch in Ihrer E-Mail-Signatur, wenn diese Platzhalter verwendet. Die Berufsbezeichnung pflegt der Administrator.</div>
+      <button className="btn primary" onClick={async () => { if (await act(() => patch('/me', { displayName: d.displayName, email: d.email || null, phone: d.phone, mobile: d.mobile }), 'Profil gespeichert')) await refresh(); }}>{t('Speichern')}</button>
 
       <h2 style={{ margin: '28px 0 12px' }}>Darstellung</h2>
       <div className="grid2">

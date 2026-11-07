@@ -20,21 +20,24 @@ Unter **Einstellungen → Profil** stellen Sie Sprache (Deutsch/Englisch) und Fa
 
 ```
 ┌────────────────────┬──────────────────────────────────────────────────────┐
-│ Seitenleiste       │ Brotkrumen-Pfad        Blitzsuche   Glocke   Profil  │
+│ Seitenleiste       │ Pfad          Stempeluhr      Blitzsuche Glocke Profil│
 │  Mein Schreibtisch ├──────────────────────────────────────────────────────┤
 │  Favoriten         │                                                      │
 │  Meine Teams       │                 Arbeitsbereich                       │
+│  Werkzeug-Favoriten│                                                      │
 │  Werkzeuge         │                                                      │
 │  App-Store         │                                                      │
 │  Einstellungen     │                                                      │
-│ v0.3.0 ● Verbunden │                                                      │
+│ v0.4.0 ● Verbunden │                                                      │
 └────────────────────┴──────────────────────────────────────────────────────┘
 ```
 
 * **Seitenleiste:** Schnellzugriff auf Ihren Schreibtisch, Ihre Teams mit Projekten und die Werkzeuge. Ein Klick auf eine Überschrift (z. B. **Werkzeuge**, **Favoriten**, **Meine Teams**) klappt den Abschnitt ein oder aus – AperioPlan merkt sich das. App-Store und Einstellungen stehen getrennt ganz unten. Mit `«` oder **Strg + \\** klappen Sie die ganze Leiste ein, mit dem Menü-Symbol wieder auf.
+* **Werkzeug-Favoriten:** Fahren Sie in der Liste **Werkzeuge** mit der Maus über ein Werkzeug und klicken Sie auf den **Stern** – es erscheint oben im eigenen Bereich **Werkzeug-Favoriten**. Die Reihenfolge ändern Sie durch Ziehen, mit dem Stern nehmen Sie es wieder heraus. Die Projekt-Favoriten bleiben getrennt davon unter **Favoriten**. Die Auswahl gilt an jedem Rechner.
 * **Brotkrumen-Pfad:** zeigt immer, wo Sie gerade sind – jeder Teil ist anklickbar.
+* **Stempeluhr:** steht in der Mitte der Kopfzeile, zwischen Pfad und Suchfeld. Ein Klick stempelt ein, wechselt das Projekt oder stempelt aus.
 * **Blitzsuche – Strg + K:** zwei Buchstaben genügen, um zu einem Projekt, einer Baugruppe, einer Aufgabe, Datei oder einem Kollegen zu springen. Mit Pfeiltasten auswählen, Enter öffnet.
-* **Glocke:** neue Aufgaben, Erwähnungen, Freigaben und Genehmigungen.
+* **Glocke:** alle Benachrichtigungen – neue Aufgaben, Erwähnungen, Freigaben, Genehmigungen. **Alle anzeigen** öffnet die vollständige Liste.
 * **Detail-Fenster:** Ein Klick auf eine Aufgabe, ein Bauteil oder eine Idee öffnet rechts eine Karte mit allen Details. Klick daneben oder `Esc` schließt sie.
 * **Version unten links:** Ein Klick zeigt „Was ist neu?“.
 
@@ -42,9 +45,9 @@ Unter **Einstellungen → Profil** stellen Sie Sprache (Deutsch/Englisch) und Fa
 
 ![Mein Schreibtisch](screenshots/02-schreibtisch.png)
 
-* **Übersicht:** Begrüßung, Stempeluhr, Ihre offenen Aufgaben, Favoriten.
-* **Posteingang:** alle Benachrichtigungen.
-* **Chat** und **E-Mail:** Ihre Unterhaltungen und Ihr Postfach.
+* **Übersicht:** Begrüßung, Stempeluhr, Ihre offenen Aufgaben, Benachrichtigungen, Favoriten.
+* **Chat** und **E-Mail:** Ihre Unterhaltungen und Ihre Postfächer (siehe Kapitel 9a).
+* Benachrichtigungen sehen Sie über die **Glocke** rechts oben.
 * **Mein Kalender:** Fristen Ihrer Aufgaben, eigene Abwesenheiten, Feiertage.
 * **Stempeluhr, Urlaubskonto, Private Notizen** (nur für Sie sichtbar).
 
@@ -105,6 +108,17 @@ Viele Apps aus dem App-Store haben zusätzlich einen eigenen Reiter im Projekt. 
 ![Verkauf im Projekt](screenshots/39-projekt-verkauf.png)
 
 Reiter erscheinen nur für Apps, die bei Ihnen installiert sind und die Sie benutzen dürfen. **Weitere Reiter einblenden:** Projektverantwortliche klicken auf **＋** am Ende der Reiterleiste und wählen die App. Welche Reiter ein Projekt hat und in welcher Reihenfolge, steht unter **Einstellungen** im Projekt.
+
+**Reiter ausblenden oder entfernen:** Rechtsklick auf einen Reiter – oder auf **⋯** neben dem geöffneten Reiter:
+
+![Reiter ausblenden oder entfernen](screenshots/50-reiter-ausblenden.png)
+
+| Möglichkeit | Wirkung | Wer darf das |
+|---|---|---|
+| **Für mich ausblenden** | Der Reiter verschwindet nur bei Ihnen, alle anderen sehen ihn weiter | jedes Projektmitglied |
+| **Aus dem Projekt entfernen** | Der Reiter verschwindet für alle | Projektverantwortliche, Teamleitung, Administratoren (nicht bei gesperrten Projekten) |
+
+Beim Entfernen bleiben alle Inhalte gespeichert – wird der Reiter später über **＋** wieder hinzugefügt, ist alles wieder da. Für Sie ausgeblendete Reiter holen Sie über den kleinen Knopf **„… ausgeblendet“** am Ende der Reiterleiste zurück. **Übersicht** und **Einstellungen** lassen sich nicht ausblenden. Wer Reiter entfernen darf, kann sie in der Leiste auch per Ziehen umsortieren.
 
 ### Aufgaben
 
@@ -244,7 +258,64 @@ Im Detail-Fenster einer Baugruppe: **Stückliste** – mehrstufig oder als Menge
 
 * **Chat:** Projekt-, Team- und Direktnachrichten in Echtzeit. Dateien per Büroklammer oder Einfügen (Strg + V) teilen. Ungelesene Nachrichten zeigt eine rote Zahl.
 * **Videoanruf:** Im Chat **Videoanruf** – Kollegen erhalten eine Einladung. Mit **Bildschirm teilen** besprechen Sie z. B. gemeinsam ein CAD-Modell. Keine Zusatzsoftware nötig.
-* **E-Mail:** Das Projektpostfach unter **E-Mail**. E-Mails Projekten und Aufgaben zuordnen, beantworten, Anhänge landen im Projektordner. Tipp: Die Projektnummer im Betreff (`[0100]`) sorgt für automatische Zuordnung.
+* **E-Mail:** Ihre Postfächer und – falls eingerichtet – das gemeinsame Projektpostfach unter **E-Mail**. E-Mails Projekten und Aufgaben zuordnen, beantworten, Anhänge landen im Projektordner. Tipp: Die Projektnummer im Betreff (`[0100]`) sorgt für automatische Zuordnung. Alles Weitere im nächsten Kapitel.
+
+## 9a. E-Mail
+
+![Postfach](screenshots/45-postfach.png)
+
+### Postfach einrichten (Assistent)
+
+![Einrichtungsassistent: Verbindungstest mit Test-E-Mail](screenshots/46-e-mail-assistent.png)
+
+Unter **E-Mail → E-Mail-Konto einrichten** (oder später **Postfach hinzufügen**) führt ein Assistent in fünf Schritten durch die Einrichtung:
+
+1. **Adresse und Name:** E-Mail-Adresse und Ihr Name, wie Empfänger ihn sehen sollen. Darunter steht gleich: *So sehen Empfänger Sie: Max Muster <max@firma.de>*.
+2. **Anbieter:** AperioPlan erkennt den Anbieter selbst – aus einer eingebauten Liste, aus den Einstellungen, die viele Anbieter im Internet bereitstellen, und aus dem Eintrag Ihrer Domain. Passt etwas nicht, wählen Sie den Anbieter aus der Liste oder klicken auf **Selbst eintragen**.
+3. **Anmelden:** Passwort eingeben. Was der jeweilige Anbieter zusätzlich verlangt, steht direkt darunter (siehe Tabelle). Bei Microsoft und Google gibt es – sofern der Administrator es eingerichtet hat – den Knopf **Mit Microsoft anmelden** bzw. **Mit Google anmelden**.
+4. **Verbindungstest:** Eine Liste hakt sich ab – Server für eingehende Post, Anmeldung, Ordner, Server für ausgehende Post, **Test-E-Mail verschickt** und **Test-E-Mail angekommen**. Die Test-E-Mail geht an Sie selbst und landet danach im Papierkorb. Klappt ein Schritt nicht, steht dort in Klartext, woran es liegt und was Sie tun können; **Zu Schritt …** führt direkt zur richtigen Stelle. Passt ein Anschluss nicht, probiert der Assistent den anderen üblichen selbst aus.
+5. **Fertig:** Die E-Mails werden mit Fortschrittsanzeige abgerufen.
+
+| Anbieter | Was Sie tun müssen |
+|---|---|
+| **netcup** | Nur das Passwort, Benutzername ist die volle E-Mail-Adresse. Der Servername (meist `mx….netcup.net`) wird meist automatisch erkannt; sonst steht er im netcup-Kundenbereich bei der E-Mail-Adresse unter **Mailprogramme konfigurieren**. |
+| IONOS, Strato, Hetzner, All-Inkl, mailbox.org, Posteo, freenet | Nur das Passwort |
+| GMX, WEB.DE | Einmalig im Postfach des Anbieters den Zugriff **per Mailprogramm (POP3/IMAP)** erlauben |
+| Telekom (T-Online) | Das eigene **E-Mail-Passwort** verwenden, nicht das Login-Passwort |
+| Gmail / Google Workspace | **Mit Google anmelden** oder ein **App-Passwort** (geht nur mit Zwei-Schritt-Bestätigung) |
+| Microsoft 365, Outlook.com | **Mit Microsoft anmelden** – das Passwort allein reicht bei Microsoft nicht mehr |
+| Yahoo, iCloud, AOL, Fastmail | Beim Anbieter ein **App-Passwort** erzeugen |
+| Eigener Server, Firmen-Exchange | Werte von Ihrem IT-Dienstleister unter **Selbst eintragen** |
+
+**Mehrere Postfächer:** Mit **Postfach hinzufügen** binden Sie weitere ein, z. B. zusätzlich *info@*. Links oben schalten Sie zwischen den Postfächern um, beim Schreiben wählen Sie unter **Von**, von welchem aus gesendet wird.
+
+**Konto:** Anzeigename und Bezeichnung ändern (wirkt sofort bei der nächsten E-Mail), Signaturen zuordnen, Ordner zuordnen (falls z. B. keine Kopie in „Gesendet“ landet), **Verbindung testen / Zugangsdaten ändern** und der **Verlauf**: dort steht in Klartext, was zuletzt passiert ist – „3 neue E-Mails abgerufen“, „Gesendet an …“ oder ein Problem samt Grund. Gibt es ein dauerhaftes Problem (z. B. ein geändertes Passwort), erscheint oben im Postfach ein gelber Hinweis mit **Jetzt beheben**.
+
+### Schreiben und Senden
+
+![E-Mail an die Gruppe Konstruktion mit Signatur](screenshots/49-e-mail-schreiben.png)
+
+* **Empfänger:** Beim Tippen schlägt AperioPlan Kollegen, Kontakte aus dem CRM, Firmen und zuletzt verwendete Adressen vor. Adressen können auch mit Komma oder Semikolon (wie in Outlook) getrennt werden; ungültige werden rot markiert.
+* **Adressbuch:** Ein Klick auf **An …**, **Cc …** oder **Bcc …** öffnet das Adressbuch: links die Quelle (Alle, Kontakte aus dem CRM, Kunden und Firmen, Mitarbeiter, Gruppen, zuletzt verwendet), Suchfeld, ankreuzen und mit **An →**, **Cc →** oder **Bcc →** übernehmen. CRM-Kontakte sieht, wer im CRM berechtigt ist.
+![Adressbuch](screenshots/48-adressbuch.png)
+
+* **Gruppen:** **Alle Mitarbeiter** und eine Gruppe je Abteilung oder Team (z. B. **Gruppe Konstruktion**). Sie entstehen automatisch aus der Benutzerverwaltung, untergeordnete Teams gehören dazu. Im Feld erscheint die Gruppe als ein Eintrag; ein Klick zeigt die Mitglieder, einzelne lassen sich herausnehmen oder die Gruppe in einzelne Adressen auflösen. Beim Senden stehen alle unter „An“ und sehen einander.
+* **Senden:** Der Knopf zeigt **Wird gesendet …** und lässt sich nicht doppelt drücken – jede E-Mail wird garantiert nur einmal verschickt. Bei kurzen Störungen versucht AperioPlan es selbst erneut. Ist der Server länger nicht erreichbar, landet die E-Mail im Ordner **Postausgang** und wird automatisch nachgeschickt; die Glocke meldet, wenn sie raus ist. Im Postausgang können Sie **Jetzt senden** oder die E-Mail **zurück in die Entwürfe** legen.
+* **Entwürfe:** werden still gesichert, sobald sich etwas geändert hat („Entwurf gesichert 10:42“ im Fenster). Unter **Meine Entwürfe** öffnen Sie sie wieder.
+* **Neue Adressen ins CRM:** Haben Sie an jemanden geschrieben, der noch nicht im CRM steht, bietet AperioPlan nach dem Senden an, ihn als Kontakt bei einer Firma anzulegen.
+
+### Signaturen
+
+Links im Postfach unter **Signaturen** legen Sie beliebig viele an, z. B. „Standard“ und „Kurz für Antworten“:
+
+![Signatur mit Platzhaltern und Vorschau](screenshots/47-signatur.png)
+
+* **Gestalten:** Fett, Farben, Links, Schriftgröße und Bilder (z. B. ein Logo – es wird direkt in die E-Mail eingebettet und erscheint beim Empfänger sofort).
+* **HTML einfügen:** Fertige HTML-Signaturen aus einem Signatur-Generator oder aus Outlook einfach hineinkopieren. Versteckte Programmteile werden aus Sicherheitsgründen entfernt.
+* **Platzhalter:** `{Name}`, `{Vorname}`, `{Nachname}`, `{Position}` (Berufsbezeichnung), `{Abteilung}`, `{Telefon}`, `{Mobil}`, `{E-Mail}` und `{Firma}` werden mit Ihren Angaben gefüllt. Telefon und Mobilnummer pflegen Sie unter **Einstellungen → Profil**, die Berufsbezeichnung der Administrator. Zeilen ohne Angabe entfallen automatisch.
+* **Welche wofür:** unter **Konto** je Postfach getrennt **Für neue E-Mails** und **Für Antworten und Weiterleitungen** – wie in Outlook. Bei Antworten steht die Signatur über dem zitierten Text.
+* **Beim Schreiben:** Über **Signatur** in der Leiste fügen Sie eine andere ein oder wechseln sie; die bisherige wird dabei ausgetauscht, nicht doppelt angehängt.
+* **Firmen-Signatur:** Hat der Administrator eine einheitliche Firmen-Signatur hinterlegt, steht sie in der Auswahl – ist sie Pflicht, wird sie immer verwendet.
 
 ## 10. KVP-Ideenbox
 

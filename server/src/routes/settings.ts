@@ -1,3 +1,4 @@
+import { cleanHtml } from '../services/mailSignature';
 import type { FastifyInstance } from 'fastify';
 import { PROJECT_TABS, isLegacyModule, validateNumberPattern, validatePcbPattern } from '@aperio/shared';
 import type { AppContext } from '../context';
@@ -57,6 +58,11 @@ export default async function settingsRoutes(app: FastifyInstance, ctx: AppConte
       const v = value as { format?: string; pattern?: string };
       const err = v.format === 'pattern' ? validateNumberPattern(v.pattern ?? '') : null;
       if (err) throw badRequest(err);
+    }
+    if (k === 'mailSignature') {
+      const v = value as { html?: unknown; mode?: unknown };
+      v.html = cleanHtml(String(v.html ?? '')).slice(0, 1_500_000);
+      if (v.mode !== 'mandatory') v.mode = 'default';
     }
     if (k === 'pcbMask') {
       const err = validatePcbPattern(String((value as { numberPattern?: string }).numberPattern ?? ''));

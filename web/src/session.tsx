@@ -18,6 +18,9 @@ export interface Me {
   tools: string[];
   departmentId: string | null;
   phone: string;
+  mobile?: string;
+  /** Berufsbezeichnung (vom Administrator gepflegt) */
+  jobTitle?: string;
   avatarVersion: number;
   hasAvatar: boolean;
   totpEnabled: boolean;

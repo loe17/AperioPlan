@@ -12,6 +12,28 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.4.0',
+    date: '2026-11-07',
+    title: 'E-Mail-Assistent, mehrere Postfächer, Signaturen wie in Outlook, Adressbuch mit Abteilungen',
+    changes: [
+      { type: 'neu', text: 'Einrichtungsassistent für E-Mail-Konten: erkennt den Anbieter selbst (netcup, IONOS, Strato, Hetzner, All-Inkl, GMX, WEB.DE, Telekom, Gmail, Microsoft 365 u. v. m.) oder hilft beim eigenen Server, sagt, was beim Anbieter zu tun ist, und prüft alles bis zu einer Test-E-Mail, die hin- und zurückgeht' },
+      { type: 'neu', text: 'Anmeldung mit Microsoft bzw. Google (einmalig vom Administrator unter Einstellungen → E-Mail-Anmeldung eingerichtet)' },
+      { type: 'neu', text: 'Mehrere Postfächer je Person (z. B. zusätzlich info@), Umschalten links oben, Absender beim Schreiben wählbar' },
+      { type: 'neu', text: 'Mehrere HTML-Signaturen: gestalten oder fertiges HTML einfügen, Logo wird eingebettet, Platzhalter für Name, Position, Abteilung, Telefon und Mobil; je Postfach getrennt für neue E-Mails und Antworten, beim Schreiben einfügen oder wechseln' },
+      { type: 'neu', text: 'Firmen-Signatur für alle (Voreinstellung oder Pflicht); Berufsbezeichnung im Benutzerkonto, Mobilnummer im Profil' },
+      { type: 'neu', text: 'Adressbuch beim Schreiben: Kontakte und Firmen aus dem CRM, alle Mitarbeiter, zuletzt verwendete Adressen und Gruppen je Abteilung (z. B. Gruppe Konstruktion); Vorschläge schon beim Tippen' },
+      { type: 'neu', text: 'Postausgang: Ist der Mail-Server gerade nicht erreichbar, wird die E-Mail automatisch nachgeschickt; Verlauf je Postfach in Klartext' },
+      { type: 'neu', text: 'Reiter in Projekten für sich ausblenden; mit Berechtigung für alle entfernen (Inhalte bleiben erhalten) und per Ziehen sortieren' },
+      { type: 'neu', text: 'Werkzeug-Favoriten in einem eigenen Bereich der Seitenleiste (Stern beim Werkzeug, Reihenfolge per Ziehen)' },
+      { type: 'verbessert', text: 'Stempeluhr steht mittig in der Kopfzeile zwischen Pfad und Suchfeld' },
+      { type: 'verbessert', text: 'Benachrichtigungen nur noch über die Glocke – der Eintrag „Posteingang“ im Schreibtisch entfällt' },
+      { type: 'behoben', text: 'Senden klappte manchmal erst beim zweiten Versuch: nur noch eine Verbindung je Postfach, Wiederholung bei kurzen Störungen, Knopf „Wird gesendet …“, nie doppelt verschickt' },
+      { type: 'behoben', text: 'Ständige Meldung „Gespeichert“ beim Schreiben und Abrufen von E-Mails' },
+      { type: 'behoben', text: 'Geänderter Anzeigename wurde nicht übernommen bzw. „Administrator“ als Absender; jetzt Pflichtfeld mit Vorschau „So sehen Empfänger Sie“' },
+      { type: 'behoben', text: 'Keine Kopie in „Gesendet“, wenn der Server die Ordner nicht kennzeichnet – Ordner werden jetzt nach dem Namen erkannt oder von Hand zugeordnet' },
+    ],
+  },
+  {
     version: '0.3.0',
     date: '2026-11-07',
     title: 'Apps in Projekten, Lager und Einkauf verbunden, 3D-Ansicht und Mindmaps wie FreeMind',

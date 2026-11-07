@@ -1,3 +1,4 @@
+import { closeAllConnections } from './services/mailbox';
 import Fastify, { type FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
@@ -116,6 +117,7 @@ export async function buildApp(opts: BuildOptions = {}): Promise<{ app: FastifyI
 
   app.addHook('onClose', async () => {
     ctx.presence.stop();
+    await closeAllConnections();
     if (!opts.sql) await sql.end({ timeout: 5 });
   });
 

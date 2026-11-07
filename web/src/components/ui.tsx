@@ -207,11 +207,19 @@ export function StatusPill({ status, meta = STATUS_META }: { status: string; met
   return <Pill tone={m.tone}>{t(m.label)}</Pill>;
 }
 
-export function Tabs<T extends string>({ value, onChange, tabs, extra }: { value: T; onChange: (v: T) => void; tabs: { id: T; label: ReactNode }[]; extra?: ReactNode }) {
+export function Tabs<T extends string>({ value, onChange, tabs, extra, menu, onReorder }: {
+  value: T; onChange: (v: T) => void; tabs: { id: T; label: ReactNode }[]; extra?: ReactNode;
+  /** Menü eines Reiters (Rechtsklick oder „⋯“ am aktiven Reiter); null = kein Menü */
+  menu?: (id: T, close: () => void) => ReactNode | null;
+  /** Reiter per Ziehen umsortieren (nur wenn erlaubt) */
+  onReorder?: (moved: T, before: T) => void;
+}) {
   // Passen nicht alle Reiter in die Breite, wandern die übrigen in ein Menü „Mehr“ – kein Rollbalken.
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(tabs.length);
   const [open, setOpen] = useState(false);
+  const [ctx, setCtx] = useState<{ id: T; x: number; y: number } | null>(null);
+  const [drag, setDrag] = useState<T | null>(null);
   const key = tabs.map((t) => t.id).join('|');
   useEffect(() => {
     const el = ref.current;
@@ -233,22 +241,39 @@ export function Tabs<T extends string>({ value, onChange, tabs, extra }: { value
   const shown = tabs.slice(0, visible);
   const more = tabs.slice(visible);
   const activeHidden = more.find((t) => t.id === value);
+  const hasMenu = (id: T) => Boolean(menu && menu(id, () => {}) !== null);
+  const openMenu = (id: T, x: number, y: number) => { if (hasMenu(id)) setCtx({ id, x, y }); };
   return (
     <div className="tabs" ref={ref}>
-      <div className="tabs-measure" aria-hidden>{tabs.map((tb) => <span key={tb.id} data-tab-measure className="tab">{tb.label}</span>)}</div>
-      {shown.map((tb) => <button key={tb.id} className={`tab ${value === tb.id ? 'active' : ''}`} onClick={() => onChange(tb.id)}>{tb.label}</button>)}
+      <div className="tabs-measure" aria-hidden>{tabs.map((tb) => <span key={tb.id} data-tab-measure className={`tab ${menu ? 'with-menu' : ''}`}>{tb.label}</span>)}</div>
+      {shown.map((tb) => (
+        <button key={tb.id} className={`tab ${value === tb.id ? 'active' : ''} ${drag === tb.id ? 'dragging' : ''}`} onClick={() => onChange(tb.id)}
+          onContextMenu={menu ? (e) => { if (hasMenu(tb.id)) { e.preventDefault(); openMenu(tb.id, e.clientX, e.clientY); } } : undefined}
+          draggable={Boolean(onReorder)} onDragStart={onReorder ? () => setDrag(tb.id) : undefined} onDragEnd={() => setDrag(null)}
+          onDragOver={onReorder ? (e) => { if (drag && drag !== tb.id) e.preventDefault(); } : undefined}
+          onDrop={onReorder ? (e) => { e.preventDefault(); if (drag && drag !== tb.id) onReorder(drag, tb.id); setDrag(null); } : undefined}>
+          {tb.label}
+          {menu && value === tb.id && hasMenu(tb.id) && <span className="tab-menu" role="button" title="Reiter ausblenden oder entfernen"
+            onClick={(e) => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); openMenu(tb.id, r.left, r.bottom + 4); }}><Icon name="more" size={14} /></span>}
+        </button>
+      ))}
       {more.length > 0 && (
         <div className="tabs-more">
           <button className={`tab ${activeHidden ? 'active' : ''}`} onClick={() => setOpen(!open)}>{activeHidden ? activeHidden.label : 'Mehr'} <Icon name="chevron-down" size={14} /></button>
           {open && <>
             <div className="overlay transparent" onClick={() => setOpen(false)} />
             <div className="dropdown-menu">
-              {more.map((tb) => <div key={tb.id} className={`item ${value === tb.id ? 'active' : ''}`} onClick={() => { setOpen(false); onChange(tb.id); }}>{tb.label}</div>)}
+              {more.map((tb) => <div key={tb.id} className={`item ${value === tb.id ? 'active' : ''}`} onClick={() => { setOpen(false); onChange(tb.id); }}
+                onContextMenu={menu ? (e) => { if (hasMenu(tb.id)) { e.preventDefault(); setOpen(false); openMenu(tb.id, e.clientX, e.clientY); } } : undefined}>{tb.label}</div>)}
             </div>
           </>}
         </div>
       )}
       {extra}
+      {ctx && menu && <>
+        <div className="overlay transparent" onClick={() => setCtx(null)} onContextMenu={(e) => { e.preventDefault(); setCtx(null); }} />
+        <div className="dropdown-menu tab-context" style={{ position: 'fixed', left: Math.min(ctx.x, window.innerWidth - 280), top: ctx.y, right: 'auto' }}>{menu(ctx.id, () => setCtx(null))}</div>
+      </>}
     </div>
   );
 }

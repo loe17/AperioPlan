@@ -95,6 +95,10 @@ Wichtige Endpunkte (Auswahl):
 | Einkauf | `GET/POST /purchasing/projects/:id/items`, `GET/POST /purchasing/stock/items` (Lagerbestellungen), `PATCH/DELETE /purchasing/items/:id`, `POST /purchasing/items/:id/receipts` (`{qty, deliveryNote, target: none|stock|project, locationId, lot, serials, articleId, createArticle}`), `GET /purchasing/items/:id/history`, `GET /purchasing/items?status=&articleId=`, `POST /purchasing/bulk` |
 | Lager | `GET /warehouse/incoming`, `POST /warehouse/receive`, `GET/POST /warehouse/reorder` (`projectId: null` = Lagerbestellung), `GET /warehouse/moves?projectId=`, `GET /warehouse/projects/:id/material` |
 | Mindmaps | `GET/POST /mindmaps` (`?projectId=`), `GET/PUT/PATCH/DELETE /mindmaps/:id` (PUT mit `version`, sonst 409), `PUT /mindmaps/:id/shares`, `POST /mindmaps/:id/duplicate` |
+| E-Mail-Postfächer | `GET/POST /mailbox/accounts`, `PATCH/DELETE /mailbox/accounts/:id` (`primary: true` = Hauptpostfach), `GET /mailbox/accounts/:id/events` (Verlauf); Ordner, Nachrichten, Entwürfe und Hochladen mit `?accountId=`; `POST /mailbox/send` mit `clientKey` (gleiche Kennung = nie doppelt verschickt; Antwort `queued: true` = im Postausgang), `GET /mailbox/outbox`, `POST /mailbox/outbox/:id/retry`, `DELETE /mailbox/outbox/:id` (zurück in die Entwürfe) |
+| Einrichtungsassistent | `GET /mailbox/setup/providers`, `POST /mailbox/setup/discover` (`{email}`), `POST /mailbox/setup/test` (Server, Passwort oder `oauthTicket`, `extraTo`, `skipMail`, `system` = Firmenpostfach) → `{id}`, `GET /mailbox/setup/test/:id` (Schritte mit Status, Text, Tipp); `GET /mailbox/oauth/:provider/start?email=`, `GET /mailbox/oauth/callback` |
+| Signaturen, Adressbuch | `GET/POST /mailbox/signatures` (`?accountId=` füllt `{E-Mail}`), `PATCH/DELETE /mailbox/signatures/:id`, `POST /mailbox/signatures/preview`; Firmen-Signatur über `PUT /settings/mailSignature`; `GET /mailbox/addressbook?q=&source=all|contacts|companies|users|recent`, `GET /mailbox/addressbook/groups/:id` (`all` oder Team-ID, mit Unterteams) |
+| Oberfläche | `GET/PUT /favorites/tools` (Werkzeug-Favoriten als geordnete Liste), `PUT /projects/:id/hidden-tabs` (`{tabs}` – nur für sich ausgeblendet; `hiddenTabs` in `GET /projects/:id`) |
 | Zeit | `GET /time/current`, `POST /time/clock-in|clock-out`, `GET /time/entries`, `POST /time/corrections`, `GET /time/export` |
 | Urlaub | `GET /absences/balance`, `POST /absences`, `POST /absences/:id/decide`, `GET /calendar/team` |
 | Chat | `GET /chat/channels`, `GET/POST /chat/channels/:id/messages`, `POST /chat/direct` |
@@ -126,7 +130,11 @@ WebSocket `wss://…/api/ws` (Cookie-Anmeldung). Nachrichten an den Server:
 { "type": "subscribe", "channel": "project:<id>" }
 ```
 
-Kanäle: `user:<id>` (automatisch), `project:<id>`, `chat:<id>`, `call:<id>`, `global`. Ereignisse z. B. `task.changed`, `cad.changed`, `files.changed`, `message.created`, `notification`, `presence`, `resources.changed` (Kanal `global`).
+Kanäle: `user:<id>` (automatisch), `project:<id>`, `chat:<id>`, `call:<id>`, `global`. Ereignisse z. B. `task.changed`, `cad.changed`, `files.changed`, `message.created`, `notification`, `presence`, `resources.changed` (Kanal `global`), `mailbox.changed` und `mailbox.progress` (erster Abruf, Kanal `user:<id>`).
+
+### E-Mail testen ohne echten Mail-Server
+
+`server/src/services/mailFake.ts` bildet IMAP und SMTP nach – für alle Server, die auf `.aperio.test` enden, und nur im Testbetrieb (`NODE_ENV=test`) oder mit `APERIO_MAIL_FAKE=1`. Fehler lassen sich spielen: Passwort `falsch` (Anmeldung abgelehnt), Server `aus.…` (nicht gefunden), Benutzername mit `+busy` (erster Versand „zu viele Verbindungen“), mit `+langsam` (Test-E-Mail kommt nie an). Im echten Betrieb hält `withImap()` je Postfach genau eine Verbindung offen und arbeitet Aufträge nacheinander ab.
 
 ## Symbole
 

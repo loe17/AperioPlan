@@ -5,7 +5,7 @@ import { MeetingLobbyNotice } from '../modules/MeetingLobby';
 import { PhoneProvider } from '../modules/Phone';
 import { useCan, useSession } from '../session';
 import { useApi, useHotkey, useLocalState } from '../lib/hooks';
-import { post, invalidate } from '../lib/api';
+import { post, put, invalidate } from '../lib/api';
 import { realtime } from '../lib/realtime';
 import { useT } from '../i18n';
 import { fmtDateTime } from '../lib/format';
@@ -27,11 +27,16 @@ export function useCrumbs(crumbs: Crumb[]) {
 
 interface ProjectLite { id: string; number: string; name: string; icon: string; teamId: string | null; parentId: string | null; favorite: boolean; status: string }
 
-function NavItem({ to, ico, label, count, end }: { to: string; ico: string; label: string; count?: number; end?: boolean }) {
+function NavItem({ to, ico, label, count, end, star, drag }: { to: string; ico: string; label: string; count?: number; end?: boolean;
+  star?: { on: boolean; toggle: () => void }; drag?: { onStart: () => void; onOver: () => void; onEnd: () => void } }) {
   return (
-    <NavLink to={to} end={end} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+    <NavLink to={to} end={end} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''} ${star ? 'has-star' : ''}`}
+      draggable={Boolean(drag)} onDragStart={drag ? (e) => { e.dataTransfer.effectAllowed = 'move'; drag.onStart(); } : undefined}
+      onDragOver={drag ? (e) => { e.preventDefault(); drag.onOver(); } : undefined} onDragEnd={drag?.onEnd}>
       <span className="ico"><EntityIcon value={ico} /></span><span className="grow" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
       {count ? <span className="count">{count}</span> : null}
+      {star && <button className={`nav-star ${star.on ? 'on' : ''}`} title={star.on ? 'Aus den Werkzeug-Favoriten entfernen' : 'Zu den Werkzeug-Favoriten'}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); star.toggle(); }}><Icon name={star.on ? 'star-filled' : 'star'} size={14} /></button>}
     </NavLink>
   );
 }
@@ -41,7 +46,7 @@ function NavSection({ id, icon, title, children, collapsible = true }: { id: str
   const [closed, setClosed] = useLocalState<Record<string, boolean>>('aperio-nav-closed', {});
   const isClosed = collapsible && closed[id];
   return (
-    <div className={`nav-section ${isClosed ? 'closed' : ''}`}>
+    <div className={`nav-section ${isClosed ? 'closed' : ''}`} data-section={id}>
       {collapsible
         ? <button type="button" className="nav-title nav-toggle" aria-expanded={!isClosed} onClick={() => setClosed({ ...closed, [id]: !isClosed })}>
             <Icon name={icon} /> <span className="grow">{title}</span><span className={`chev ${isClosed ? '' : 'open'}`}><Icon name="chevron-right" /></span>
@@ -96,7 +101,7 @@ function Notifications() {
       {(close) => (
         <div style={{ width: 360, maxHeight: 440, overflow: 'auto' }}>
           <div className="row" style={{ padding: '4px 8px 8px' }}>
-            <b className="grow">{t('Posteingang')}</b>
+            <b className="grow">{t('Benachrichtigungen')}</b>
             {unread > 0 && <button className="btn ghost sm" onClick={async () => { await post('/notifications/read'); invalidate('/notifications'); }}>{t('Alle als gelesen markieren')}</button>}
           </div>
           {!data?.length && <div className="muted" style={{ padding: 12 }}>{t('Keine neuen Benachrichtigungen')}</div>}
@@ -161,10 +166,10 @@ export function Layout({ children }: { children: ReactNode }) {
   const [changelog, setChangelog] = useState(false);
   const [connected, setConnected] = useState(realtime.connected);
   const { data: projects } = useApi<ProjectLite[]>('/projects');
-  const { data: notifications } = useApi<{ readAt: string | null }[]>('/notifications');
   const { data: favorites } = useApi<{ entityId: string; number: string; name: string; icon: string }[]>('/favorites');
   const { data: plugins } = useApi<any[]>('/plugins');
-  const unread = notifications?.filter((n) => !n.readAt).length ?? 0;
+  const { data: toolFavs, setData: setToolFavs } = useApi<string[]>(me?.role === 'guest' ? null : '/favorites/tools');
+  const [dragFav, setDragFav] = useState<string | null>(null);
   const { data: channels } = useChannels();
   const chatUnread = channels?.reduce((s, c) => s + (c.unread ?? 0), 0) ?? 0;
   const { data: boardUnread, reload: reloadBoard } = useApi<{ n: number }>(can('board') ? '/board/unread' : null, [can('board')]);
@@ -179,6 +184,24 @@ export function Layout({ children }: { children: ReactNode }) {
   }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isGuest = me?.role === 'guest';
+  // Werkzeuge der Seitenleiste; Favoriten stehen zusätzlich in einem eigenen Bereich (Reihenfolge per Ziehen)
+  const toolItems: { id: string; to: string; ico: string; label: string; count?: number }[] = [
+    ...APPS.filter((a) => a.route && !DESK_APPS.includes(a.id) && can(a.id) && (a.id !== 'payroll' || me?.payrollManager))
+      .map((a) => ({ id: a.id, to: NAV_ROUTE[a.id] ?? a.route!, ico: a.icon, label: t(NAV_LABEL[a.id] ?? a.name), count: a.id === 'board' ? boardUnread?.n : undefined })),
+    ...(plugins?.filter((p) => p.enabled && p.page).map((p) => ({ id: `plugin:${p.id}`, to: `/plugin/${p.id}`, ico: p.page.icon ?? 'puzzle', label: p.page.label })) ?? []),
+  ];
+  const favTools = (toolFavs ?? []).map((id) => toolItems.find((x) => x.id === id)).filter((x): x is (typeof toolItems)[number] => Boolean(x));
+  const saveFavs = (list: string[]) => { void put<string[]>('/favorites/tools', { tools: list }).catch(() => {}); };
+  const toggleFav = (id: string) => {
+    const list = toolFavs?.includes(id) ? toolFavs.filter((x) => x !== id) : [...(toolFavs ?? []), id];
+    setToolFavs(list); saveFavs(list);
+  };
+  const moveFav = (over: string) => {
+    if (!dragFav || dragFav === over || !toolFavs) return;
+    const list = toolFavs.filter((x) => x !== dragFav);
+    list.splice(list.indexOf(over) + (toolFavs.indexOf(dragFav) < toolFavs.indexOf(over) ? 1 : 0), 0, dragFav);
+    setToolFavs(list);
+  };
 
   return (
     <CrumbCtx.Provider value={setCrumbs}>
@@ -193,7 +216,6 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="sidebar-scroll">
             <NavSection id="desk" icon="folder" title={t('Mein Schreibtisch')}>
               <NavItem to="/" end ico="home" label={t('Übersicht')} />
-              {!isGuest && <NavItem to="/inbox" ico="inbox" label={t('Posteingang')} count={unread} />}
               {can('chat') && <NavItem to="/chat" ico="chat" label={t('Chat')} count={chatUnread} />}
               {can('mail') && <NavItem to="/mail" ico="mail" label={t('E-Mail')} />}
               {!isGuest && <NavItem to="/calendar" end ico="calendar" label={t('Mein Kalender')} />}
@@ -215,12 +237,16 @@ export function Layout({ children }: { children: ReactNode }) {
               <NavItem to="/projects" end ico="projects" label={t('Alle Projekte')} />
             </NavSection>
 
+            {favTools.length > 0 && (
+              <NavSection id="tool-favorites" icon="star-filled" title={t('Werkzeug-Favoriten')}>
+                {favTools.map((x) => <NavItem key={x.id} to={x.to} ico={x.ico} label={x.label} count={x.count} star={{ on: true, toggle: () => toggleFav(x.id) }}
+                  drag={{ onStart: () => setDragFav(x.id), onOver: () => moveFav(x.id), onEnd: () => { setDragFav(null); if (toolFavs) saveFavs(toolFavs); } }} />)}
+              </NavSection>
+            )}
+
             <NavSection id="tools" icon="tools" title={t('Werkzeuge')}>
               {isGuest && <NavItem to="/cad" ico="cad" label={t('CAD-Bridge')} />}
-              {APPS.filter((a) => a.route && !DESK_APPS.includes(a.id) && can(a.id) && (a.id !== 'payroll' || me?.payrollManager)).map((a) => (
-                <NavItem key={a.id} to={NAV_ROUTE[a.id] ?? a.route!} ico={a.icon} label={t(NAV_LABEL[a.id] ?? a.name)} count={a.id === 'board' ? boardUnread?.n : undefined} />
-              ))}
-              {plugins?.filter((p) => p.enabled && p.page).map((p) => <NavItem key={p.id} to={`/plugin/${p.id}`} ico={p.page.icon ?? 'puzzle'} label={p.page.label} />)}
+              {toolItems.map((x) => <NavItem key={x.id} to={x.to} ico={x.ico} label={x.label} count={x.count} star={isGuest ? undefined : { on: Boolean(toolFavs?.includes(x.id)), toggle: () => toggleFav(x.id) }} />)}
             </NavSection>
           </div>
           <div className="sidebar-admin">
@@ -237,7 +263,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <div className="main">
           <header className="topbar">
             {collapsed && <button className="icon-btn" onClick={() => setCollapsed(false)} title="Seitenleiste öffnen"><Icon name="menu" /></button>}
-            <div className="breadcrumbs">
+            <div className="breadcrumbs topbar-side">
               <Link to="/">Home</Link>
               {crumbs.map((c, i) => (
                 <span key={i} className="row" style={{ gap: 6 }}>
@@ -246,13 +272,15 @@ export function Layout({ children }: { children: ReactNode }) {
                 </span>
               ))}
             </div>
-            {can('time') && <HeaderClock />}
+            {can('time') && <div className="topbar-center"><HeaderClock /></div>}
+            <div className="topbar-side topbar-right">
             <div className="search-trigger" onClick={() => setPalette(true)}><Icon name="search" /> <span className="label">{t('Blitzsuche')}</span><kbd>Strg + K</kbd></div>
             <button className="icon-btn" title="Hell/Dunkel" onClick={() => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark')}>
               {theme === 'dark' || (theme === 'system' && document.documentElement.dataset.theme === 'dark') ? <Icon name="sun" /> : <Icon name="moon" />}
             </button>
             {!isGuest && <Notifications />}
             <UserMenu />
+            </div>
           </header>
           <main className="content">{children}</main>
         </div>

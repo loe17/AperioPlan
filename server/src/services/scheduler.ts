@@ -9,6 +9,7 @@ import { syncAllCalendars } from './caldav';
 import { deliveryReminders } from '../routes/purchasing';
 import { checkAllRunning } from './timeRules';
 import { syncAllMailboxes } from './mailbox';
+import { processOutbox } from './mailOutbox';
 import { sendCalendarReminders } from '../routes/calendar';
 import { runDailyJobs } from './daily';
 
@@ -45,7 +46,12 @@ export function startScheduler(ctx: AppContext, log: FastifyBaseLogger) {
     try { await syncMail(ctx); } catch (e) { log.warn(e, 'E-Mail-Abruf fehlgeschlagen'); }
   });
 
-  // Persönliche Postfächer alle 3 Minuten abrufen
+  // Postausgang: fällige E-Mails jede Minute nachschicken
+  cron.schedule('* * * * *', async () => {
+    try { await processOutbox(ctx); } catch (e) { log.warn(e, 'Postausgang konnte nicht abgearbeitet werden'); }
+  });
+
+  // Persönliche Postfächer alle 3 Minuten abrufen (ein Abruf je Postfach, nie überlappend)
   cron.schedule('*/3 * * * *', async () => {
     try { await syncAllMailboxes(ctx); } catch (e) { log.warn(e, 'Abruf der Postfächer fehlgeschlagen'); }
   });

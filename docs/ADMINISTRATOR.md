@@ -171,7 +171,8 @@ Dateien, die Mitarbeiter direkt im Windows-Explorer in Projektordner legen, ersc
 | Mitarbeiter | in Projekten arbeiten, Zeiten stempeln, Urlaub beantragen |
 | Gast | nur Projekte, in die er ausdrücklich eingeladen wurde (nur lesen) |
 
-* **Einstellungen → Benutzer:** neue Konten mit Startpasswort anlegen. Der Mitarbeiter muss das Passwort bei der ersten Anmeldung ändern.
+* **Einstellungen → Benutzer:** neue Konten mit Startpasswort anlegen. Der Mitarbeiter muss das Passwort bei der ersten Anmeldung ändern. Neben der **Abteilung** tragen Sie hier die **Berufsbezeichnung** ein (z. B. *Konstrukteur*) – sie erscheint in der Firmen-Signatur und im Adressbuch. Telefon und Mobilnummer pflegt jede Person selbst im Profil.
+* Der eingebaute Zugang **admin** ist für die Verwaltung gedacht. Für die tägliche Arbeit – vor allem mit E-Mail – bitte persönliche Benutzer anlegen, sonst steht als Name „Administrator“ da.
 * **Einstellungen → Teams:** Abteilungen anlegen, Mitglieder zuordnen und die **Teamleitung** markieren. Die Teamleitung genehmigt Urlaube und Zeitkorrekturen ihres Teams.
 
 ### Firmen-Login (Active Directory / LDAP)
@@ -312,7 +313,13 @@ docker compose --profile video up -d
 
 ### E-Mail
 
-**Einstellungen → E-Mail-Konto:** gemeinsames Projektpostfach (IMAP/SMTP) eintragen. E-Mails werden alle 5 Minuten abgerufen und anhand der Projektnummer im Betreff (z. B. `[0100]`) automatisch zugeordnet.
+**Persönliche Postfächer** richtet jede Person selbst unter **E-Mail** mit dem Einrichtungsassistenten ein – auch mehrere (z. B. zusätzlich *info@*). Der Assistent erkennt die gängigen Anbieter (netcup, IONOS, Strato, Hetzner, All-Inkl, GMX, WEB.DE, Telekom, Gmail, Microsoft 365 u. a.) sowie eigene Server und prüft alles bis hin zu einer Test-E-Mail. Je Postfach hält AperioPlan nur **eine** Verbindung zum Mail-Server offen; das vermeidet Abweisungen wegen „zu vieler Verbindungen“, wie sie z. B. bei netcup vorkamen. Können E-Mails gerade nicht verschickt werden, landen sie im **Postausgang** und werden jede Minute erneut versucht.
+
+**Einstellungen → E-Mail-Versand (System):** gemeinsames Projektpostfach (IMAP/SMTP) eintragen – **Server automatisch ermitteln** füllt die Server aus der Adresse, **Gründlich testen** prüft wie der Assistent mit Test-E-Mail. E-Mails werden alle 5 Minuten abgerufen und anhand der Projektnummer im Betreff (z. B. `[0100]`) automatisch zugeordnet.
+
+**Einstellungen → Firmen-Signatur:** eine einheitliche Signatur für alle, mit Platzhaltern wie `{Name}`, `{Position}`, `{Abteilung}`, `{Telefon}`, `{Mobil}`, `{E-Mail}` und `{Firma}`. Als **Voreinstellung** kann jede Person stattdessen eine eigene wählen, als **Pflicht** wird sie immer verwendet. Zeilen mit leerem Platzhalter entfallen automatisch; ein Logo wird in die E-Mail eingebettet.
+
+**Einstellungen → E-Mail-Anmeldung:** Damit Mitarbeiter sich im Assistenten mit **Mit Microsoft anmelden** bzw. **Mit Google anmelden** verbinden können, wird AperioPlan einmalig beim Anbieter registriert. Microsoft lässt die Anmeldung nur mit Passwort für Firmenkonten nach und nach nicht mehr zu (der Versand ist ab Ende 2026 standardmäßig gesperrt) – wer Microsoft 365 nutzt, sollte das einrichten. Die Seite zeigt die Rücksprung-Adresse und die Schritte im Microsoft Entra Admin Center bzw. in der Google Cloud Console. AperioPlan muss dafür unter einer festen Adresse (am besten mit https) erreichbar sein.
 
 ### KI-Anbindung
 
@@ -367,6 +374,8 @@ Die meisten Apps funktionieren sofort. Wer zusätzlich zum Administrator verwalt
 | „Bitte anmelden“ in Schleife | Uhrzeit des Servers prüfen; Browser-Cookies löschen |
 | Admin-Passwort vergessen | `docker compose exec app node dist/index.js reset-admin` – danach wieder admin/admin mit Passwortzwang |
 | Sicherung lässt sich nicht einspielen | Passwort prüfen (`BACKUP_KEY` in `.env` hat Vorrang vor dem Passwort in den Einstellungen) |
+| E-Mail wird nicht verschickt oder abgerufen | Im Postfach **Konto → Verlauf** lesen – dort steht der Grund in Klartext. **Verbindung testen** zeigt Schritt für Schritt, wo es hakt. Firmen-Firewall: ausgehend müssen die Anschlüsse 993 (IMAP) und 465 oder 587 (SMTP) offen sein |
+| Keine Kopie in „Gesendet“ | **Konto → Ordner**: den Ordner „Gesendet“ von Hand zuordnen |
 
 ## 16. AperioPlan vollständig entfernen
 

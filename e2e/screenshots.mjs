@@ -293,6 +293,55 @@ await shot('42-wareneingang', `${P}?tab=purchasing`, async () => { await page.cl
 await shot('43-3d-ansicht', `/view3d?file=${model3d.id}&name=Gestell_VM-4.obj`, async () => { await page.waitForSelector('.v3d-info', { timeout: 20000 }); });
 await shot('44-mindmap', `/mindmaps/${mm.id}`);
 
+// E-Mail (0.4.0) – braucht den nachgebildeten Mail-Server: Server mit APERIO_MAIL_FAKE=1 starten, SHOT_MAIL_FAKE=1 setzen
+if (process.env.SHOT_MAIL_FAKE === '1') {
+  for (const [id, mail, job] of [[lisa.id, 'lisa.berger@muster-maschinenbau.aperio.test', 'Konstrukteurin'], [tom.id, 'tom.keller@muster-maschinenbau.aperio.test', 'Elektroingenieur'], [sara.id, 'sara.yilmaz@muster-maschinenbau.aperio.test', 'Einkäuferin']])
+    await admin.patch(`/users/${id}`, { email: mail, jobTitle: job });
+  await admin.patch(`/users/${me.id}`, { email: 'anna.wagner@muster-maschinenbau.aperio.test', jobTitle: 'Leitung Konstruktion', departmentId: kon.id }).catch(() => {});
+  await admin.patch('/me', { displayName: 'Anna Wagner', phone: '+49 7723 9200-10', mobile: '+49 170 1234567' }).catch(() => {});
+  const box = { email: 'anna.wagner@muster-maschinenbau.aperio.test', displayName: 'Anna Wagner', imapHost: 'mail.muster-maschinenbau.aperio.test', imapPort: 993, imapSecure: true,
+    smtpHost: 'mail.muster-maschinenbau.aperio.test', smtpPort: 465, smtpSecure: true, username: 'anna.wagner@muster-maschinenbau.aperio.test', password: 'geheim', provider: 'custom' };
+  const acc = await admin.post('/mailbox/accounts', box);
+  await admin.post('/mailbox/signatures', { name: 'Standard', html: '<p>Viele Grüße<br><b>{Name}</b><br>{Position}</p><p style="color:#6b7280">{Firma}<br>Tel. {Telefon} · Mobil {Mobil}<br>{E-Mail}</p>' });
+  for (const [subject, html] of [['Freigabe Rahmen VM-4', '<p>Hallo Anna,</p><p>die Zeichnung des Rahmens ist geprüft und kann freigegeben werden.</p>'], ['Angebot Servomotoren', '<p>Anbei das aktualisierte Angebot für die Servomotoren.</p>'], ['Termin Abnahme', '<p>Passt Ihnen Donnerstag, 10 Uhr, für die Abnahme?</p>']])
+    await admin.post('/mailbox/send', { accountId: acc.id, to: 'anna.wagner@muster-maschinenbau.aperio.test', subject, html });
+  await new Promise((r) => setTimeout(r, 800));
+  await admin.post('/mailbox/sync', { accountId: acc.id });
+  await shot('45-postfach', '/mail');
+  await shot('46-e-mail-assistent', '/mail', async () => {
+    await page.click('.mb-actions button:has-text("Postfach hinzufügen")');
+    await page.fill('.modal input[type=email]', 'info@muster-maschinenbau.aperio.test');
+    await page.fill('.modal input[placeholder="Vorname Nachname"]', 'Muster Maschinenbau');
+    await page.click('.modal button:has-text("Weiter")');
+    await page.waitForSelector('.modal >> text=Vorschlag');
+    await page.click('.modal button:has-text("Weiter") >> nth=0');
+    await page.fill('.modal input[type=password]', 'geheim');
+    await page.click('.modal button:has-text("Verbindung testen")');
+    await page.waitForSelector('.modal .wiz-check.ok:has-text("Test-E-Mail angekommen")', { timeout: 20000 });
+  });
+  await shot('47-signatur', '/mail', async () => {
+    await page.click('.mb-actions button:has-text("Signaturen")');
+    await page.click('.modal button:has-text("Bearbeiten")');
+  });
+  await shot('48-adressbuch', '/mail', async () => {
+    await page.click('button:has-text("Neue E-Mail")');
+    await page.waitForSelector('.modal .mb-editor >> text=Viele Grüße');
+    await page.click('.modal button.rcpt-label:has-text("An")');
+    await page.click('.abook-row:has-text("Gruppe Konstruktion") input');
+  });
+  await shot('49-e-mail-schreiben', '/mail', async () => {
+    await page.click('button:has-text("Neue E-Mail")');
+    await page.waitForSelector('.modal .mb-editor >> text=Viele Grüße');
+    await page.locator('.rcpt input').first().fill('Konstr');
+    await page.waitForSelector('.rcpt-sugg');
+    await page.keyboard.press('Enter');
+    await page.fill('.mb-compose-head > input', 'Besprechung Rahmen VM-4');
+    await page.locator('.mb-editor').click({ position: { x: 20, y: 10 } });
+    await page.keyboard.type('Hallo zusammen, morgen um 10 Uhr besprechen wir den Rahmen.');
+  });
+}
+await shot('50-reiter-ausblenden', `${P}?tab=kanban`, async () => { await page.locator('.tabs > button.tab.active').click({ button: 'right' }); });
+
 await admin.patch('/me', { theme: 'dark' }).catch(() => {});
 await page.emulateMedia({ colorScheme: 'dark' });
 await setTheme('dark');

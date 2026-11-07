@@ -12,118 +12,56 @@ import { projectAccess } from '../lib/access';
 import { badRequest, forbidden, notFound } from '../lib/errors';
 import { audit } from '../services/audit';
 import { notify } from '../services/notify';
-import { sealSecret } from '../services/secrets';
 import { safeName, storeFile } from '../services/files';
-import { moveMessages, sendFromAccount, setFlags, syncAccount, testAccount, type MailAccount } from '../services/mailbox';
+import { moveMessages, normalizeAddresses, setFlags, syncAccount, type MailAccount } from '../services/mailbox';
+import { sendNow, type OutboxPayload } from '../services/mailOutbox';
+import { ownAccount } from './mailAccounts';
 import { sendStoredFile } from './files';
-
-const accountBody = z.object({
-  email: z.string().trim().email('Bitte eine gültige E-Mail-Adresse angeben'),
-  displayName: z.string().max(120).default(''),
-  imapHost: z.string().trim().min(1), imapPort: z.number().int().default(993), imapSecure: z.boolean().default(true),
-  smtpHost: z.string().trim().min(1), smtpPort: z.number().int().default(587), smtpSecure: z.boolean().default(false),
-  username: z.string().trim().min(1), password: z.string().optional(), signatureHtml: z.string().max(20000).default(''),
-});
-
-/** Bekannte Anbieter: Server werden aus der E-Mail-Adresse vorgeschlagen */
-const PRESETS: Record<string, Partial<z.infer<typeof accountBody>>> = {
-  'gmail.com': { imapHost: 'imap.gmail.com', smtpHost: 'smtp.gmail.com', smtpPort: 465, smtpSecure: true },
-  'googlemail.com': { imapHost: 'imap.gmail.com', smtpHost: 'smtp.gmail.com', smtpPort: 465, smtpSecure: true },
-  'outlook.com': { imapHost: 'outlook.office365.com', smtpHost: 'smtp.office365.com', smtpPort: 587 },
-  'hotmail.com': { imapHost: 'outlook.office365.com', smtpHost: 'smtp.office365.com', smtpPort: 587 },
-  'gmx.de': { imapHost: 'imap.gmx.net', smtpHost: 'mail.gmx.net', smtpPort: 587 },
-  'gmx.net': { imapHost: 'imap.gmx.net', smtpHost: 'mail.gmx.net', smtpPort: 587 },
-  'web.de': { imapHost: 'imap.web.de', smtpHost: 'smtp.web.de', smtpPort: 587 },
-  't-online.de': { imapHost: 'secureimap.t-online.de', smtpHost: 'securesmtp.t-online.de', smtpPort: 465, smtpSecure: true },
-  'mailbox.org': { imapHost: 'imap.mailbox.org', smtpHost: 'smtp.mailbox.org', smtpPort: 465, smtpSecure: true },
-  'ionos.de': { imapHost: 'imap.ionos.de', smtpHost: 'smtp.ionos.de', smtpPort: 465, smtpSecure: true },
-  'strato.de': { imapHost: 'imap.strato.de', smtpHost: 'smtp.strato.de', smtpPort: 465, smtpSecure: true },
-};
 
 export default async function mailboxRoutes(app: FastifyInstance, ctx: AppContext) {
   const { sql, storage } = ctx;
+  const account = (u: AuthUser, accountId?: string | null) => ownAccount(sql, u, accountId);
 
-  async function account(u: AuthUser): Promise<MailAccount> {
-    const [a] = await sql<MailAccount[]>`select * from mail_accounts where user_id = ${u.id}`;
-    if (!a) throw badRequest('Noch kein E-Mail-Konto eingerichtet');
-    return a;
-  }
   async function message(u: AuthUser, id: string) {
-    const a = await account(u);
     const [m] = await sql<{ id: string; uid: string; folder_id: string; path: string; seen: boolean; flagged: boolean; subject: string; message_id: string | null; text_body: string;
       html_body: string | null; from_addr: string; to_addrs: string; cc_addrs: string; date: Date; attachments: { name: string; path: string; size: number; mime: string; cid: string | null }[];
-      thread_key: string | null; project_id: string | null }[]>`
-      select m.*, f.path from mail_messages m join mail_folders f on f.id = m.folder_id where m.id = ${id} and m.account_id = ${a.id}`;
+      thread_key: string | null; project_id: string | null; account_id: string }[]>`
+      select m.*, f.path from mail_messages m join mail_folders f on f.id = m.folder_id join mail_accounts a on a.id = m.account_id where m.id = ${id} and a.owner_id = ${u.id}`;
     if (!m) throw notFound('Nachricht nicht gefunden');
-    return { a, m };
+    const [a] = await sql<MailAccount[]>`select * from mail_accounts where id = ${m.account_id}`;
+    return { a: a!, m };
   }
-
-  // ------------------------------------------------ Konto
-  app.get('/mailbox/account', async (req) => {
-    const u = requireUser(req);
-    const [a] = await sql`select id, email, display_name as "displayName", imap_host as "imapHost", imap_port as "imapPort", imap_secure as "imapSecure",
-      smtp_host as "smtpHost", smtp_port as "smtpPort", smtp_secure as "smtpSecure", username, signature_html as "signatureHtml",
-      last_sync_at as "lastSyncAt", last_error as "lastError" from mail_accounts where user_id = ${u.id}`;
-    return a ?? null;
-  });
-
-  app.get('/mailbox/preset', async (req) => {
-    requireUser(req);
-    const { email } = parse(z.object({ email: z.string() }), req.query);
-    const domain = email.split('@')[1]?.toLowerCase() ?? '';
-    return PRESETS[domain] ?? { imapHost: `imap.${domain}`, smtpHost: `smtp.${domain}`, imapPort: 993, imapSecure: true, smtpPort: 587, smtpSecure: false };
-  });
-
-  app.put('/mailbox/account', async (req) => {
-    const u = requireUser(req);
-    if (u.role === 'guest') throw forbidden();
-    const b = parse(accountBody, req.body);
-    const [cur] = await sql<MailAccount[]>`select * from mail_accounts where user_id = ${u.id}`;
-    if (!cur && !b.password) throw badRequest('Bitte das Passwort angeben');
-    const sealed = b.password ? await sealSecret(ctx, b.password) : cur!.password_sealed;
-    const draft = { id: cur?.id ?? 'neu', user_id: u.id, email: b.email, display_name: b.displayName || u.displayName, imap_host: b.imapHost, imap_port: b.imapPort, imap_secure: b.imapSecure,
-      smtp_host: b.smtpHost, smtp_port: b.smtpPort, smtp_secure: b.smtpSecure, username: b.username, password_sealed: sealed, signature_html: b.signatureHtml } as MailAccount;
-    const changedServer = !cur || b.password || cur.imap_host !== b.imapHost || cur.smtp_host !== b.smtpHost || cur.username !== b.username;
-    const message = changedServer ? await testAccount(ctx, draft) : 'Gespeichert';
-    if (cur && cur.imap_host !== b.imapHost) await sql`delete from mail_folders where account_id = ${cur.id}`;
-    const [row] = await sql<MailAccount[]>`insert into mail_accounts (user_id, email, display_name, imap_host, imap_port, imap_secure, smtp_host, smtp_port, smtp_secure, username, password_sealed, signature_html)
-      values (${u.id}, ${draft.email}, ${draft.display_name}, ${draft.imap_host}, ${draft.imap_port}, ${draft.imap_secure}, ${draft.smtp_host}, ${draft.smtp_port}, ${draft.smtp_secure},
-        ${draft.username}, ${sealed}, ${draft.signature_html})
-      on conflict (user_id) do update set email = excluded.email, display_name = excluded.display_name, imap_host = excluded.imap_host, imap_port = excluded.imap_port,
-        imap_secure = excluded.imap_secure, smtp_host = excluded.smtp_host, smtp_port = excluded.smtp_port, smtp_secure = excluded.smtp_secure, username = excluded.username,
-        password_sealed = excluded.password_sealed, signature_html = excluded.signature_html returning *`;
-    void syncAccount(ctx, row!).catch(() => {});
-    return { ok: true, message };
-  });
-
-  app.delete('/mailbox/account', async (req) => {
-    const u = requireUser(req);
-    const a = await account(u);
-    await sql`update mail_messages set account_id = null, folder_id = null where account_id = ${a.id} and project_id is not null`;
-    await sql`delete from mail_accounts where id = ${a.id}`;
-    await storage.remove(`.aperio/mail/${a.id}`);
-    return { ok: true };
-  });
 
   app.post('/mailbox/sync', async (req) => {
     const u = requireUser(req);
-    const b = parse(z.object({ folder: z.string().optional() }), req.body ?? {});
-    try { return await syncAccount(ctx, await account(u), b.folder); } catch (e) { throw badRequest(`Abruf fehlgeschlagen: ${(e as Error).message}`); }
+    const b = parse(z.object({ folder: z.string().optional(), accountId: z.string().uuid().optional() }), req.body ?? {});
+    const list = b.accountId ? [await account(u, b.accountId)] : await sql<MailAccount[]>`select * from mail_accounts where owner_id = ${u.id}`;
+    if (!list.length) throw badRequest('Noch kein E-Mail-Konto eingerichtet');
+    let fetched = 0;
+    const errors: string[] = [];
+    for (const a of list) {
+      try { fetched += (await syncAccount(ctx, a, b.folder)).fetched; } catch (e) { errors.push(`${a.email}: ${(e as Error).message}`); }
+    }
+    if (errors.length === list.length) throw badRequest(`Abruf fehlgeschlagen – ${errors.join('; ')}`);
+    return { fetched, errors };
   });
 
   // ------------------------------------------------ Ordner und Nachrichten
   app.get('/mailbox/folders', async (req) => {
     const u = requireUser(req);
-    const a = await account(u);
+    const q = parse(z.object({ accountId: z.string().uuid().optional() }), req.query);
+    const a = await account(u, q.accountId);
     return sql`select id, path, name, special_use as "specialUse", delimiter, total, unseen,
       (select count(*)::int from mail_messages m where m.folder_id = f.id and not m.seen) as "localUnseen" from mail_folders f where account_id = ${a.id} order by sort, path`;
   });
 
   app.get('/mailbox/messages', async (req) => {
     const u = requireUser(req);
-    const a = await account(u);
-    const q = parse(z.object({ folderId: z.string().uuid().optional(), q: z.string().optional(), unread: z.coerce.boolean().optional(), flagged: z.coerce.boolean().optional(),
+    const q = parse(z.object({ accountId: z.string().uuid().optional(), folderId: z.string().uuid().optional(), q: z.string().optional(), unread: z.coerce.boolean().optional(), flagged: z.coerce.boolean().optional(),
       before: z.string().optional(), limit: z.coerce.number().int().min(1).max(500).default(150) }), req.query);
+    let accountId = q.accountId ?? null;
+    if (!accountId && q.folderId) accountId = (await sql<{ account_id: string }[]>`select account_id from mail_folders where id = ${q.folderId}`)[0]?.account_id ?? null;
+    const a = await account(u, accountId);
     const like = q.q ? `%${q.q}%` : null;
     return sql`select m.id, m.folder_id as "folderId", m.from_addr as "from", m.to_addrs as "to", m.subject, m.date, m.seen, m.flagged, m.answered, m.thread_key as "threadKey",
         jsonb_array_length(m.attachments) as "attachmentCount", left(regexp_replace(m.text_body, '\\s+', ' ', 'g'), 180) as preview,
@@ -167,10 +105,12 @@ export default async function mailboxRoutes(app: FastifyInstance, ctx: AppContex
   /** gelesen/ungelesen, markieren, verschieben, löschen – für eine oder mehrere Nachrichten */
   app.post('/mailbox/messages/bulk', async (req) => {
     const u = requireUser(req);
-    const a = await account(u);
     const b = parse(z.object({ ids: z.array(z.string().uuid()).min(1).max(500), action: z.enum(['seen', 'unseen', 'flag', 'unflag', 'move', 'delete']), folderId: z.string().uuid().optional() }), req.body);
-    const rows = await sql<{ id: string; uid: string; folder_id: string; path: string; special_use: string | null }[]>`select m.id, m.uid, m.folder_id, f.path, f.special_use
-      from mail_messages m join mail_folders f on f.id = m.folder_id where m.account_id = ${a.id} and m.id = any(${b.ids})`;
+    const all = await sql<{ id: string; uid: string; folder_id: string; path: string; special_use: string | null; account_id: string }[]>`select m.id, m.uid, m.folder_id, f.path, f.special_use, m.account_id
+      from mail_messages m join mail_folders f on f.id = m.folder_id join mail_accounts ac on ac.id = m.account_id where ac.owner_id = ${u.id} and m.id = any(${b.ids})`;
+    if (!all.length) return { ok: true, count: 0 };
+    const a = await account(u, all[0]!.account_id);
+    const rows = all.filter((r) => r.account_id === a.id);
     const byFolder = new Map<string, (typeof rows)[number][]>();
     for (const r of rows) byFolder.set(r.path, [...(byFolder.get(r.path) ?? []), r]);
     let target: { id: string; path: string } | undefined;
@@ -205,12 +145,12 @@ export default async function mailboxRoutes(app: FastifyInstance, ctx: AppContex
   /** Anhang für eine neue Nachricht hochladen (liegt bis zum Senden zwischen) */
   app.post('/mailbox/uploads', async (req) => {
     const u = requireUser(req);
-    const a = await account(u);
+    if (u.role === 'guest') throw forbidden();
     const out = [];
     for await (const part of req.parts()) {
       if (part.type !== 'file') continue;
       const name = safeName(part.filename.split(/[\\/]/).pop() ?? 'datei');
-      const path = `.aperio/mail/${a.id}/ausgang/${randomUUID()}/${name}`;
+      const path = `.aperio/mail/u-${u.id}/ausgang/${randomUUID()}/${name}`;
       const r = await storage.write(path, part.file);
       out.push({ name, path, size: r.size });
     }
@@ -218,7 +158,8 @@ export default async function mailboxRoutes(app: FastifyInstance, ctx: AppContex
   });
 
   const draftBody = z.object({
-    to: z.string().default(''), cc: z.string().default(''), bcc: z.string().default(''), subject: z.string().max(998).default(''), html: z.string().max(2_000_000).default(''),
+    accountId: z.string().uuid().optional(),
+    to: z.string().default(''), cc: z.string().default(''), bcc: z.string().default(''), subject: z.string().max(998).default(''), html: z.string().max(4_000_000).default(''),
     replyOf: z.string().uuid().nullable().default(null), forwardOf: z.string().uuid().nullable().default(null),
     attachments: z.array(z.object({ name: z.string(), path: z.string(), size: z.number() })).default([]),
     /** Dateien aus Projekten anhängen */
@@ -227,63 +168,72 @@ export default async function mailboxRoutes(app: FastifyInstance, ctx: AppContex
 
   app.get('/mailbox/drafts', async (req) => {
     const u = requireUser(req);
-    const a = await account(u);
-    return sql`select id, to_addrs as "to", cc_addrs as cc, bcc_addrs as bcc, subject, html, reply_of as "replyOf", attachments, updated_at as "updatedAt"
-      from mail_drafts where account_id = ${a.id} order by updated_at desc`;
+    const q = parse(z.object({ accountId: z.string().uuid().optional() }), req.query);
+    return sql`select d.id, d.account_id as "accountId", d.to_addrs as "to", d.cc_addrs as cc, d.bcc_addrs as bcc, d.subject, d.html, d.reply_of as "replyOf", d.attachments, d.updated_at as "updatedAt"
+      from mail_drafts d join mail_accounts a on a.id = d.account_id where a.owner_id = ${u.id} ${q.accountId ? sql`and d.account_id = ${q.accountId}` : sql``} order by d.updated_at desc`;
   });
 
   app.put('/mailbox/drafts/:id', async (req) => {
     const u = requireUser(req);
-    const a = await account(u);
     const { id } = parse(idParam, req.params);
     const b = parse(draftBody, req.body);
+    const a = await account(u, b.accountId);
+    const [other] = await sql`select 1 from mail_drafts d join mail_accounts x on x.id = d.account_id where d.id = ${id} and x.owner_id <> ${u.id}`;
+    if (other) throw forbidden();
     await sql`insert into mail_drafts (id, account_id, to_addrs, cc_addrs, bcc_addrs, subject, html, reply_of, attachments)
       values (${id}, ${a.id}, ${b.to}, ${b.cc}, ${b.bcc}, ${b.subject}, ${b.html}, ${b.replyOf}, ${sql.json(b.attachments)})
-      on conflict (id) do update set to_addrs = excluded.to_addrs, cc_addrs = excluded.cc_addrs, bcc_addrs = excluded.bcc_addrs, subject = excluded.subject,
-        html = excluded.html, reply_of = excluded.reply_of, attachments = excluded.attachments, updated_at = now() where mail_drafts.account_id = ${a.id}`;
+      on conflict (id) do update set account_id = excluded.account_id, to_addrs = excluded.to_addrs, cc_addrs = excluded.cc_addrs, bcc_addrs = excluded.bcc_addrs, subject = excluded.subject,
+        html = excluded.html, reply_of = excluded.reply_of, attachments = excluded.attachments, updated_at = now()`;
     return { ok: true };
   });
 
   app.delete('/mailbox/drafts/:id', async (req) => {
     const u = requireUser(req);
-    const a = await account(u);
     const { id } = parse(idParam, req.params);
-    await sql`delete from mail_drafts where id = ${id} and account_id = ${a.id}`;
+    await sql`delete from mail_drafts d using mail_accounts a where d.id = ${id} and a.id = d.account_id and a.owner_id = ${u.id}`;
     return { ok: true };
   });
 
+  /**
+   * Senden: Die Kennung (clientKey) kommt aus dem Schreibfenster – doppelt ankommende Klicks verschicken nichts doppelt.
+   * Bei einer kurzen Störung landet die E-Mail im Postausgang und wird automatisch nachgeschickt.
+   */
   app.post('/mailbox/send', async (req) => {
     const u = requireUser(req);
-    const a = await account(u);
-    const b = parse(draftBody.extend({ draftId: z.string().uuid().optional() }), req.body);
-    if (!b.to.trim()) throw badRequest('Bitte einen Empfänger angeben');
-    const attachments: { filename: string; path: string }[] = [];
+    if (u.role === 'guest') throw forbidden();
+    const b = parse(draftBody.extend({ draftId: z.string().uuid().optional(), clientKey: z.string().min(8).max(64).optional() }), req.body);
+    const a = await account(u, b.accountId);
+    if (!normalizeAddresses(b.to)) throw badRequest('Bitte einen Empfänger angeben');
+    const attachments: { filename: string; storagePath: string }[] = [];
+    const cleanup = new Set<string>();
     for (const x of b.attachments) {
-      if (!x.path.startsWith(`.aperio/mail/${a.id}/`)) throw forbidden();
-      attachments.push({ filename: x.name, path: storage.abs(x.path) });
+      if (!x.path.startsWith(`.aperio/mail/u-${u.id}/ausgang/`) && !x.path.startsWith(`.aperio/mail/${a.id}/`)) throw forbidden();
+      if (x.path.includes('..')) throw forbidden();
+      attachments.push({ filename: x.name, storagePath: x.path });
+      if (x.path.includes('/ausgang/')) cleanup.add(x.path.split('/').slice(0, -1).join('/'));
     }
     for (const fid of b.fileIds) {
       const [f] = await sql<{ path: string; name: string; project_id: string | null }[]>`select path, name, project_id from files where id = ${fid}`;
       if (!f) continue;
       if (f.project_id) await projectAccess(sql, u, f.project_id); else if (u.role !== 'admin') continue;
-      attachments.push({ filename: f.name, path: storage.abs(f.path) });
+      attachments.push({ filename: f.name, storagePath: f.path });
     }
     let inReplyTo: string | null = null, references: string | null = null;
     if (b.replyOf || b.forwardOf) {
       const { m } = await message(u, (b.replyOf ?? b.forwardOf)!);
       if (b.replyOf) { inReplyTo = m.message_id; references = [m.thread_key?.startsWith('s:') ? null : m.thread_key, m.message_id].filter(Boolean).join(' ') || null; }
-      if (b.forwardOf) for (const x of m.attachments) attachments.push({ filename: x.name, path: storage.abs(x.path) });
+      if (b.forwardOf) for (const x of m.attachments) if (!x.cid || !b.html.includes(x.cid.replace(/[<>]/g, ''))) attachments.push({ filename: x.name, storagePath: x.path });
     }
-    const text = b.html.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li|h\d)>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-    const r = await sendFromAccount(ctx, a, { to: b.to, cc: b.cc, bcc: b.bcc, subject: b.subject, html: b.html, text, inReplyTo, references, attachments });
-    if (b.replyOf) {
-      const { m } = await message(u, b.replyOf);
-      await sql`update mail_messages set answered = true where id = ${m.id}`;
-      void setFlags(ctx, a, m.path, [Number(m.uid)], {}).catch(() => {});
-    }
-    if (b.draftId) await sql`delete from mail_drafts where id = ${b.draftId} and account_id = ${a.id}`;
-    await storage.remove(`.aperio/mail/${a.id}/ausgang`).catch(() => {});
-    return { ok: true, messageId: r.messageId };
+    const text = b.html.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li|h\d|tr)>/gi, '\n').replace(/<(style|script)[\s\S]*?<\/\1>/gi, '').replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\n{3,}/g, '\n\n');
+    const domain = a.email.split('@')[1] ?? 'aperio.local';
+    const payload: OutboxPayload = { to: normalizeAddresses(b.to), cc: normalizeAddresses(b.cc), bcc: normalizeAddresses(b.bcc), subject: b.subject, html: b.html, text,
+      inReplyTo, references, messageId: `<${randomUUID()}@${domain}>`, attachments, replyOf: b.replyOf, cleanup: [...cleanup] };
+    const r = await sendNow(ctx, a, b.clientKey ?? randomUUID(), payload);
+    if (b.draftId) await sql`delete from mail_drafts where id = ${b.draftId} and account_id in (select id from mail_accounts where owner_id = ${u.id})`;
+    if (r.status === 'queued') return { ok: true, queued: true, message: `${r.problem.text} Die E-Mail liegt im Postausgang und wird automatisch nachgeschickt.` };
+    if (r.status === 'pending') return { ok: true, pending: true, message: 'Die E-Mail wird bereits verschickt.' };
+    return { ok: true, messageId: r.messageId, duplicate: r.status === 'duplicate' };
   });
 
   // ------------------------------------------------ Was Outlook nicht kann

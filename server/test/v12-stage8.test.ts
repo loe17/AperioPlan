@@ -139,7 +139,7 @@ describe('Persönliches Postfach', () => {
     expect((await admin.get('/api/mailbox/preset?email=max@gmx.de')).imapHost).toBe('imap.gmx.net');
     expect(await admin.get('/api/mailbox/account')).toBeNull();
     await admin.req('GET', '/api/mailbox/folders', undefined, 400);
-    const r = await admin.req('PUT', '/api/mailbox/account', { email: 'max@example.invalid', imapHost: '127.0.0.1', imapPort: 1, smtpHost: '127.0.0.1', smtpPort: 1, username: 'max', password: 'x', imapSecure: false });
+    const r = await admin.req('POST', '/api/mailbox/accounts', { email: 'max@example.invalid', displayName: 'Max', imapHost: '127.0.0.1', imapPort: 1, imapSecure: false, smtpHost: '127.0.0.1', smtpPort: 1, smtpSecure: false, username: 'max', password: 'x' });
     expect(r.status).toBe(400);
     expect(r.body.error).toMatch(/IMAP/);
   });

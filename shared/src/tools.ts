@@ -81,6 +81,7 @@ export const NOTIFY_KINDS: { kind: string; label: string; app: boolean; mail: bo
   { kind: 'purchasing', label: 'Einkauf: Bestellungen und Lieferungen', app: true, mail: true },
   { kind: 'crm', label: 'CRM: Termine und Wiedervorlagen', app: true, mail: true },
   { kind: 'calendar', label: 'Termineinladungen', app: true, mail: true },
+  { kind: 'mail', label: 'E-Mail: Postausgang nachgeschickt oder Problem mit dem Postfach', app: true, mail: false },
   { kind: 'kvp', label: 'KVP-Ideen', app: true, mail: false },
   { kind: 'files', label: 'Dateien von Externen hochgeladen', app: true, mail: true },
   { kind: 'board', label: 'Schwarzes Brett und Marktplatz', app: true, mail: false },

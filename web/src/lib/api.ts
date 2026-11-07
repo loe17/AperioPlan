@@ -15,7 +15,7 @@ let onUnauthorized: (() => void) | null = null;
 export const setUnauthorizedHandler = (fn: () => void) => { onUnauthorized = fn; };
 
 /** Anfragen, die keine Rückmeldung „Gespeichert“ brauchen (laufen im Hintergrund oder sind kein Speichern) */
-const QUIET = [/^\/auth\//, /^\/chat\//, /^\/notifications/, /^\/presence/, /^\/search/, /availability$/, /^\/whiteboards\//, /\/analyze$/, /^\/calls?\//, /\/read$/, /^\/ai\//, /\/preview$/, /\/test$/, /^\/mail\/sync/, /\/claim$/, /^\/me\/heartbeat/];
+const QUIET = [/^\/auth\//, /^\/chat\//, /^\/notifications/, /^\/presence/, /^\/search/, /availability$/, /^\/whiteboards\//, /\/analyze$/, /^\/calls?\//, /\/read$/, /^\/ai\//, /\/preview$/, /\/test$/, /^\/mail\/sync/, /^\/mailbox\/(sync|drafts|messages\/bulk|setup\/|signatures\/preview|uploads)/, /^\/favorites\/tools/, /\/hidden-tabs$/, /\/claim$/, /^\/bi\/run$/, /^\/view3d\//, /^\/me\/heartbeat/];
 
 /** Meldet jedes Speichern an die Toast-Anzeige (Erfolg oder Fehler mit Grund) */
 function report(method: string, url: string, startedAt: number, ok: boolean, message?: string, quiet?: boolean) {

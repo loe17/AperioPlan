@@ -350,12 +350,15 @@ await step('12.1 Ordnerstruktur mit Unterordner anlegen', async () => {
   await page.click('button:has-text("Speichern")');
 });
 
-await step('12.2 Persönliches Postfach fordert zur Einrichtung auf', async () => {
+await step('12.2 Persönliches Postfach: Assistent erkennt den Anbieter und nennt, was zu tun ist', async () => {
   await page.goto(`${BASE}/mail`);
   await page.click('button:has-text("E-Mail-Konto einrichten")');
-  await page.fill('.modal input >> nth=0', 'max@gmx.de');
-  await page.locator('.modal input >> nth=0').blur();
-  await page.waitForFunction(() => [...document.querySelectorAll('.modal input')].some((i) => i.value === 'imap.gmx.net'));
+  await page.fill('.modal input[type=email]', 'max@gmx.de');
+  await page.fill('.modal input[placeholder="Vorname Nachname"]', 'Max Muster');
+  await page.waitForSelector('.modal .sender-preview:has-text("Max Muster <max@gmx.de>")');
+  await page.click('.modal button:has-text("Weiter")');
+  await page.waitForSelector('.modal >> text=Erkannt: GMX');
+  await page.waitForSelector('.modal .hint:has-text("erlauben")');
   await page.click('.modal button:has-text("Abbrechen")');
 });
 
@@ -1039,6 +1042,112 @@ await step('14.18 Lager und Einkauf: Lagerbestellung, Wareneingang mit Liefersch
   await page.click('tr:has-text("Kabelbinder 300 mm")');
   await page.click('.modal button.tab:has-text("Verlauf")');
   await page.waitForSelector('.modal >> text=LS-2026-77');
+});
+
+// ------------------------------------------------------------ 15. E-Mail-Assistent, Signaturen, Adressbuch, Oberfläche (0.4.0)
+// Die E-Mail-Schritte brauchen den nachgebildeten Mail-Server: Server mit APERIO_MAIL_FAKE=1 starten und E2E_MAIL_FAKE=1 setzen.
+if (process.env.E2E_MAIL_FAKE === '1') {
+  await step('15.1 E-Mail-Assistent: Verbindungstest mit Test-E-Mail, Konto speichern', async () => {
+    await page.goto(`${BASE}/mail`);
+    await page.click('button:has-text("E-Mail-Konto einrichten")');
+    await page.fill('.modal input[type=email]', 'max@firma.aperio.test');
+    await page.fill('.modal input[placeholder="Vorname Nachname"]', 'Max Muster');
+    await page.click('.modal button:has-text("Weiter")');
+    await page.waitForSelector('.modal >> text=Vorschlag: mail.firma.aperio.test');
+    await page.click('.modal button:has-text("Weiter")');
+    await page.fill('.modal input[type=password]', 'geheim');
+    await page.click('.modal button:has-text("Verbindung testen")');
+    await page.waitForSelector('.modal .wiz-check.ok:has-text("Test-E-Mail angekommen")', { timeout: 20000 });
+    await page.click('.modal button:has-text("Konto speichern")');
+    await page.waitForSelector('.modal >> text=Postfach ist eingerichtet');
+    await page.click('.modal button:has-text("Fertig")');
+    await page.waitForSelector('.mb-folders .nav-item:has-text("Gesendet")');
+  });
+  await step('15.2 Falsches Passwort: Assistent erklärt den Fehler und führt zurück', async () => {
+    await page.click('.mb-actions button:has-text("Postfach hinzufügen")');
+    await page.fill('.modal input[type=email]', 'info@firma.aperio.test');
+    await page.fill('.modal input[placeholder="Vorname Nachname"]', 'Firma Info');
+    await page.click('.modal button:has-text("Weiter")');
+    await page.click('.modal button:has-text("Weiter") >> nth=0');
+    await page.fill('.modal input[type=password]', 'falsch');
+    await page.click('.modal button:has-text("Verbindung testen")');
+    await page.waitForSelector('.modal .wiz-check.error:has-text("Passwort abgelehnt")');
+    await page.click('.modal button:has-text("Zu Schritt 3")');
+    await page.waitForSelector('.modal input[type=password]');
+    await page.click('.modal button:has-text("Abbrechen")');
+  });
+  await step('15.3 Signatur mit Platzhaltern, E-Mail an eine Abteilung über das Adressbuch', async () => {
+    const team = await api('POST', '/teams', { name: 'Konstruktion' });
+    await api('POST', '/users', { username: 'kons1', displayName: 'Karl Konstrukteur', email: 'karl@firma.aperio.test', password: 'Start-12345!x', departmentId: team.id, jobTitle: 'Konstrukteur' });
+    await page.click('.mb-actions button:has-text("Signaturen")');
+    await page.click('.modal button:has-text("Neue Signatur")');
+    await page.fill('.modal input[placeholder="z. B. Standard"]', 'Standard');
+    await page.waitForSelector('.modal .sig-preview:has-text("Testplan GmbH")');
+    await page.locator('.modal button:has-text("Speichern")').last().click();
+    await page.waitForSelector('.modal .card.flat b:text-is("Standard")');
+    await page.click('.modal button:has-text("Schließen")');
+    await page.click('button:has-text("Neue E-Mail")');
+    await page.waitForSelector('.modal .mb-editor >> text=Viele Grüße');
+    await page.click('.modal button.rcpt-label:has-text("An")');
+    await page.click('.abook-row:has-text("Gruppe Konstruktion") input');
+    await page.locator('.modal').last().locator('button:has-text("An →")').click();
+    await page.locator('.modal').last().locator('button:has-text("Fertig")').click();
+    await page.waitForSelector('.rcpt-chip.group:has-text("Konstruktion")');
+    await page.fill('.mb-compose-head > input', 'Besprechung Konstruktion');
+    await page.click('.modal button:has-text("Senden")');
+    await page.waitForSelector('.modal', { state: 'detached' });
+    const acc = (await api('GET', '/mailbox/accounts'))[0];
+    let ev = [];
+    for (let i = 0; i < 20 && !ev.some((e) => /Gesendet an .*karl@firma/.test(e.text)); i++) { ev = await api('GET', `/mailbox/accounts/${acc.id}/events`); await page.waitForTimeout(200); }
+    if (!ev.some((e) => /Gesendet an .*karl@firma/.test(e.text))) throw new Error('Versand nicht im Verlauf');
+  });
+  await step('15.4 Anzeigename ändern wirkt sofort', async () => {
+    await page.click('.mb-actions button:has-text("Konto")');
+    await page.fill('.modal .field:has-text("Anzeigename") input', 'Maximilian Muster');
+    await page.waitForSelector('.modal .sender-preview:has-text("Maximilian Muster <max@firma.aperio.test>")');
+    await page.click('.modal button:has-text("Speichern")');
+    await page.waitForSelector('.modal', { state: 'detached' });
+    const acc = (await api('GET', '/mailbox/accounts'))[0];
+    if (acc.displayName !== 'Maximilian Muster') throw new Error('Anzeigename nicht übernommen');
+  });
+} else console.log('[--]     15.1–15.4 E-Mail mit nachgebildetem Server übersprungen (E2E_MAIL_FAKE=1 setzen)');
+
+await step('15.5 Seitenleiste: kein Posteingang im Schreibtisch, Werkzeug-Favorit anlegen', async () => {
+  await page.goto(`${BASE}/`);
+  if (await page.locator('[data-section="desk"] .nav-item:has-text("Posteingang")').count()) throw new Error('Posteingang steht noch im Schreibtisch');
+  const item = page.locator('[data-section="tools"] .nav-item').first();
+  const label = (await item.innerText()).trim();
+  await item.hover();
+  await item.locator('.nav-star').click();
+  await page.waitForSelector(`[data-section="tool-favorites"] .nav-item:has-text("${label}")`);
+  await page.click('button[title="Benachrichtigungen"]');
+  await page.waitForSelector('.dropdown >> text=Benachrichtigungen');
+  await page.keyboard.press('Escape');
+  await page.mouse.click(700, 500);
+});
+
+await step('15.6 Kopfzeile: Stempeluhr mittig zwischen Pfad und Suche', async () => {
+  const b = await page.locator('.topbar .breadcrumbs').boundingBox();
+  const c = await page.locator('.topbar .header-clock').boundingBox();
+  const s = await page.locator('.topbar .search-trigger').boundingBox();
+  const bar = await page.locator('.topbar').boundingBox();
+  if (!(b.x + b.width <= c.x && c.x + c.width <= s.x)) throw new Error('Reihenfolge stimmt nicht');
+  const mid = c.x + c.width / 2, barMid = bar.x + bar.width / 2;
+  if (Math.abs(mid - barMid) > 40) throw new Error(`Stempeluhr nicht mittig (${Math.round(mid)} statt ${Math.round(barMid)})`);
+});
+
+await step('15.7 Projekt: Reiter für sich ausblenden und wieder einblenden', async () => {
+  const p = await api('POST', '/projects', { name: 'Reiter ausblenden' });
+  await page.goto(`${BASE}/projects/${p.id}`);
+  const tab = page.locator('.tabs > button.tab').nth(1);
+  const label = (await tab.innerText()).trim();
+  await tab.click({ button: 'right' });
+  await page.click('.tab-context .item:has-text("Für mich ausblenden")');
+  await page.waitForSelector('.tabs-hidden-btn:has-text("1 ausgeblendet")');
+  if (await page.locator(`.tabs > button.tab:text-is("${label}")`).count()) throw new Error('Reiter noch sichtbar');
+  await page.click('.tabs-hidden-btn');
+  await page.click(`.dropdown .item:has-text("${label}")`);
+  await page.waitForSelector(`.tabs > button.tab:has-text("${label}")`);
 });
 
 await browser.close();

@@ -47,6 +47,23 @@ export default async function meRoutes(app: FastifyInstance, ctx: AppContext) {
     return { ok: true };
   });
 
+  // ------------------------------------------------ Werkzeug-Favoriten (eigener Bereich in der Seitenleiste)
+  app.get('/favorites/tools', async (req) => {
+    const u = requireUser(req);
+    return (await sql<{ tool: string }[]>`select tool from tool_favorites where user_id = ${u.id} order by sort, created_at`).map((r) => r.tool);
+  });
+  /** Ganze Liste in der gewünschten Reihenfolge speichern (Hinzufügen, Entfernen, Sortieren) */
+  app.put('/favorites/tools', async (req) => {
+    const u = requireUser(req);
+    const b = parse(z.object({ tools: z.array(z.string().trim().min(1).max(80)).max(60) }), req.body);
+    const tools = [...new Set(b.tools)];
+    await sql.begin(async (tx) => {
+      await tx`delete from tool_favorites where user_id = ${u.id} and not (tool = any(${tools}))`;
+      for (const [i, t] of tools.entries()) await tx`insert into tool_favorites (user_id, tool, sort) values (${u.id}, ${t}, ${i}) on conflict (user_id, tool) do update set sort = excluded.sort`;
+    });
+    return tools;
+  });
+
   // ------------------------------------------------ Private Notizen
   app.get('/notes', async (req) => {
     const u = requireUser(req);

@@ -42,7 +42,7 @@ Jedes Werkzeug ist eine **App**. Eine neue Installation startet schlank mit **Ch
 |---|---|
 | **Projekte** *(immer dabei)* | Automatische Projektnummern (`0100`, Teilprojekte `0100-A`), Kanban, Aufgabenliste, Gantt mit Abhängigkeiten, Whiteboard, Dateien mit Versionen und Freigabelinks, Office im Browser, Abschlussbericht |
 | **Zusammenarbeit** | Kalender mit Outlook-/Google-Abgleich, Schwarzes Brett mit Marktplatz, Formulare und Umfragen, Mindmaps nach dem Vorbild von FreeMind (Symbole, Wolken, Pfeile, Attribute, Erinnerungen, Export und Import als .mm) |
-| **Kommunikation** | Chat und Videoanrufe, Meetings mit Gast-Link und Warteraum, Telefonie über die Telefonanlage, E-Mail-Postfach mit Projektzuordnung |
+| **Kommunikation** | Chat und Videoanrufe, Meetings mit Gast-Link und Warteraum, Telefonie über die Telefonanlage, E-Mail mit Einrichtungsassistent (netcup, IONOS, Gmail, Microsoft 365 u. v. m.), mehreren Postfächern, HTML-Signaturen, Adressbuch mit Abteilungsgruppen und Projektzuordnung |
 | **Kunden & Verkauf** | CRM mit Angeboten, Rechnungen als E-Rechnung (ZUGFeRD/XRechnung) und Reklamationen, Kalkulation, Kundenanfragen (Tickets), Wartungsverträge mit automatischer Rechnung, Terminbuchung per Link, Messen und Veranstaltungen, E-Signatur |
 | **Produktion & Service** | Instandhaltung mit Störmeldung per QR-Code, Qualität (Prüfpläne, Messmittel, 8D), Fertigungsaufträge, Service-Einsätze mit Unterschrift des Kunden |
 | **Technik** | CAD-Bridge für SolidWorks (Nummern, Speichermaske, Aus-/Einchecken, Stücklisten, Freigabe mit PDF/DXF/STEP), PCB-Bridge für KiCad, Änderungsmanagement, 3D-Ansicht im Browser mit Schnitt und Messen (auch native SolidWorks-, Inventor-, Solid-Edge- und CATIA-Dateien über einen CAD-Arbeitsplatz) |
@@ -158,6 +158,8 @@ sudo git pull && sudo docker compose up -d --build
 > **Von 0.1.x auf 0.2.0:** Bisher genutzte Werkzeuge bleiben eingeschaltet. Die neuen Apps stehen im App-Store bereit und erscheinen erst, wenn der Administrator sie installiert.
 >
 > **Von 0.2.x auf 0.3.0:** Bestehende Projekte bekommen die Reiter **Verkauf** und **Mindmaps** (wo die Apps installiert sind) – bisher waren Rechnungen und Mindmaps dort fest eingeblendet. Weitere App-Reiter blendet die Projektleitung mit **＋** ein. Der 3D-Viewer ist keine eigene App mehr. Wer wieder auf 0.2.x wechselt, verliert keine Daten: Die neuen Reiter, Lagerbestellungen und die Mindmap-Formatierung werden dort nur nicht angezeigt.
+>
+> **Von 0.3.x auf 0.4.0:** Eingerichtete Postfächer bleiben erhalten; die bisherige Signatur wird zur Signatur „Standard“. Der Eintrag **Posteingang** im Schreibtisch entfällt – Benachrichtigungen stehen unter der Glocke. Wer Microsoft 365 nutzt, richtet unter **Einstellungen → E-Mail-Anmeldung** die Anmeldung mit Microsoft ein. Zurück auf 0.3.x geht ohne Datenverlust: Dort erscheinen nur das Hauptpostfach und dessen Standard-Signatur; weitere Postfächer, Postausgang, Werkzeug-Favoriten und ausgeblendete Reiter werden dort nur nicht angezeigt.
 
 ## Deinstallieren
 

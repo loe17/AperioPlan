@@ -3,6 +3,8 @@ const en: Record<string, string> = {
   'Mein Schreibtisch': 'My desk',
   'Übersicht': 'Overview',
   'Favoriten': 'Favorites',
+  'Benachrichtigungen': 'Notifications',
+  'Werkzeug-Favoriten': 'Favorite tools',
   'Posteingang': 'Inbox',
   'Mein Kalender': 'My calendar',
   'Teamkalender': 'Team calendar',

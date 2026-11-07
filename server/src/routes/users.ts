@@ -12,7 +12,7 @@ const userFields = `id, username, display_name as "displayName", email, role, ac
   must_change_password as "mustChangePassword", vacation_days_per_year::float as "vacationDaysPerYear",
   avatar_color as "avatarColor", last_login_at as "lastLoginAt", created_at as "createdAt",
   department_id as "departmentId", (select name from teams where id = users.department_id) as "departmentName",
-  tools, phone, avatar_version as "avatarVersion", avatar_path is not null as "hasAvatar", totp_enabled as "totpEnabled"`;
+  tools, phone, job_title as "jobTitle", mobile, avatar_version as "avatarVersion", avatar_path is not null as "hasAvatar", totp_enabled as "totpEnabled"`;
 
 export default async function userRoutes(app: FastifyInstance, ctx: AppContext) {
   const { sql } = ctx;
@@ -24,7 +24,7 @@ export default async function userRoutes(app: FastifyInstance, ctx: AppContext) 
     const rows = u.role === 'admin'
       ? await sql.unsafe(`select ${userFields} from users where deleted_at is null order by display_name`)
       : await sql`select id, username, display_name as "displayName", email, role, avatar_color as "avatarColor",
-          avatar_version as "avatarVersion", avatar_path is not null as "hasAvatar", phone, department_id as "departmentId"
+          avatar_version as "avatarVersion", avatar_path is not null as "hasAvatar", phone, department_id as "departmentId", job_title as "jobTitle"
           from users where active and deleted_at is null and role <> 'guest' order by display_name`;
     const presence = await ctx.presence.all();
     const iShow = u.showLastSeen;
@@ -47,11 +47,12 @@ export default async function userRoutes(app: FastifyInstance, ctx: AppContext) 
       departmentId: z.string().uuid().nullable().default(null),
       tools: z.array(z.enum(TOOLS)).nullable().default(null),
       phone: z.string().max(60).default(''),
+      jobTitle: z.string().trim().max(120).default(''),
     }), req.body);
     checkPasswordStrength(b.password, b.username);
     if (b.role !== 'guest' && !b.departmentId) throw badRequest('Bitte eine Abteilung auswählen');
-    const [created] = await sql<{ id: string }[]>`insert into users (username, display_name, email, role, password_hash, must_change_password, vacation_days_per_year, department_id, tools, phone)
-      values (${b.username}, ${b.displayName}, ${b.email ?? null}, ${b.role}, ${await hashPassword(b.password)}, true, ${b.vacationDaysPerYear}, ${b.departmentId}, ${b.tools}, ${b.phone})
+    const [created] = await sql<{ id: string }[]>`insert into users (username, display_name, email, role, password_hash, must_change_password, vacation_days_per_year, department_id, tools, phone, job_title)
+      values (${b.username}, ${b.displayName}, ${b.email ?? null}, ${b.role}, ${await hashPassword(b.password)}, true, ${b.vacationDaysPerYear}, ${b.departmentId}, ${b.tools}, ${b.phone}, ${b.jobTitle})
       returning id`;
     // Die Abteilung ist zugleich ein Team – Mitgliedschaft automatisch
     for (const t of new Set([...b.teamIds, ...(b.departmentId ? [b.departmentId] : [])])) await sql`insert into team_members (team_id, user_id) values (${t}, ${created!.id}) on conflict do nothing`;
@@ -72,6 +73,7 @@ export default async function userRoutes(app: FastifyInstance, ctx: AppContext) 
       departmentId: z.string().uuid().nullable().optional(),
       tools: z.array(z.enum(TOOLS)).nullable().optional(),
       phone: z.string().max(60).optional(),
+      jobTitle: z.string().trim().max(120).optional(),
     }), req.body);
     const [cur] = await sql<{ username: string; role: string; department_id: string | null }[]>`select username, role, department_id from users where id = ${id} and deleted_at is null`;
     if (!cur) throw notFound();
@@ -89,6 +91,7 @@ export default async function userRoutes(app: FastifyInstance, ctx: AppContext) 
       department_id = ${b.departmentId === undefined ? sql`department_id` : b.departmentId},
       tools = ${b.tools === undefined ? sql`tools` : b.tools},
       phone = coalesce(${b.phone ?? null}, phone),
+      job_title = coalesce(${b.jobTitle ?? null}, job_title),
       updated_at = now()
       where id = ${id}`;
     if (b.departmentId && b.departmentId !== cur.department_id) await sql`insert into team_members (team_id, user_id) values (${b.departmentId}, ${id}) on conflict do nothing`;
@@ -160,6 +163,7 @@ export default async function userRoutes(app: FastifyInstance, ctx: AppContext) 
       locale: z.enum(['de', 'en']).optional(),
       theme: z.enum(['system', 'light', 'dark']).optional(),
       phone: z.string().max(60).optional(),
+      mobile: z.string().max(60).optional(),
       statusMode: z.enum(['auto', 'online', 'idle', 'away', 'offline']).optional(),
       showLastSeen: z.boolean().optional(),
     }), req.body);
@@ -167,7 +171,7 @@ export default async function userRoutes(app: FastifyInstance, ctx: AppContext) 
       display_name = coalesce(${b.displayName ?? null}, display_name),
       email = ${b.email === undefined ? sql`email` : b.email},
       locale = coalesce(${b.locale ?? null}, locale),
-      theme = coalesce(${b.theme ?? null}, theme), phone = coalesce(${b.phone ?? null}, phone),
+      theme = coalesce(${b.theme ?? null}, theme), phone = coalesce(${b.phone ?? null}, phone), mobile = coalesce(${b.mobile ?? null}, mobile),
       status_mode = coalesce(${b.statusMode ?? null}, status_mode), show_last_seen = coalesce(${b.showLastSeen ?? null}, show_last_seen),
       updated_at = now()
       where id = ${u.id}`;

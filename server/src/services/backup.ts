@@ -193,6 +193,11 @@ export const BACKUP_TABLES: { name: string; pk: string[] }[] = [
   { name: 'sus_factors', pk: ['id'] },
   { name: 'sus_entries', pk: ['id'] },
   { name: 'view_conversions', pk: ['id'] },
+  { name: 'mail_signatures', pk: ['id'] },
+  { name: 'mail_outbox', pk: ['id'] },
+  { name: 'mail_events', pk: ['id'] },
+  { name: 'project_tab_hidden', pk: ['user_id', 'project_id'] },
+  { name: 'tool_favorites', pk: ['user_id', 'tool'] },
   { name: 'audit_log', pk: ['id'] },
 ];
 

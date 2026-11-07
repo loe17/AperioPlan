@@ -37,7 +37,7 @@ export default async function mailRoutes(app: FastifyInstance, ctx: AppContext) 
     if (!m) throw notFound();
     if (m.account_id) {
       // persönliches Postfach: nur der Inhaber – oder alle mit Zugriff aufs Projekt, wenn sie einem Projekt zugeordnet wurde
-      const [own] = await sql`select 1 from mail_accounts where id = ${m.account_id} and user_id = ${u.id}`;
+      const [own] = await sql`select 1 from mail_accounts where id = ${m.account_id} and owner_id = ${u.id}`;
       if (!own && !m.project_id) throw notFound();
     }
     if (m.project_id) await projectAccess(sql, u, m.project_id);
@@ -101,7 +101,8 @@ export default async function mailRoutes(app: FastifyInstance, ctx: AppContext) 
     if (b.projectId) await projectAccess(sql, u, b.projectId);
     let inReplyTo: string | undefined;
     if (b.replyTo) inReplyTo = (await sql<{ message_id: string }[]>`select message_id from mail_messages where id = ${b.replyTo}`)[0]?.message_id;
-    const signature = `\n\n--\n${u.displayName}`;
+    const [me] = await sql<{ job_title: string; phone: string }[]>`select job_title, phone from users where id = ${u.id}`;
+    const signature = `\n\n--\n${[u.displayName, me?.job_title, me?.phone ? `Tel. ${me.phone}` : ''].filter(Boolean).join('\n')}`;
     const info = await sendMail(ctx, { to: b.to, cc: b.cc, subject: b.subject, text: b.text + signature, inReplyTo });
     const [row] = await sql`insert into mail_messages (message_id, mailbox, direction, from_addr, to_addrs, cc_addrs, subject, date, text_body, project_id, task_id, sent_by, seen)
       values (${info.messageId}, 'SENT', 'out', ${info.from}, ${b.to}, ${b.cc ?? ''}, ${b.subject}, now(), ${b.text + signature}, ${b.projectId}, ${b.taskId}, ${u.id}, true) returning id`;
